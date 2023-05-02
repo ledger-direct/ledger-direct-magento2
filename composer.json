@@ -2,7 +2,6 @@
     "name": "hardcastle/ledger-direct-magento2",
     "type": "magento2-module",
     "description": "Component for accepting online payments in Magento2 using the XRP Ledger",
-    "version": "0.0.1",
     "require": {
     },
     "license": "MIT",
