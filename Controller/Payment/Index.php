@@ -9,13 +9,40 @@
 
 namespace Hardcastle\LedgerDirect\Controller\Payment;
 
+use Magento\Customer\Model\Session;
 use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\View\Result\Page;
+use Magento\Framework\View\Result\PageFactory;
+use Magento\Framework\App\RequestInterface;
 
 class Index implements HttpGetActionInterface
 {
-    public function execute()
+    private Session $session;
+    private RequestInterface $request;
+    private PageFactory $pageFactory;
+
+    public function __construct(
+       Session $session,
+        RequestInterface $request,
+        PageFactory $pageFactory
+    ) {
+        $this->session = $session;
+        $this->request = $request;
+        $this->pageFactory = $pageFactory;
+    }
+
+    public function execute(): Page
     {
-        echo "Hello World";
-        exit;
+        //$om  = ObjectManager::getInstance();
+        //$session = $om->get(Session::class);
+
+
+        //$data = $this->session->getData();
+        //echo '<pre>';
+        //var_dump($this->session->getData());
+        //var_dump($this->request->getParams());
+        //exit;
+
+        return $this->pageFactory->create();
     }
 }
