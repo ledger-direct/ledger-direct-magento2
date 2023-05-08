@@ -2,6 +2,13 @@
 
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
-
+        <payment>
+            <xrp_payment>
+                <model>XrpPaymentMethodFacade</model>
+                <title>Pay with XRP | Ledger Direct</title>
+                <active>1</active>
+                <payment_action>Authorization</payment_action>
+            </xrp_payment>
+        </payment>
     </default>
 </config>

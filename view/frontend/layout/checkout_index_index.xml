@@ -25,7 +25,7 @@
                                                                     <item name="tooltip" xsi:type="string" translate="true">Pay with XRP here.</item>
                                                                 </item>
                                                                 <item name="methods" xsi:type="array">
-                                                                    <item name="ledger-direct-xrp" xsi:type="array">
+                                                                    <item name="xrp_payment" xsi:type="array">
                                                                         <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
                                                                     </item>
                                                                 </item>

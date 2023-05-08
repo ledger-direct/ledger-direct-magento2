@@ -1,16 +1,22 @@
 define(
     [
         'uiComponent',
-        'Magento_Checkout/js/model/payment/renderer-list'
+        'Magento_Checkout/js/model/payment/renderer-list',
+        'Magento_Checkout/js/model/payment-service',
     ],
     function (
         Component,
-        rendererList
+        rendererList,
+        paymentService
     ) {
         'use strict';
+
+        window.testRendererList = rendererList;
+        window.paymentService = paymentService;
+
         rendererList.push(
             {
-                type: 'ledger-direct-xrp',
+                type: 'xrp_payment',
                 component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrp-method'
             }
         );

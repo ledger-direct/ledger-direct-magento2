@@ -6,7 +6,7 @@ define(
         'use strict';
         return Component.extend({
             defaults: {
-                template: 'Mageplaza_Payment/payment/simple'
+                template: 'Hardcastle_LedgerDirect/payment/xrp'
             },
             getMailingAddress: function () {
                 return window.checkoutConfig.payment.checkmo.mailingAddress;
