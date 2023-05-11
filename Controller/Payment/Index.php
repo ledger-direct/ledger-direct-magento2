@@ -33,16 +33,6 @@ class Index implements HttpGetActionInterface
 
     public function execute(): Page
     {
-        //$om  = ObjectManager::getInstance();
-        //$session = $om->get(Session::class);
-
-
-        //$data = $this->session->getData();
-        //echo '<pre>';
-        //var_dump($this->session->getData());
-        //var_dump($this->request->getParams());
-        //exit;
-
         return $this->pageFactory->create();
     }
 }
