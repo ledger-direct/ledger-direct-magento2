@@ -7,7 +7,14 @@
                 <model>XrpPaymentMethodFacade</model>
                 <title>Pay with XRP | Ledger Direct</title>
                 <active>1</active>
-                <payment_action>Authorization</payment_action>
+                <is_gateway>1</is_gateway>
+                <can_sale>1</can_sale>
+                <can_use_checkout>1</can_use_checkout>
+                <can_use_internal>0</can_use_internal>
+                <global_enabled>1</global_enabled>
+                <is_gateway>1</is_gateway>
+                <payment_action>sale</payment_action>
+                <debug>1</debug>
             </xrp_payment>
         </payment>
     </default>
