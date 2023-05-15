@@ -1,5 +1,100 @@
-<div class="ld-main">
-    <p>
-       <?= __('Placeholder payment page') ?>
-    </p>
+<?php
+/** @var Magento\Framework\View\Element\Template $block */
+/** @var \Hardcastle\LedgerDirect\ViewModel\XrplTx $xrplTxVm */
+/** @var \Hardcastle\LedgerDirect\ViewModel\PaymentInfo $paymentInfoVm */
+
+$xrplTxVm = $block->getData('xrpl_tx_vm');
+$paymentInfoVm = $block->getData('payment_info_vm');
+$paymentInfo = $paymentInfoVm->getPaymentInfo();
+?>
+
+<div class="ld-container" data-xrp-payment-page="true">
+    <div class="ld-content">
+
+        <div class="ld-header">
+            <h2><?php echo "Shop name" ?> - XRP Payment Page</h2>
+        </div>
+
+        <div class="ld-card">
+
+            <div class="ld-card-left">
+                <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo['xrpAmount']) ?></p>
+                <label for="destinationAccount" class="bootstrap-form-label">
+                    <?= __('LedgerDirect.paymentPage.destinationAccountLabel') ?>
+                </label>
+                <div class="bootstrap-input-group">
+                    <input id="destination-account"
+                           type="text"
+                           name="destination-account"
+                           class="bootstrap-form-control"
+                           value="<?php echo $paymentInfo['destinationAccount'] ?>"
+                           readonly
+
+                    />
+                    <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
+                            <!-- {% sw_icon 'products' %} -->
+                        </span>
+                    <i class="ld-icon">
+                        <!-- {% sw_icon 'money-wallet' %} -->
+                    </i>
+                </div>
+
+                <label for="destinationTag" class="bootstrap-form-label">
+                    <?= __('LedgerDirect.paymentPage.destinationTagLabel') ?>
+                </label>
+                <div class="bootstrap-input-group">
+
+                    <input id="destination-tag"
+                           type="text"
+                           name="destination-tag"
+                           class="bootstrap-form-control"
+                           value="<?php echo $paymentInfo['destinationTag'] ?>"
+                           readonly
+                    />
+                    <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
+                            <!-- {% sw_icon 'products' %} -->
+                        </span>
+                    <i class="ld-icon">
+                        <!-- {% sw_icon 'tags' %} -->
+                    </i>
+                </div>
+
+                <div class="ld-warning">
+                    <div role="alert" class="alert alert-warning alert-has-icon">
+                        {% sw_icon 'warning' %}
+                        <div class="alert-content-container">
+                            <div class="alert-content">
+                                <?= __('LedgerDirect.paymentPage.destinationTagWarning') ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ld-sync">
+                    <button id="check-payment-button" data-order-id="{{ orderId }}">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display:none"></span>
+                        <?= __('LedgerDirect.paymentPage.checkPaymentButton') ?>
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="ld-card-right">
+                <div class="ld-sum">
+                    <?= $paymentInfo['price'] ?> <?= $paymentInfo['currencySymbol'] ?>
+                </div>
+                <span><?= __('LedgerDirect.paymentPage.orderNumber') ?>: <?php echo $paymentInfo['orderNumber'] ?></span><br/>
+                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo['price'] ?> <?php echo $paymentInfo['currencyCode'] ?></span><br/>
+                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo['xrpAmount'] ?> XRP</span><br/>
+                <span><?= __('LedgerDirect.paymentPage.exchangeRate') ?>: <?php echo $paymentInfo['exchangeRate'] ?> XRP / <?php echo $paymentInfo['currencyCode'] ?></span>
+                <img src="{{ asset('bundles/ledgerdirect/storefront/img/astronaut.png') }}" class="ld-astronaut" />
+            </div>
+
+        </div>
+
+        <div class="ld-footer">
+            <?php echo $paymentInfo['network'] ?> - Ledger Direct Payment Plugin
+        </div>
+
+    </div>
 </div>

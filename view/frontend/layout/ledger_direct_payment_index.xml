@@ -16,13 +16,21 @@
     <remove src="requirejs-config.js"/>
     <remove src="mage/polyfill.js"/>
     -->
+    <css src="Hardcastle_LedgerDirect::css/base.css" rel="stylesheet" type="text/css"  />
+    <css src="StripeIntegration_Payments::css/admin.css" />
 </head>
 <body>
+    <attribute name="class" value="ledger-direct"/>
     <referenceContainer name="page.wrapper" remove="true"/>
     <referenceBlock name="translate" remove="true"/>
     <!-- <referenceBlock name="requirejs-config" remove="true"/> -->
     <referenceContainer name="root">
-        <block name="ledger-direct.payment.index" template="Hardcastle_LedgerDirect::payment/index.phtml"/>
+        <block name="ledger-direct.payment.index" template="Hardcastle_LedgerDirect::payment/index.phtml">
+            <arguments>
+                <argument name="xrpl_tx_vm" xsi:type="object">Hardcastle\LedgerDirect\ViewModel\XrplTx</argument>
+                <argument name="payment_info_vm" xsi:type="object">Hardcastle\LedgerDirect\ViewModel\PaymentInfo</argument>
+            </arguments>
+        </block>
     </referenceContainer>
 </body>
 </page>
