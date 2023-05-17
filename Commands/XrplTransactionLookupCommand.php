@@ -13,13 +13,11 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use LedgerDirect\Service\XrplTransactionFileService;
-use LedgerDirect\Service\XrplTxService;
-
 class XrplTransactionLookupCommand extends Command
 {
     public const COMMAND_NAME = 'ledger-direct:xrpl-transaction:lookup';
 
+    /*
     protected XrplTxService $txService;
 
     public function __construct(
@@ -29,6 +27,7 @@ class XrplTransactionLookupCommand extends Command
 
         $this->txService = $txService;
     }
+    */
 
     /**
      * @inheritdoc

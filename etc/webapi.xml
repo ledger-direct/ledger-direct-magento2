@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <route url="/V1/ledger-direct/payment/price/:orderId" method="GET">
+        <service class="Hardcastle\LedgerDirect\Api\CryptoPriceServiceInterface" method="getPrice"/>
+        <resources>
+            <resource ref="anonymous"/>
+        </resources>
+    </route>
+    <route url="/V1/ledger-direct/payment/xrp-payment/:orderId" method="GET">
+        <service class="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" method="getPaymentDetails"/>
+        <resources>
+            <resource ref="anonymous"/>
+        </resources>
+    </route>
+</routes>

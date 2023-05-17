@@ -3,8 +3,12 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
 
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrplTxInterface" type="Hardcastle\LedgerDirect\Model\XrplTx" />
-
     <preference for="Hardcastle\LedgerDirect\Api\XrplTxRepositoryInterface" type="Hardcastle\LedgerDirect\Model\XrplTxRepository" />
+
+    <preference for="Hardcastle\LedgerDirect\Api\CryptoPriceServiceInterface" type="Hardcastle\LedgerDirect\Model\API\CryptoPriceService" />
+
+    <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\Api\XrpPaymentService" />
+    <preference for="Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface" type="Hardcastle\LedgerDirect\Model\XrpPayment" />
 
     <virtualType name="XrpPaymentMethodFacade" type="Hardcastle\LedgerDirect\Model\PaymentMethod\Xrp">
         <arguments>
