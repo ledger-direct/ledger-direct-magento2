@@ -32,10 +32,10 @@ $paymentInfo = $paymentInfoVm->getPaymentInfo();
 
                     />
                     <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
-                            <!-- {% sw_icon 'products' %} -->
-                        </span>
+                        <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/copy.phtml")->toHtml() ?>
+                    </span>
                     <i class="ld-icon">
-                        <!-- {% sw_icon 'money-wallet' %} -->
+                        <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/wallet.phtml")->toHtml() ?>
                     </i>
                 </div>
 
@@ -52,10 +52,10 @@ $paymentInfo = $paymentInfoVm->getPaymentInfo();
                            readonly
                     />
                     <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
-                            <!-- {% sw_icon 'products' %} -->
-                        </span>
+                            <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/copy.phtml")->toHtml() ?>
+                    </span>
                     <i class="ld-icon">
-                        <!-- {% sw_icon 'tags' %} -->
+                        <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/tag.phtml")->toHtml() ?>
                     </i>
                 </div>
 

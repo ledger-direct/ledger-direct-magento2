@@ -5,9 +5,11 @@
 <head>
     <meta name="robots" content="NOINDEX,NOFOLLOW"/>
     <remove src="mage/calendar.css"/>
+
     <remove src="css/styles-l.css"/>
     <remove src="css/styles-m.css"/>
     <remove src="css/styles-s.css"/>
+
     <remove src="css/print.css"/>
     <!--
     <remove src="requirejs/require.js"/>
