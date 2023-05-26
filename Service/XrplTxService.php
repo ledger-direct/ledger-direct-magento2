@@ -4,7 +4,7 @@ namespace Hardcastle\LedgerDirect\Service;
 
 use Hardcastle\LedgerDirect\Helper\Data;
 use Magento\Framework\App\ResourceConnection;
-use PDO;
+
 class XrplTxService
 {
     public const DESTINATION_TAG_RANGE_MIN = 10000;
@@ -28,6 +28,8 @@ class XrplTxService
         $this->connection = $connection;
     }
 
+
+    /*
     public function generateDestinationTag(): int
     {
         // https://xrpl.org/source-and-destination-tags.html
@@ -68,12 +70,25 @@ class XrplTxService
 
         return null;
     }
+    */
+
+    public function fetchTransaction(string $txHash): array
+    {
+        return $this->clientService->fetchTransaction($txHash);
+    }
+
+    public function fetchAccountTransactions(string $address, int $lastLedgerIndex = null): array
+    {
+        return $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
+    }
 
     public function syncTransactions(string $address): void
     {
         // TODO: Use only last ledger index
 
-        $lastLedgerIndex = (int)$this->connection->fetchOne('SELECT MAX(ledger_index) FROM xrpl_tx');
+        //$lastLedgerIndex = (int)$this->connection->fetchOne('SELECT MAX(ledger_index) FROM xrpl_tx');
+
+        $lastLedgerIndex = 0;
 
         if (!$lastLedgerIndex) {
             $lastLedgerIndex = null;
@@ -82,15 +97,15 @@ class XrplTxService
         $transactions = $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
 
         if (count($transactions)) {
-            $this->txToDb($transactions, $address);
+            //$this->txToDb($transactions, $address);
         }
-
         // TODO: If marker is present, loop
     }
 
+    /*
     public function resetDatabase(): void
     {
-        $this->connection->executeStatement('TRUNCATE TABLE xrpl_tx');
+        //$this->connection->executeStatement('TRUNCATE TABLE xrpl_tx');
     }
 
     public function txToDb(array $transactions, string $address): void
@@ -101,7 +116,7 @@ class XrplTxService
         $rows = $this->hydrateRows($transactions);
 
         foreach ($rows as $row) {
-            $this->connection->insert('xrpl_tx', $row);
+            //$this->connection->insert('xrpl_tx', $row);
         }
     }
 
@@ -183,4 +198,6 @@ class XrplTxService
 
         return strtoupper(dechex($num));
     }
+
+    */
 }
