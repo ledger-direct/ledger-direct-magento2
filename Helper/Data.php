@@ -41,15 +41,6 @@ class Data extends AbstractHelper
         );
     }
 
-    public function isTest(): bool
-    {
-        $isTest = true;
-
-        $test = $this->getConfigValue('payment/ledger_direct/use_testnet');
-
-        return (bool) $test;
-    }
-
     /**
      * @return mixed
      */

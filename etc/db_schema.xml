@@ -17,6 +17,7 @@
     </table>
     <table name="xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="destination_tag" unsigned="true" nullable="false" identity="true" comment="" />
+        <column xsi:type="varchar" name="account" length="35" nullable="false" comment="" />
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="destination_tag"/>
         </constraint>

@@ -2,7 +2,7 @@
 
 namespace Hardcastle\LedgerDirect\Service;
 
-use HArdcastle\LedgerDirect\Helper\Data;
+use HArdcastle\LedgerDirect\Helper\SystemConfig;
 use XRPL_PHP\Client\JsonRpcClient;
 use XRPL_PHP\Core\Networks;
 use XRPL_PHP\Models\Account\AccountTxRequest;
@@ -10,14 +10,12 @@ use XRPL_PHP\Models\Transaction\TxRequest;
 
 class XrplClientService
 {
-    private Data $dataHelper;
+    private SystemConfig $configHelper;
 
     private JsonRpcClient $client;
 
-    public function __construct(
-        Data  $dataHelper
-    ) {
-        $this->dataHelper = $dataHelper ;
+    public function __construct(SystemConfig $configHelper) {
+        $this->configHelper = $configHelper ;
 
         $this->_initClient();
     }
@@ -49,7 +47,7 @@ class XrplClientService
 
     public function getNetwork(): array
     {
-        if(!$this->dataHelper->isTest()) {
+        if(!$this->configHelper->isTest()) {
             return Networks::getNetwork('mainnet');
         }
 

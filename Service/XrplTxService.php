@@ -35,8 +35,7 @@ class XrplTxService
     }
 
 
-    /*
-    public function generateDestinationTag(): int
+    public function generateDestinationTag(string $accountAddress): int
     {
         // https://xrpl.org/source-and-destination-tags.html
         // https://xrpl.org/require-destination-tags.html
@@ -44,21 +43,21 @@ class XrplTxService
         while (true) {
             $destinationTag = random_int(self::DESTINATION_TAG_RANGE_MIN, self::DESTINATION_TAG_RANGE_MAX);
 
-            $statement = $this->connection->query(
-                'SELECT destination_tag FROM xrpl_destination_tag WHERE destination_tag = :destination_tag',
-                ['destination_tag' => $destinationTag],
-                ['destination_tag' => PDO::PARAM_INT]
-            );
-            $matches = $statement->fetchAllAssociative();
+            $select = $this->connection->getConnection()
+                ->select('destination_tag')
+                ->from('xrpl_destination_tag')
+                ->where('account = ?', $accountAddress)
+                ->where('destination_tag = ?', $destinationTag);
 
-            if (empty($matches)) {
-                $this->connection->insert('xrpl_destination_tag', ['destination_tag' => $destinationTag]);
+            if (!$this->connection->getConnection()->fetchOne($select)) {
+                $this->connection->getConnection()->insert('xrpl_destination_tag', ['destination_tag' => $destinationTag]);
 
                 return $destinationTag;
             }
         }
     }
 
+    /*
     public function findTransaction(string $destination, int $destinationTag): ?array
     {
         $statement = $this->connection->executeQuery(
