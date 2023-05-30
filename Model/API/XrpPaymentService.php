@@ -64,6 +64,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $network = $this->configHelper->isTest() ? 'testnet' : 'mainnet';
         $destinationAccount = $this->configHelper->getReceiverAccountAddress();
         $destinationTag = $this->xrplTxService->generateDestinationTag($destinationAccount);
+        $xrpAmount = round($total/$exchangeRate,2); // TODO: Double check this
 
 
         /** @var XrpPaymentInterface $xrpPayment*/
@@ -78,7 +79,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setNetwork($network)
             ->setDestinationAccount($destinationAccount)
             ->setDestinationTag($destinationTag)
-            ->setXrpAmount($total/$exchangeRate) // TODO: Double check this
+            ->setXrpAmount($xrpAmount)
             ->setExchangeRate($exchangeRate);
 
         return $xrpPaymentDetails;

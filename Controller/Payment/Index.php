@@ -9,6 +9,7 @@
 
 namespace Hardcastle\LedgerDirect\Controller\Payment;
 
+use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\View\Result\Page;
@@ -21,18 +22,29 @@ class Index implements HttpGetActionInterface
     private RequestInterface $request;
     private PageFactory $pageFactory;
 
+    private XrpPaymentServiceInterface $xrpPaymentService;
+
     public function __construct(
        Session $session,
         RequestInterface $request,
-        PageFactory $pageFactory
+        PageFactory $pageFactory,
+       XrpPaymentServiceInterface $xrpPaymentService
     ) {
         $this->session = $session;
         $this->request = $request;
         $this->pageFactory = $pageFactory;
+        $this->xrpPaymentService = $xrpPaymentService;
     }
 
     public function execute(): Page
     {
-        return $this->pageFactory->create();
+        $orderId = (int)$this->request->getParam('id');
+        $paymentInfo = $this->xrpPaymentService->getPaymentDetails($orderId);
+
+        $page = $this->pageFactory->create();
+        $block = $page->getLayout()->getBlock('ledger-direct.payment.index');
+        $block->setData('payment_info', $paymentInfo);
+
+        return $page;
     }
 }

@@ -3,9 +3,13 @@
 /** @var \Hardcastle\LedgerDirect\ViewModel\XrplTx $xrplTxVm */
 /** @var \Hardcastle\LedgerDirect\ViewModel\PaymentInfo $paymentInfoVm */
 
+use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
+
 $xrplTxVm = $block->getData('xrpl_tx_vm');
-$paymentInfoVm = $block->getData('payment_info_vm');
-$paymentInfo = $paymentInfoVm->getPaymentInfo();
+//$paymentInfoVm = $block->getData('payment_info_vm');
+//$paymentInfo = $paymentInfoVm->getPaymentInfo();
+/** @var XrpPaymentInterface $xrpPayment */
+$paymentInfo = $block->getData('payment_info');
 ?>
 
 <div class="ld-container" data-xrp-payment-page="true">
@@ -18,7 +22,7 @@ $paymentInfo = $paymentInfoVm->getPaymentInfo();
         <div class="ld-card">
 
             <div class="ld-card-left">
-                <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo['xrpAmount']) ?></p>
+                <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo->getXrpAmount()) ?></p>
                 <label for="destinationAccount" class="bootstrap-form-label">
                     <?= __('LedgerDirect.paymentPage.destinationAccountLabel') ?>
                 </label>
@@ -27,7 +31,7 @@ $paymentInfo = $paymentInfoVm->getPaymentInfo();
                            type="text"
                            name="destination-account"
                            class="bootstrap-form-control"
-                           value="<?php echo $paymentInfo['destinationAccount'] ?>"
+                           value="<?php echo $paymentInfo->getDestinationAccount() ?>"
                            readonly
 
                     />
@@ -48,7 +52,7 @@ $paymentInfo = $paymentInfoVm->getPaymentInfo();
                            type="text"
                            name="destination-tag"
                            class="bootstrap-form-control"
-                           value="<?php echo $paymentInfo['destinationTag'] ?>"
+                           value="<?php echo $paymentInfo->getDestinationTag() ?>"
                            readonly
                     />
                     <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
@@ -81,19 +85,19 @@ $paymentInfo = $paymentInfoVm->getPaymentInfo();
 
             <div class="ld-card-right">
                 <div class="ld-sum">
-                    <?= $paymentInfo['price'] ?> <?= $paymentInfo['currencySymbol'] ?>
+                    <?= $paymentInfo->getPrice() ?> <?= $paymentInfo->getCurrencySymbol() ?>
                 </div>
-                <span><?= __('LedgerDirect.paymentPage.orderNumber') ?>: <?php echo $paymentInfo['orderNumber'] ?></span><br/>
-                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo['price'] ?> <?php echo $paymentInfo['currencyCode'] ?></span><br/>
-                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo['xrpAmount'] ?> XRP</span><br/>
-                <span><?= __('LedgerDirect.paymentPage.exchangeRate') ?>: <?php echo $paymentInfo['exchangeRate'] ?> XRP / <?php echo $paymentInfo['currencyCode'] ?></span>
+                <span><?= __('LedgerDirect.paymentPage.orderNumber') ?>: <?php echo $paymentInfo->getOrderNumber() ?></span><br/>
+                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo->getPrice() ?> <?php echo $paymentInfo->getCurrencyCode() ?></span><br/>
+                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo->getXrpAmount() ?> XRP</span><br/>
+                <span><?= __('LedgerDirect.paymentPage.exchangeRate') ?>: <?php echo $paymentInfo->getExchangeRate() ?> XRP / <?php echo $paymentInfo->getCurrencyCode() ?></span>
                 <img src="{{ asset('bundles/ledgerdirect/storefront/img/astronaut.png') }}" class="ld-astronaut" />
             </div>
 
         </div>
 
         <div class="ld-footer">
-            <?php echo $paymentInfo['network'] ?> - Ledger Direct Payment Plugin
+            <?php echo $paymentInfo->getNetwork() ?> - Ledger Direct Payment Plugin
         </div>
 
     </div>
