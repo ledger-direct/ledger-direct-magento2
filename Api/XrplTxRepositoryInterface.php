@@ -23,6 +23,22 @@ interface XrplTxRepositoryInterface
     public function getById(int $id): XrplTxInterface;
 
     /**
+     * Fetch highest availiable ledger_index for given account from DB
+     *
+     * @param string $accountAddress
+     * @return int
+     */
+    public function getLastLedgerIndex(string $accountAddress): int;
+
+    /**
+     * Create XrplTx object from rawTx value
+     *
+     * @param array $rawTx
+     * @return XrplTxInterface
+     */
+    public function createFromArray(array $rawTx): XrplTxInterface;
+
+    /**
      * Persist a tx
      *
      * @param XrplTxInterface $xrplTx

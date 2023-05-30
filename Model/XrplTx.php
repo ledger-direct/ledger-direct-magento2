@@ -87,7 +87,7 @@ class XrplTx extends AbstractModel implements XrplTxInterface
     /**
      * @inheritDoc
      */
-    public function setDestinationTag(int $destinationTag): self
+    public function setDestinationTag(int|null $destinationTag): self
     {
         return $this->setData(self::DESTINATION_TAG, $destinationTag);
     }

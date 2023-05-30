@@ -16,14 +16,19 @@ class XrplTxRepository implements XrplTxRepositoryInterface
     private XrplTxFactory $xrplTxFactory;
 
     private XrplTxResourceModel $xrplTxResourceModel;
+
     public function __construct(
-        XrplTxFactory $xrplTxFactory,
+        XrplTxFactory       $xrplTxFactory,
         XrplTxResourceModel $xrplTxResourceModel
-    ) {
+    )
+    {
         $this->xrplTxFactory = $xrplTxFactory;
         $this->xrplTxResourceModel = $xrplTxResourceModel;
     }
 
+    /**
+     * @inheritdoc
+     */
     public function getById(int $id): XrplTxInterface
     {
         $xrplTx = $this->xrplTxFactory->create();
@@ -36,6 +41,46 @@ class XrplTxRepository implements XrplTxRepositoryInterface
         return $xrplTx;
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function getLastLedgerIndex(string $accountAddress): int
+    {
+        $connection = $this->xrplTxResourceModel->getConnection();
+        $select = $connection
+            ->select()
+            ->from($this->xrplTxResourceModel->getMainTable(), ['last_ledger_index' => new \Zend_Db_Expr('MAX(ledger_index)')])
+            ->where('account = ?', $accountAddress);
+
+        return (int)$connection->fetchOne($select);
+
+    }
+
+    public function createFromArray(array $rawTx): XrplTxInterface
+    {
+        /** @var XrplTxInterface $xrplTx */
+        $xrplTx = $this->xrplTxFactory->create();
+
+        $meta = $rawTx['meta'];
+        $tx = $rawTx['tx'];
+
+        $xrplTx->setLedgerIndex($tx['ledger_index'])
+            ->setHash($tx['hash'])
+            ->setAccountAddress($tx['Account'])
+            ->setDestinationAddress($tx['Destination'])
+            ->setDestinationTag($tx['DestinationTag'] ?? null)
+            ->setDate($tx['date'])
+            ->setMeta(json_encode($meta))
+            ->setTx(json_encode($tx));
+
+        //TODO: Add ctid, see XLS-37d
+
+        return $xrplTx;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function save(XrplTxInterface $xrplTx): XrplTxInterface
     {
         try {
@@ -47,6 +92,9 @@ class XrplTxRepository implements XrplTxRepositoryInterface
         return $xrplTx;
     }
 
+    /**
+     * @inheritdoc
+     */
     public function deleteById(int $id): bool
     {
         // TODO: Implement deleteById() method.

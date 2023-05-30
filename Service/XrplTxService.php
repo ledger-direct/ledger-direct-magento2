@@ -3,6 +3,8 @@
 namespace Hardcastle\LedgerDirect\Service;
 
 use Hardcastle\LedgerDirect\Helper\Data;
+use Hardcastle\LedgerDirect\Api\XrplTxRepositoryInterface;
+use Hardcastle\LedgerDirect\Model\XrplTxRepository;
 use Magento\Framework\App\ResourceConnection;
 
 class XrplTxService
@@ -15,16 +17,20 @@ class XrplTxService
 
     protected XrplClientService $clientService;
 
+    protected XrplTxRepositoryInterface $xrplTxRepository;
+
     private ResourceConnection $connection;
 
     public function __construct(
         Data               $data,
         XrplClientService  $clientService,
+        XrplTxRepositoryInterface $xrplTxRepository,
         ResourceConnection $connection
     )
     {
         $this->data = $data;
         $this->clientService = $clientService;
+        $this->xrplTxRepository = $xrplTxRepository;
         $this->connection = $connection;
     }
 
@@ -82,13 +88,9 @@ class XrplTxService
         return $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
     }
 
-    public function syncTransactions(string $address): void
+    public function syncAccountTransactions(string $address): void
     {
-        // TODO: Use only last ledger index
-
-        //$lastLedgerIndex = (int)$this->connection->fetchOne('SELECT MAX(ledger_index) FROM xrpl_tx');
-
-        $lastLedgerIndex = 0;
+        $lastLedgerIndex = $this->xrplTxRepository->getLastLedgerIndex($address);
 
         if (!$lastLedgerIndex) {
             $lastLedgerIndex = null;
@@ -97,7 +99,12 @@ class XrplTxService
         $transactions = $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
 
         if (count($transactions)) {
-            //$this->txToDb($transactions, $address);
+            foreach ($transactions as $rawTx) {
+                if($rawTx['validated']) {
+                    $xrplTx = $this->xrplTxRepository->createFromArray($rawTx);
+                    $this->xrplTxRepository->save($xrplTx);
+                }
+            }
         }
         // TODO: If marker is present, loop
     }

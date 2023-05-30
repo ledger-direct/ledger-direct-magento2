@@ -37,6 +37,7 @@ class XrplAccountLookupCommand extends Command
         $this->setDescription('XRPL account lookup');
         $this->addOption('account', null, InputOption::VALUE_REQUIRED, 'Account address');
         $this->addOption('write', null, InputOption::VALUE_OPTIONAL, 'Write result to file system');
+        $this->addOption('sync', null, InputOption::VALUE_OPTIONAL, 'Write result to file system');
     }
 
     /**
@@ -45,8 +46,15 @@ class XrplAccountLookupCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $accountAddress = $input->getOption('account');
-        $accountTxResult = $this->txService->fetchAccountTransactions($accountAddress);
-        $output->writeln(print_r($accountTxResult, true));
+        $write = $input->getOption('write') ?? false;
+        $sync = $input->getOption('sync') ?? false;
+
+        if ($sync) {
+            $this->txService->syncAccountTransactions($accountAddress);
+        } else {
+            $accountTxResult = $this->txService->fetchAccountTransactions($accountAddress);
+            $output->writeln(print_r($accountTxResult, true));
+        }
 
         return Command::SUCCESS;
     }
