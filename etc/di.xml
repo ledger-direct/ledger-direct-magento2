@@ -7,8 +7,9 @@
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">
-                <item name="XrplTransactionLookup" xsi:type="object">Hardcastle\LedgerDirect\Commands\XrplTransactionLookupCommand</item>
                 <item name="XrplAccountLookup" xsi:type="object">Hardcastle\LedgerDirect\Commands\XrplAccountLookupCommand</item>
+                <item name="XrplPriceLookup" xsi:type="object">Hardcastle\LedgerDirect\Commands\XrplPriceLookupCommand</item>
+                <item name="XrplTransactionLookup" xsi:type="object">Hardcastle\LedgerDirect\Commands\XrplTransactionLookupCommand</item>
             </argument>
         </arguments>
     </type>
@@ -19,6 +20,7 @@
     <preference for="Hardcastle\LedgerDirect\Api\XrplTxRepositoryInterface" type="Hardcastle\LedgerDirect\Model\XrplTxRepository" />
 
     <preference for="Hardcastle\LedgerDirect\Api\CryptoPriceServiceInterface" type="Hardcastle\LedgerDirect\Model\API\CryptoPriceService" />
+    <preference for="Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface" type="Hardcastle\LedgerDirect\Provider\XrpPriceProvider" />
 
     <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\Api\XrpPaymentService" />
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface" type="Hardcastle\LedgerDirect\Model\XrpPayment" />
