@@ -46,6 +46,12 @@ class XrplPriceLookupCommand extends Command
     {
         $iso = $input->getOption('iso');
         $currentPrice = $this->priceFinder->getCurrentExchangeRate($iso);
+        if (!$currentPrice) {
+            $output->writeln('Error: XRP price in "' . $iso . '" is not available');
+
+            return Command::FAILURE;
+        }
+
         $output->writeln('Current XRP price: ' . $currentPrice);
 
         return Command::SUCCESS;
