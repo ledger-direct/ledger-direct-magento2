@@ -27,16 +27,13 @@ define(
 
             placeOrder: function()
             {
-                console.log(' -- LedgerDirect XRP payment placeOrder: ---');
-
-                const ledgerDirectXrpSnippet = '/ledger-direct/payment/index?id=123'
-
-                window.location.assign(window.location.origin + ledgerDirectXrpSnippet);
-
-                var self = this;
+                let self = this;
 
                 placeOrderAction(self.getData(), self.messageContainer)
-                    .then(function () {
+                    .then(function (response) {
+                        const ledgerDirectXrpSnippet = '/ledger-direct/payment/index?id=' + response;
+                        window.location.assign(window.location.origin + ledgerDirectXrpSnippet);
+                        /*
                         getPaymentUrlAction(self.messageContainer).always(function () {
                             fullScreenLoader.stopLoader();
                         }).then(function (response) {
@@ -47,6 +44,8 @@ define(
                                 message: $t('An error occurred on the server. Please try to place the order again.')
                             });
                         });
+                        */
+
                     }, function (e) {
                         globalMessageList.addErrorMessage({
                             message: $t(e.responseJSON.message)

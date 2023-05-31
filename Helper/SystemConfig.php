@@ -41,7 +41,7 @@ class SystemConfig extends AbstractHelper
         return (bool) $test;
     }
 
-    public function getReceiverAccountAddress(): string
+    public function getDestinationAccount(): string
     {
         if (!$this->isTest()) {
             return $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_account');

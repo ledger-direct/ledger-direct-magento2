@@ -57,25 +57,27 @@ class XrplTxService
         }
     }
 
-    /*
+
     public function findTransaction(string $destination, int $destinationTag): ?array
     {
-        $statement = $this->connection->executeQuery(
-            'SELECT * FROM xrpl_tx WHERE destination = :destination AND destination_tag = :destination_tag',
-            ['destination' => $destination, 'destination_tag' => $destinationTag],
-            ['destination' => PDO::PARAM_STR, 'destination_tag' => PDO::PARAM_INT]
-        );
-        $matches = $statement->fetchAllAssociative();
+        //TODO: XrplTx or $tx array?
+
+        $select = $this->connection->getConnection()
+            ->select('*')
+            ->from('xrpl_tx')
+            ->where('destination = ?', $destination)
+            ->where('destination_tag = ?', $destinationTag);
+        $matches = $this->connection->getConnection()->fetchAll($select);
 
         if (!empty($matches)) {
             return $matches[0];
         }
 
-        // TODO: If for whatever reason there are more than one matches, throw error
+        //TODO: If for whatever reason there are more than one matches, throw error
 
         return null;
     }
-    */
+
 
     public function fetchTransaction(string $txHash): array
     {

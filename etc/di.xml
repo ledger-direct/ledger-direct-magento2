@@ -36,6 +36,9 @@
             <argument name="paymentDataObjectFactory" xsi:type="object">Magento\Payment\Gateway\Data\PaymentDataObjectFactory</argument>
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
             <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Payment\Info\Checkout</argument>
+            <argument name="commandPool" xsi:type="object">XrpPaymentCommandPool</argument>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="quoteRepository" xsi:type="object">Magento\Quote\Api\CartRepositoryInterface</argument>
         </arguments>
     </virtualType>
 

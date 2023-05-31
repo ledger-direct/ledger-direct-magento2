@@ -8,6 +8,7 @@ use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
 use Hardcastle\LedgerDirect\Provider\XrpPriceProvider;
+use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Service\XrplTxService;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Sales\Api\Data\OrderInterface;
@@ -18,11 +19,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 {
     protected SystemConfig $configHelper;
 
-    protected OrderRepositoryInterface $orderRepository;
-
-    protected CryptoPriceProviderInterface $priceFinder;
-
-    protected XrplTxService $xrplTxService;
+    protected OrderPaymentService $orderPaymentService;
 
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
@@ -31,16 +28,12 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     public function __construct(
         SystemConfig $configHelper,
-        OrderRepositoryInterface $orderRepository,
+        OrderPaymentService $orderPaymentService,
         XrpPaymentInterfaceFactory $xrpPaymentFactory,
-        CryptoPriceProviderInterface $priceFinder,
-        XrplTxService $xrplTxService,
         SerializerInterface $serializer
     ){
         $this->configHelper = $configHelper;
-        $this->orderRepository = $orderRepository;
-        $this->priceFinder = $priceFinder;
-        $this->xrplTxService = $xrplTxService;
+        $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
         $this->serializer = $serializer;
     }
@@ -50,20 +43,22 @@ class XrpPaymentService implements XrpPaymentServiceInterface
      */
     public function getPaymentDetails(int $orderId): XrpPaymentInterface
     {
-        $order = $this->orderRepository->get($orderId);
+        $order = $this->orderPaymentService->getOrder($orderId);
 
-        $paymentMethodName = $order->getPayment()->getMethod();
-        if($paymentMethodName !== 'xrp_payment') {
+        if ($order->getPayment()->getMethod() !== 'xrp_payment') {
             throw new \Error('Endpoint is designed for XRP only');
         }
+
+        $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
+        $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'];
 
         $total = $order->getTotalDue();
         $currencyCode = $order->getOrderCurrencyCode();
         $currencySymbol = Currencies::getSymbol($currencyCode);
-        $exchangeRate = $this->priceFinder->getCurrentExchangeRate($currencyCode);
-        $network = $this->configHelper->isTest() ? 'testnet' : 'mainnet';
-        $destinationAccount = $this->configHelper->getReceiverAccountAddress();
-        $destinationTag = $this->xrplTxService->generateDestinationTag($destinationAccount);
+        $exchangeRate = $xrplPaymentData['exchange_rate'];
+        $network = $xrplPaymentData['network'];
+        $destinationAccount = $this->configHelper->getDestinationAccount();
+        $destinationTag = $xrplPaymentData['destination_tag'];
         $xrpAmount = round($total/$exchangeRate,2); // TODO: Double check this
 
 
@@ -83,18 +78,5 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setExchangeRate($exchangeRate);
 
         return $xrpPaymentDetails;
-    }
-
-    private function getCurrentPriceForOrder(OrderInterface $order): array
-    {
-        // TODO: Build equivalent of "OrderTransactionService" in Shopware6
-
-        $xrpUnitPrice = $this->priceFinder->getCurrentExchangeRate($order->getOrderCurrencyCode());
-
-        return [
-            'pairing' => XrpPriceProvider::CRYPTO_CODE . '/' . $order->getOrderCurrencyCode(),
-            'exchange_rate' => $xrpUnitPrice,
-            'amount_requested' => $order->getTotalDue() / $xrpUnitPrice
-        ];
     }
 }
