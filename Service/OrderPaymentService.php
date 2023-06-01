@@ -120,7 +120,7 @@ class OrderPaymentService
             $additionalData = [];
         }
 
-        $mergedAdditionalData = array_merge($additionalData, $xrplAdditionalData);
+        $mergedAdditionalData = array_replace_recursive($additionalData, $xrplAdditionalData);
         $order->getPayment()->setAdditionalData(json_encode($mergedAdditionalData));
 
         $this->orderRepository->save($order);

@@ -13,6 +13,8 @@ use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\Controller\Result\RedirectFactory;
+use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Framework\App\RequestInterface;
@@ -26,6 +28,8 @@ class Index implements HttpGetActionInterface
 
     private PageFactory $pageFactory;
 
+    private RedirectFactory $redirectFactory;
+
     protected OrderPaymentService $orderPaymentService;
     private XrpPaymentServiceInterface $xrpPaymentService;
 
@@ -33,30 +37,35 @@ class Index implements HttpGetActionInterface
         Session                    $session,
         RequestInterface           $request,
         PageFactory                $pageFactory,
-        OrderPaymentService $orderPaymentService,
+        RedirectFactory            $redirectFactory,
+        OrderPaymentService        $orderPaymentService,
         XrpPaymentServiceInterface $xrpPaymentService
     )
     {
         $this->session = $session;
         $this->request = $request;
         $this->pageFactory = $pageFactory;
+        $this->redirectFactory = $redirectFactory;
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentService = $xrpPaymentService;
     }
 
-    public function execute(): Page
+    public function execute(): Page|Redirect
     {
         //TODO: Check Customer Session
 
         $orderId = (int)$this->request->getParam('id');
         $order = $this->orderPaymentService->getOrder($orderId);
 
+        $paymentInfo = $this->xrpPaymentService->getPaymentDetails($orderId);
+
         $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
         if ($tx) {
-            //return new RedirectResponse($request->get('returnUrl'));
-        }
+            $redirect = $this->redirectFactory->create();
 
-        $paymentInfo = $this->xrpPaymentService->getPaymentDetails($orderId);
+            // Order status!
+            return $redirect->setPath('checkout/onepage/success');
+        }
 
         $page = $this->pageFactory->create();
         $block = $page->getLayout()->getBlock('ledger-direct.payment.index');

@@ -2,17 +2,14 @@
 
 namespace Hardcastle\LedgerDirect\Model\API;
 
+use Exception;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterfaceFactory;
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
-use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
-use Hardcastle\LedgerDirect\Provider\XrpPriceProvider;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
-use Hardcastle\LedgerDirect\Service\XrplTxService;
-use Magento\Framework\Serialize\SerializerInterface;
-use Magento\Sales\Api\Data\OrderInterface;
-use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Framework\Webapi\Exception as WebapiException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Intl\Currencies;
 
 class XrpPaymentService implements XrpPaymentServiceInterface
@@ -23,23 +20,23 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
-
-    protected SerializerInterface $serializer;
+    protected LoggerInterface $logger;
 
     public function __construct(
         SystemConfig $configHelper,
         OrderPaymentService $orderPaymentService,
         XrpPaymentInterfaceFactory $xrpPaymentFactory,
-        SerializerInterface $serializer
+        LoggerInterface $logger
     ){
         $this->configHelper = $configHelper;
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
-        $this->serializer = $serializer;
+        $this->logger = $logger;
     }
 
     /**
      * @inheritdoc
+     * @throws Exception
      */
     public function getPaymentDetails(int $orderId): XrpPaymentInterface
     {
@@ -50,16 +47,20 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         }
 
         $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
-        $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'];
-
-        $total = $order->getTotalDue();
-        $currencyCode = $order->getOrderCurrencyCode();
-        $currencySymbol = Currencies::getSymbol($currencyCode);
-        $exchangeRate = $xrplPaymentData['exchange_rate'];
-        $network = $xrplPaymentData['network'];
-        $destinationAccount = $this->configHelper->getDestinationAccount();
-        $destinationTag = $xrplPaymentData['destination_tag'];
-        $xrpAmount = round($total/$exchangeRate,2); // TODO: Double check this
+        try {
+            $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'];
+            $total = $order->getTotalDue();
+            $currencyCode = $order->getOrderCurrencyCode();
+            $currencySymbol = Currencies::getSymbol($currencyCode);
+            $exchangeRate = $xrplPaymentData['exchange_rate'];
+            $network = $xrplPaymentData['network'];
+            $destinationAccount = $this->configHelper->getDestinationAccount();
+            $destinationTag = $xrplPaymentData['destination_tag'];
+            $xrpAmount = round($total/$exchangeRate,2); // TODO: Double check this
+        } catch (Exception $exception) {
+            $this->logger->critical($exception->getMessage());
+            throw new WebapiException(__(''),400);
+        }
 
 
         /** @var XrpPaymentInterface $xrpPayment*/
