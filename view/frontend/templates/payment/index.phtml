@@ -75,7 +75,7 @@ $paymentInfo = $block->getData('payment_info');
                 </div>
 
                 <div class="ld-sync">
-                    <button id="check-payment-button" data-order-id="<?php echo $paymentInfo->getOrderNumber() ?>">
+                    <button id="check-payment-button" data-order-id="<?php echo $paymentInfo->getOrderNumber() ?>" onclick="window.location.reload()">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display:none"></span>
                         <?= __('LedgerDirect.paymentPage.checkPaymentButton') ?>
                     </button>
