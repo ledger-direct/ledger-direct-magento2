@@ -35,9 +35,15 @@ class OrderPaymentService
         $this->xrplTxService = $xrplTxService;
     }
 
-    public function getOrder(int $orderId): OrderInterface
+    public function getOrderById(int $orderId): OrderInterface
     {
         return $this->orderRepository->get($orderId);
+    }
+
+    public function getOrderByOrderNumber(string $orderNumber): OrderInterface
+    {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        return $objectManager->get(\Magento\Sales\Api\Data\OrderInterface::class)->loadByIncrementId($orderNumber);
     }
 
     public function getCurrentPriceForOrder(OrderInterface $order): array

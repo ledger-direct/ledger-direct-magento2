@@ -9,6 +9,7 @@ use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Magento\Framework\Webapi\Exception as WebapiException;
+use Magento\Sales\Api\Data\OrderInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Intl\Currencies;
 
@@ -38,10 +39,26 @@ class XrpPaymentService implements XrpPaymentServiceInterface
      * @inheritdoc
      * @throws Exception
      */
-    public function getPaymentDetails(int $orderId): XrpPaymentInterface
+    public function getPaymentDetailsByOrderId(int $orderId): XrpPaymentInterface
     {
-        $order = $this->orderPaymentService->getOrder($orderId);
+        $order = $this->orderPaymentService->getOrderById($orderId);
 
+        return $this->getPaymentDetails($order);
+    }
+
+    /**
+     * @inheritdoc
+     * @throws Exception
+     */
+    public function getPaymentDetailsByOrderNumber(string $orderNumber): XrpPaymentInterface
+    {
+        $order = $this->orderPaymentService->getOrderByOrderNumber($orderNumber);
+
+        return $this->getPaymentDetails($order);
+    }
+
+    protected function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
+    {
         if ($order->getPayment()->getMethod() !== 'xrp_payment') {
             throw new \Error('Endpoint is designed for XRP only');
         }
@@ -67,7 +84,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $xrpPaymentDetails = $this->xrpPaymentFactory->create();
 
         $xrpPaymentDetails
-            ->setOrderId($orderId)
+            ->setOrderId((int) $order->getEntityId())
             ->setOrderNumber($order->getIncrementId())
             ->setCurrencyCode($currencyCode)
             ->setCurrencySymbol($currencySymbol)

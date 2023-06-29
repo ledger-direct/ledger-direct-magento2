@@ -7,8 +7,8 @@
             <resource ref="anonymous"/>
         </resources>
     </route>
-    <route url="/V1/ledger-direct/payment/xrp-payment/:orderId" method="GET">
-        <service class="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" method="getPaymentDetails"/>
+    <route url="/V1/ledger-direct/payment/xrp-payment/:orderNumber" method="GET">
+        <service class="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" method="getPaymentDetailsByOrderNumber"/>
         <resources>
             <resource ref="anonymous"/>
         </resources>

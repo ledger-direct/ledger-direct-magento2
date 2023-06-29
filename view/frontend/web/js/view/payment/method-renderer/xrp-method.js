@@ -33,19 +33,6 @@ define(
                     .then(function (response) {
                         const ledgerDirectXrpSnippet = '/ledger-direct/payment/index?id=' + response;
                         window.location.assign(window.location.origin + ledgerDirectXrpSnippet);
-                        /*
-                        getPaymentUrlAction(self.messageContainer).always(function () {
-                            fullScreenLoader.stopLoader();
-                        }).then(function (response) {
-                            fullScreenLoader.startLoader();
-                            self.redirect(response);
-                        }, function () {
-                            globalMessageList.addErrorMessage({
-                                message: $t('An error occurred on the server. Please try to place the order again.')
-                            });
-                        });
-                        */
-
                     }, function (e) {
                         globalMessageList.addErrorMessage({
                             message: $t(e.responseJSON.message)

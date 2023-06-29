@@ -14,6 +14,16 @@ interface XrpPaymentServiceInterface
      *
      * @return XrpPaymentInterface
      */
-    public function getPaymentDetails(int $orderId): XrpPaymentInterface;
+    public function getPaymentDetailsByOrderId(int $orderId): XrpPaymentInterface;
+
+    /**
+     * Get crypto price for Order
+     *
+     * @api
+     * @param string $orderNumber
+     *
+     * @return XrpPaymentInterface
+     */
+    public function getPaymentDetailsByOrderNumber(string  $orderNumber): XrpPaymentInterface;
 
 }

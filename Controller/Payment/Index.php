@@ -55,9 +55,9 @@ class Index implements HttpGetActionInterface
         //TODO: Check Customer Session
 
         $orderId = (int)$this->request->getParam('id');
-        $order = $this->orderPaymentService->getOrder($orderId);
+        $order = $this->orderPaymentService->getOrderById($orderId);
 
-        $paymentInfo = $this->xrpPaymentService->getPaymentDetails($orderId);
+        $paymentInfo = $this->xrpPaymentService->getPaymentDetailsByOrderId($orderId);
 
         $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
         if ($tx) {
