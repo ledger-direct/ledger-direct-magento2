@@ -113,4 +113,16 @@ interface XrpPaymentInterface
      * @return self
      */
     public function setExchangeRate(float $exchangeRate): self;
+
+
+    /**
+     * @return string|null
+     */
+    public function getTxHash(): string|null;
+
+    /**
+     * @param string $txHash
+     * @return self
+     */
+    public function setTxHash(string $txHash): self;
 }

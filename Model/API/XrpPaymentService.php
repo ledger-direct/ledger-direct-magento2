@@ -59,13 +59,21 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     protected function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
     {
-        if ($order->getPayment()->getMethod() !== 'xrp_payment') {
+        $payment = $order->getPayment();
+        if ($payment->getMethod() !== 'xrp_payment') {
             throw new \Error('Endpoint is designed for XRP only');
         }
 
-        $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
+        $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'] ?? null;
+        if(!$xrplPaymentData) {
+            $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
+            $txHash = null;
+        } else {
+            $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
+            $txHash = $tx['hash'] ?? null;
+        }
+
         try {
-            $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'];
             $total = $order->getTotalDue();
             $currencyCode = $order->getOrderCurrencyCode();
             $currencySymbol = Currencies::getSymbol($currencyCode);
@@ -93,7 +101,8 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setDestinationAccount($destinationAccount)
             ->setDestinationTag($destinationTag)
             ->setXrpAmount($xrpAmount)
-            ->setExchangeRate($exchangeRate);
+            ->setExchangeRate($exchangeRate)
+            ->setTxHash($txHash);
 
         return $xrpPaymentDetails;
     }

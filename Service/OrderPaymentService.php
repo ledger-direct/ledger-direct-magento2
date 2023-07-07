@@ -42,6 +42,7 @@ class OrderPaymentService
 
     public function getOrderByOrderNumber(string $orderNumber): OrderInterface
     {
+        // TODO: Refactor bad style
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         return $objectManager->get(\Magento\Sales\Api\Data\OrderInterface::class)->loadByIncrementId($orderNumber);
     }

@@ -27,6 +27,8 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
 
     private float $exchangeRate;
 
+    private ?string $txHash;
+
     public function getOrderId(): int
     {
         return $this->orderId;
@@ -143,6 +145,18 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
     public function setExchangeRate(float $exchangeRate): self
     {
         $this->exchangeRate = $exchangeRate;
+
+        return $this;
+    }
+
+    public function getTxHash(): string|null
+    {
+        return $this->txHash;
+    }
+
+    public function setTxHash(string|null $txHash): self
+    {
+        $this->txHash = $txHash;
 
         return $this;
     }

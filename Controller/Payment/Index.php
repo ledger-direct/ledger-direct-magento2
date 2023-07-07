@@ -57,8 +57,6 @@ class Index implements HttpGetActionInterface
         $orderId = (int)$this->request->getParam('id');
         $order = $this->orderPaymentService->getOrderById($orderId);
 
-        $paymentInfo = $this->xrpPaymentService->getPaymentDetailsByOrderId($orderId);
-
         $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
         if ($tx) {
             $redirect = $this->redirectFactory->create();
@@ -66,6 +64,8 @@ class Index implements HttpGetActionInterface
             // Order status!
             return $redirect->setPath('checkout/onepage/success');
         }
+
+        $paymentInfo = $this->xrpPaymentService->getPaymentDetailsByOrderId($orderId);
 
         $page = $this->pageFactory->create();
         $block = $page->getLayout()->getBlock('ledger-direct.payment.index');
