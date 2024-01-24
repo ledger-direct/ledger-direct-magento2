@@ -52,13 +52,24 @@ class Index implements HttpGetActionInterface
 
     public function execute(): Page|Redirect
     {
-        //TODO: Check Customer Session
+        if (!$this->session->isLoggedIn()) {
+            $redirect = $this->redirectFactory->create();
+            return $redirect->setPath('customer/account/login');
+        }
 
         $orderId = (int)$this->request->getParam('id');
         $order = $this->orderPaymentService->getOrderById($orderId);
 
+        if ($order->getCustomerId() !== $this->session->getCustomerId()) {
+            $redirect = $this->redirectFactory->create();
+            return $redirect->setPath('customer/account/');
+        }
+
         $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
         if ($tx) {
+
+            // Check if amount is correct!
+
             $redirect = $this->redirectFactory->create();
 
             // Order status!
