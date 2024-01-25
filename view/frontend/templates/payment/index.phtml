@@ -1,104 +1,186 @@
 <?php
-/** @var Magento\Framework\View\Element\Template $block */
-/** @var \Hardcastle\LedgerDirect\ViewModel\XrplTx $xrplTxVm */
-/** @var \Hardcastle\LedgerDirect\ViewModel\PaymentInfo $paymentInfoVm */
 
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
+use Hardcastle\LedgerDirect\ViewModel\PaymentInfo;
+use Hardcastle\LedgerDirect\ViewModel\XrplTx;
+use Magento\Framework\View\Element\Template;
+use Magento\Framework\App\View;
+
+/** @var Template $block */
+
+/** @var XrplTx $xrplTxVm */
+/** @var PaymentInfo $paymentInfoVm */
 
 $xrplTxVm = $block->getData('xrpl_tx_vm');
-//$paymentInfoVm = $block->getData('payment_info_vm');
-//$paymentInfo = $paymentInfoVm->getPaymentInfo();
-/** @var XrpPaymentInterface $xrpPayment */
 $paymentInfo = $block->getData('payment_info');
+
+$paymentPageTitle = '';
+$type = 'xrp-payment'; //$type = $xrpl_order_meta['type'];
+
+$ld_get_svg_html = function (string $icon, array $properties = []): string
+{
+    if (!ctype_alnum($icon)) {
+        die('Forbidden!');
+    }
+
+    $defaultProperties = [
+        'class' => '',
+        'width' => '24',
+        'height' => '24',
+        'viewBox' => '0 0 24 24',
+    ];
+
+    $block = $this->getLayout()->createBlock("Magento\Framework\View\Element\Template");
+    $template = $block->setTemplate("Hardcastle_LedgerDirect::icons/{$icon}-svg.phtml");
+
+    foreach ($defaultProperties as $key => $value) {
+        if (isset($properties[$key])) {
+            $template->setData($key, $properties[$key]);
+        } else {
+            $template->setData($key, $value);
+        }
+    }
+
+    return $template->toHtml();
+}
 ?>
 
 <div class="ld-container" data-xrp-payment-page="true">
     <div class="ld-content">
 
-        <div class="ld-header">
-            <h2><?php echo "Shop name" ?> - XRP Payment Page</h2>
-        </div>
+
+        <?php if (!empty($paymentPageTitle)) { ?>
+            <div class="ld-header">
+                <h2>
+                    <?php echo $paymentPageTitle; ?>
+                </h2>
+            </div>
+        <?php } ?>
 
         <div class="ld-card">
 
             <div class="ld-card-left">
-                <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo->getXrpAmount()) ?></p>
-                <label for="destinationAccount" class="bootstrap-form-label">
-                    <?= __('LedgerDirect.paymentPage.destinationAccountLabel') ?>
-                </label>
-                <div class="bootstrap-input-group">
-                    <input id="destination-account"
+                <?php if ($type === 'xrp-payment') { ?>
+                    <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo->getXrpAmount()) ?></p>
+                    <input id="xrp-amount"
                            type="text"
-                           name="destination-account"
-                           class="bootstrap-form-control"
-                           value="<?php echo $paymentInfo->getDestinationAccount() ?>"
+                           name="xrp-amount"
+                           value="<?php echo $paymentInfo->getXrpAmount(); ?>"
                            readonly
-
+                           style="display: none;"
                     />
-                    <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
-                        <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/copy.phtml")->toHtml() ?>
+                <?php } elseif ($type === 'token-payment') { ?>
+                    <p><?php echo sprintf(__('sendTokenMessage', 'ledger-direct'), $paymentInfo->getTokenAmount); ?></p>
+                    <input id="token-amount"
+                           type="text"
+                           name="token-amount"
+                           value="<?php echo $paymentInfo->getTokenAmount(); ?>"
+                           readonly
+                           style="display: none;"
+                    />
+                    <input id="issuer"
+                           type="text"
+                           name="token-amount"
+                           value="<?php echo $paymentInfo->getIssuer(); ?>"
+                           readonly
+                           style="display: none;"
+                    />
+                    <input id="currency"
+                           type="text"
+                           name="currency"
+                           value="<?php echo $paymentInfo->getCurrencyCode(); ?>"
+                           readonly
+                           style="display: none;"
+                    />
+                <?php } ?>
+
+                <div class="ld-payment-info">
+                    <span>
+                        <?php echo __('destinationAccountLabel', 'ledger-direct'); ?>
+                        <?php echo $ld_get_svg_html('wallet', ['class' => 'inline-svg', 'height' => '16', 'width' => '16', 'viewBox' => '0 0 24 24']); ?>
                     </span>
-                    <i class="ld-icon">
-                        <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/wallet.phtml")->toHtml() ?>
-                    </i>
+                    <div class="ld-payment-info-text">
+                        <div id="destination-account" class="" data-value="<?php echo $paymentInfo->getDestinationAccount(); ?>">
+                            <?php echo $paymentInfo->getDestinationAccount(); ?>
+                        </div>
+                        <div class="ld-payment-info-functions">
+                            <?php echo $ld_get_svg_html('copy', ['class' => 'action-svg']); ?>
+                            <?php echo $ld_get_svg_html('qr', ['class' => 'action-svg']); ?>
+                        </div>
+                    </div>
                 </div>
 
-                <label for="destinationTag" class="bootstrap-form-label">
-                    <?= __('LedgerDirect.paymentPage.destinationTagLabel') ?>
-                </label>
-                <div class="bootstrap-input-group">
-
-                    <input id="destination-tag"
-                           type="text"
-                           name="destination-tag"
-                           class="bootstrap-form-control"
-                           value="<?php echo $paymentInfo->getDestinationTag() ?>"
-                           readonly
-                    />
-                    <span class="bootstrap-input-group-text ld-hover" data-bs-toggle="tooltip" data-bs-title="Copy">
-                            <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/copy.phtml")->toHtml() ?>
+                <div class="ld-payment-info">
+                    <span>
+                        <?php echo __('destinationTagLabel', 'ledger-direct'); ?>
+                        <?php echo $ld_get_svg_html('tag', ['class' => 'inline-svg', 'height' => '16', 'width' => '16', 'viewBox' => '0 0 24 24']); ?>
                     </span>
-                    <i class="ld-icon">
-                        <?php echo $this->getLayout()->createBlock("Magento\Framework\View\Element\Template")->setTemplate("Hardcastle_LedgerDirect::icons/tag.phtml")->toHtml() ?>
-                    </i>
+                    <div class="ld-payment-info-text">
+                        <div id="destination-tag" class="" data-value="<?php echo $paymentInfo->getDestinationTag(); ?>">
+                            <?php echo $paymentInfo->getDestinationTag(); ?>
+                        </div>
+                        <div class="ld-payment-info-functions">
+                            <?php echo $ld_get_svg_html('copy', ['class' => 'action-svg']); ?>
+                            <?php echo $ld_get_svg_html('qr', ['class' => 'action-svg']); ?>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="ld-warning">
                     <div role="alert" class="alert alert-warning alert-has-icon">
-                        {% sw_icon 'warning' %}
                         <div class="alert-content-container">
                             <div class="alert-content">
-                                <?= __('LedgerDirect.paymentPage.destinationTagWarning') ?>
+                                <?php echo __('destinationTagWarning', 'ledger-direct'); ?>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="ld-sync">
-                    <button id="check-payment-button" data-order-id="<?php echo $paymentInfo->getOrderNumber() ?>" onclick="window.location.reload()">
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display:none"></span>
-                        <?= __('LedgerDirect.paymentPage.checkPaymentButton') ?>
+                    <button id="gem-wallet-button" class="wallet-disabled">G</button>
+                    <button id="crossmark-wallet-button" class="wallet-disabled">C</button>
+                    <button id="xumm-wallet-button" class="wallet-disabled">X</button>
+                    <button id="check-payment-button" data-order-id="<?php echo $paymentInfo->getOrderNumber(); ?>">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
+                              style="display:none"></span>
+                        <?php echo __('checkPaymentButton', 'ledger-direct'); ?>
                     </button>
                 </div>
 
             </div>
 
             <div class="ld-card-right">
-                <div class="ld-sum">
-                    <?= $paymentInfo->getPrice() ?> <?= $paymentInfo->getCurrencySymbol() ?>
-                </div>
-                <span><?= __('LedgerDirect.paymentPage.orderNumber') ?>: <?php echo $paymentInfo->getOrderNumber() ?></span><br/>
-                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo->getPrice() ?> <?php echo $paymentInfo->getCurrencyCode() ?></span><br/>
-                <span><?= __('LedgerDirect.paymentPage.price') ?>: <?php echo $paymentInfo->getXrpAmount() ?> XRP</span><br/>
-                <span><?= __('LedgerDirect.paymentPage.exchangeRate') ?>: <?php echo $paymentInfo->getExchangeRate() ?> XRP / <?php echo $paymentInfo->getCurrencyCode() ?></span>
-                <img src="{{ asset('bundles/ledgerdirect/storefront/img/astronaut.png') }}" class="ld-astronaut" />
+                <?php if ($type === 'xrp-payment') { ?>
+                    <div class="ld-sum"><?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencySymbol(); ?></div>
+                    <span><?php echo __('orderNumber', 'ledger-direct'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
+                    <span><?php echo __('price', 'ledger-direct'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('price', 'ledger-direct'); ?>: <?php echo $paymentInfo->getXrpAmount(); ?> XRP</span><br/>
+                    <span><?php echo __('exchangeRate', 'ledger-direct'); ?>: <?php echo $paymentInfo->getExchangeRate(); ?> XRP / <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('Network:', 'ledger-direct'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
+                <?php } elseif ($type === 'token-payment') { ?>
+                    <div class="ld-sum">{{ price|currency }}</div>
+                    <span><?php echo __('orderNumber', 'ledger-direct'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
+                    <span><?php echo __('price', 'ledger-direct'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('Network:', 'ledger-direct'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
+                <?php } ?>
+                <img src="" class="ld-astronaut" alt=""/>
             </div>
 
         </div>
 
         <div class="ld-footer">
-            <?php echo $paymentInfo->getNetwork() ?> - Ledger Direct Payment Plugin
+            <a href="<?php echo ""; ?>" class="ld-back-to-cart">
+                <?php echo __('backButton', 'ledger-direct'); ?>
+            </a>
         </div>
 
     </div>
 </div>
+
+<script type="text/x-magento-init">
+    {
+        "*": {
+            "Hardcastle_LedgerDirect/js/main": {}
+        }
+    }
+</script>

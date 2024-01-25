@@ -50,7 +50,7 @@ class XrplTxRepository implements XrplTxRepositoryInterface
         $select = $connection
             ->select()
             ->from($this->xrplTxResourceModel->getMainTable(), ['last_ledger_index' => new \Zend_Db_Expr('MAX(ledger_index)')])
-            ->where('account = ?', $accountAddress);
+            ->where('destination = ?', $accountAddress);
 
         $lastLedgerIndex = (int)$connection->fetchOne($select);
 
