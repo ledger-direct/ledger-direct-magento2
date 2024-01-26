@@ -14,8 +14,20 @@
                 <field id="xrpl_testnet_account" translate="label" type="text" sortOrder="3" showInDefault="1" showInWebsite="1">
                     <label>Account (Testnet)</label>
                 </field>
+                <field id="xrpl_testnet_token_name" translate="label" type="text" sortOrder="3" showInDefault="1" showInWebsite="1">
+                    <label>Token Name (Testnet)</label>
+                </field>
+                <field id="xrpl_testnet_token_issuer" translate="label" type="text" sortOrder="3" showInDefault="1" showInWebsite="1">
+                    <label>Token Name (Testnet)</label>
+                </field>
                 <field id="xrpl_mainnet_account" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
                     <label>Account (Mainnet)</label>
+                </field>
+                <field id="xrpl_mainnet_token_name" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
+                    <label>Token Name (Mainnet)</label>
+                </field>
+                <field id="xrpl_mainnet_token_issuer" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
+                    <label>Token Name (Mainnet)</label>
                 </field>
             </group>
         </section>

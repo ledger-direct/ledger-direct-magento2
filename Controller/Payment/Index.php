@@ -1,5 +1,4 @@
 <?php declare(strict_types=1);
-
 /**
  * Copyright (c) Alexander Busse | Hardcastle Technologies.
  *
@@ -18,8 +17,6 @@ use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Framework\App\RequestInterface;
-use Magento\Quote\Api\CartRepositoryInterface;
-use Magento\Sales\Api\OrderRepositoryInterface;
 
 class Index implements HttpGetActionInterface
 {
@@ -62,6 +59,13 @@ class Index implements HttpGetActionInterface
 
         if ($order->getCustomerId() !== $this->session->getCustomerId()) {
             $redirect = $this->redirectFactory->create();
+            return $redirect->setPath('customer/account/');
+        }
+
+        $paymentMethod = $order->getPayment()->getMethod();
+        if ($paymentMethod !== 'xrp_payment' && $paymentMethod !== 'xrpl_token_payment') {
+            $redirect = $this->redirectFactory->create();
+            // throw new \Error('Endpoint is designed for XRP only');
             return $redirect->setPath('customer/account/');
         }
 

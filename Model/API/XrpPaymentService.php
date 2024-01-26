@@ -64,11 +64,6 @@ class XrpPaymentService implements XrpPaymentServiceInterface
      */
     protected function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
     {
-        $payment = $order->getPayment();
-        if ($payment->getMethod() !== 'xrp_payment') {
-            throw new \Error('Endpoint is designed for XRP only');
-        }
-
         $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
         $customFields = $order->getPayment()->getAdditionalData();
         $xrplPaymentData = json_decode($customFields, true)['xrpl'];

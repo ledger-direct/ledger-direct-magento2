@@ -20,6 +20,12 @@ define(
                 component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrp-method'
             }
         );
+        rendererList.push(
+            {
+                type: 'xrpl_token_payment',
+                component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrpl-token-method'
+            }
+        );
         return Component.extend({});
     }
 );

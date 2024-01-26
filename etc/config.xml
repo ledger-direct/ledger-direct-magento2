@@ -13,9 +13,8 @@
                 <processing_status>processing</processing_status>
                 <expired_status>canceled</expired_status>
             </xrp_payment>
-            <!--
             <xrpl_token_payment>
-                <model>XrpLTokenPaymentMethodFacade</model>
+                <model>XrplTokenPaymentMethodFacade</model>
                 <title>Pay with Token | Ledger Direct</title>
                 <active>1</active>
                 <can_use_checkout>1</can_use_checkout>
@@ -24,7 +23,6 @@
                 <processing_status>processing</processing_status>
                 <expired_status>canceled</expired_status>
             </xrpl_token_payment>
-            -->
         </payment>
     </default>
 </config>

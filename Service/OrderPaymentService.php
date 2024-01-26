@@ -62,6 +62,7 @@ class OrderPaymentService
     public function prepareOrderPaymentForXrpl(OrderInterface $order): void
     {
         $payment = $order->getPayment();
+        $paymentMethod = $payment->getMethod();
         $rawAdditionalData = $payment->getAdditionalData();
         if (!empty($rawAdditionalData)) {
             $additionalData = json_decode($rawAdditionalData, true);
@@ -75,15 +76,42 @@ class OrderPaymentService
         $destinationTag = $this->xrplTxService->generateDestinationTag($destinationAccount);
 
         $xrplData = [
-            'type' => 'xrp-payment',
+            'xrpl' => [
             'network' => $network,
             'destination_account' => $destinationAccount,
             'destination_tag' => $destinationTag
+            ]
         ];
-        $orderPriceCustomFields = $this->getCurrentPriceForOrder($order);
 
+        $this->addAdditionalDataToPayment($order, $xrplData);
+
+        match ($paymentMethod) {
+            'xrp_payment' => $this->prepareXrpPayment($order),
+            'xrpl_token_payment' => $this->prepareTokenPayment($order),
+        };
+    }
+
+    private function prepareXrpPayment(OrderInterface $order): void
+    {
         $additionalData = [
-            'xrpl' => array_merge($xrplData, $orderPriceCustomFields)
+            'xrpl' => $this->getCurrentPriceForOrder($order)
+        ];
+        $additionalData['xrpl']['type'] = 'xrp_payment';
+
+        $this->addAdditionalDataToPayment($order, $additionalData);
+    }
+
+    private function prepareTokenPayment(OrderInterface $order): void
+    {
+        $issuer = $this->configHelper->getTokenIssuer();
+        $tokenName = $order->getOrderCurrencyCode();
+        $additionalData = [
+            'xrpl' => [
+                'type' => 'xrpl_token_payment',
+                'issuer' => $issuer,
+                'currency' => $tokenName,
+                'value' => $order->getTotalDue(),
+            ]
         ];
 
         $this->addAdditionalDataToPayment($order, $additionalData);
@@ -96,7 +124,7 @@ class OrderPaymentService
             return null;
         }
 
-        $xrplPaymentData = json_decode($customFields, true)['xrpl'];
+        $xrplPaymentData = json_decode($customFields, true)['xrpl'] ?? null;
         if (isset($xrplPaymentData['destination_account']) && isset($xrplPaymentData['destination_tag'])) {
 
             // TODO: Exception when orderTransaction.customFields are different form xrpl_tx

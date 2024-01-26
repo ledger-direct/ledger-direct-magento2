@@ -27,6 +27,21 @@
 
     <!-- DI -->
 
+    <virtualType name="XrplTokenPaymentMethodFacade" type="Hardcastle\LedgerDirect\Model\PaymentMethod\XrplToken">
+        <arguments>
+            <argument name="eventManager" xsi:type="object">\Magento\Framework\Event\ManagerInterface</argument>
+            <argument name="valueHandlerPool" xsi:type="object">XrpPaymentValueHandlerPool</argument>
+            <argument name="validatorPool" xsi:type="object">XrpPaymentValidatorPool</argument>
+            <argument name="code" xsi:type="string">xrpl_token_payment</argument>
+            <argument name="paymentDataObjectFactory" xsi:type="object">Magento\Payment\Gateway\Data\PaymentDataObjectFactory</argument>
+            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
+            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Payment\Info\Checkout</argument>
+            <argument name="commandPool" xsi:type="object">XrpPaymentCommandPool</argument>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="quoteRepository" xsi:type="object">Magento\Quote\Api\CartRepositoryInterface</argument>
+        </arguments>
+    </virtualType>
+
     <virtualType name="XrpPaymentMethodFacade" type="Hardcastle\LedgerDirect\Model\PaymentMethod\Xrp">
         <arguments>
             <argument name="eventManager" xsi:type="object">\Magento\Framework\Event\ManagerInterface</argument>
