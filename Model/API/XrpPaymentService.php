@@ -68,9 +68,6 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $customFields = $order->getPayment()->getAdditionalData();
         $xrplPaymentData = json_decode($customFields, true)['xrpl'];
 
-        $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
-        $txHash = $tx['hash'] ?? null;
-
         $total = $order->getTotalDue();
         $currencyCode = $order->getOrderCurrencyCode();
         $currencySymbol = Currencies::getSymbol($currencyCode);
@@ -79,6 +76,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $destinationAccount = $this->configHelper->getDestinationAccount();
         $destinationTag = $xrplPaymentData['destination_tag'];
         $xrpAmount = round($total/$exchangeRate,2);
+        $txHash = $xrplPaymentData['hash'] ?? null;
 
         /** @var XrpPaymentInterface $xrpPayment*/
         $xrpPaymentDetails = $this->xrpPaymentFactory->create();
