@@ -15,23 +15,20 @@
                                             <item name="payment" xsi:type="array">
                                                 <item name="children" xsi:type="array">
                                                     <item name="renders" xsi:type="array">
-
                                                         <!-- merge payment method renders here -->
-
                                                         <item name="children" xsi:type="array">
                                                             <item name="ledger-direct-payment-methods" xsi:type="array">
                                                                 <item name="component" xsi:type="string">Hardcastle_LedgerDirect/js/view/payment/ledger-direct</item>
-                                                                <item name="config" xsi:type="array">
-                                                                    <item name="tooltip" xsi:type="string" translate="true">Pay with XRP here.</item>
-                                                                </item>
                                                                 <item name="methods" xsi:type="array">
                                                                     <item name="xrp_payment" xsi:type="array">
+                                                                        <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
+                                                                    </item>
+                                                                    <item name="xrpl_token_payment" xsi:type="array">
                                                                         <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
                                                                     </item>
                                                                 </item>
                                                             </item>
                                                         </item>
-
                                                     </item>
                                                 </item>
                                             </item>

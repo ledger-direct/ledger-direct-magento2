@@ -2,11 +2,12 @@
 
 namespace Hardcastle\LedgerDirect\Service;
 
-use HArdcastle\LedgerDirect\Helper\SystemConfig;
-use XRPL_PHP\Client\JsonRpcClient;
-use XRPL_PHP\Core\Networks;
-use XRPL_PHP\Models\Account\AccountTxRequest;
-use XRPL_PHP\Models\Transaction\TxRequest;
+use GuzzleHttp\Exception\GuzzleException;
+use Hardcastle\LedgerDirect\Helper\SystemConfig;
+use Hardcastle\XRPL_PHP\Client\JsonRpcClient;
+use Hardcastle\XRPL_PHP\Core\Networks;
+use Hardcastle\XRPL_PHP\Models\Account\AccountTxRequest;
+use Hardcastle\XRPL_PHP\Models\Transaction\TxRequest;
 
 class XrplClientService
 {
@@ -23,6 +24,7 @@ class XrplClientService
     /**
      * @param string $txHash
      * @return array
+     * @throws GuzzleException
      */
     public function fetchTransaction(string $txHash): array
     {
@@ -36,6 +38,7 @@ class XrplClientService
      * @param string $address
      * @param int|null $lastLedgerIndex
      * @return array
+     * @throws GuzzleException
      */
     public function fetchAccountTransactions(string $address, ?int $lastLedgerIndex): array
     {

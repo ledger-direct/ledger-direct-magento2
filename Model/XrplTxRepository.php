@@ -44,15 +44,17 @@ class XrplTxRepository implements XrplTxRepositoryInterface
     /**
      * @inheritdoc
      */
-    public function getLastLedgerIndex(string $accountAddress): int
+    public function getLastLedgerIndex(string $accountAddress): ?int
     {
         $connection = $this->xrplTxResourceModel->getConnection();
         $select = $connection
             ->select()
             ->from($this->xrplTxResourceModel->getMainTable(), ['last_ledger_index' => new \Zend_Db_Expr('MAX(ledger_index)')])
-            ->where('account = ?', $accountAddress);
+            ->where('destination = ?', $accountAddress);
 
-        return (int)$connection->fetchOne($select);
+        $lastLedgerIndex = (int)$connection->fetchOne($select);
+
+        return $lastLedgerIndex === 0 ? null : $lastLedgerIndex;
 
     }
 
@@ -67,7 +69,7 @@ class XrplTxRepository implements XrplTxRepositoryInterface
         $xrplTx->setLedgerIndex($tx['ledger_index'])
             ->setHash($tx['hash'])
             ->setAccountAddress($tx['Account'])
-            ->setDestinationAddress($tx['Destination'])
+            ->setDestinationAddress($tx['Destination'] ?? null)
             ->setDestinationTag($tx['DestinationTag'] ?? null)
             ->setDate($tx['date'])
             ->setMeta(json_encode($meta))

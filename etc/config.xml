@@ -7,15 +7,22 @@
                 <model>XrpPaymentMethodFacade</model>
                 <title>Pay with XRP | Ledger Direct</title>
                 <active>1</active>
-                <is_gateway>1</is_gateway>
-                <can_initialize>1</can_initialize>
-                <can_sale>1</can_sale>
                 <can_use_checkout>1</can_use_checkout>
-                <can_use_internal>0</can_use_internal>
-                <global_enabled>1</global_enabled>
-                <payment_action>sale</payment_action>
-                <debug>1</debug>
+                <order_status>pending</order_status>
+                <settled_status>processing</settled_status>
+                <processing_status>processing</processing_status>
+                <expired_status>canceled</expired_status>
             </xrp_payment>
+            <xrpl_token_payment>
+                <model>XrplTokenPaymentMethodFacade</model>
+                <title>Pay with Token | Ledger Direct</title>
+                <active>1</active>
+                <can_use_checkout>1</can_use_checkout>
+                <order_status>pending</order_status>
+                <settled_status>processing</settled_status>
+                <processing_status>processing</processing_status>
+                <expired_status>canceled</expired_status>
+            </xrpl_token_payment>
         </payment>
     </default>
 </config>

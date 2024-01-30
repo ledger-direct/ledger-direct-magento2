@@ -57,36 +57,26 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         return $this->getPaymentDetails($order);
     }
 
+    /**+
+     * @param OrderInterface $order
+     * @return XrpPaymentInterface
+     * @throws WebapiException
+     */
     protected function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
     {
-        $payment = $order->getPayment();
-        if ($payment->getMethod() !== 'xrp_payment') {
-            throw new \Error('Endpoint is designed for XRP only');
-        }
+        $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
+        $customFields = $order->getPayment()->getAdditionalData();
+        $xrplPaymentData = json_decode($customFields, true)['xrpl'];
 
-        $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'] ?? null;
-        if(!$xrplPaymentData) {
-            $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
-            $txHash = null;
-        } else {
-            $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
-            $txHash = $tx['hash'] ?? null;
-        }
-
-        try {
-            $total = $order->getTotalDue();
-            $currencyCode = $order->getOrderCurrencyCode();
-            $currencySymbol = Currencies::getSymbol($currencyCode);
-            $exchangeRate = $xrplPaymentData['exchange_rate'];
-            $network = $xrplPaymentData['network'];
-            $destinationAccount = $this->configHelper->getDestinationAccount();
-            $destinationTag = $xrplPaymentData['destination_tag'];
-            $xrpAmount = round($total/$exchangeRate,2); // TODO: Double check this
-        } catch (Exception $exception) {
-            $this->logger->critical($exception->getMessage());
-            throw new WebapiException(__(''),400);
-        }
-
+        $total = $order->getTotalDue();
+        $currencyCode = $order->getOrderCurrencyCode();
+        $currencySymbol = Currencies::getSymbol($currencyCode);
+        $exchangeRate = $xrplPaymentData['exchange_rate'];
+        $network = $xrplPaymentData['network'];
+        $destinationAccount = $this->configHelper->getDestinationAccount();
+        $destinationTag = $xrplPaymentData['destination_tag'];
+        $xrpAmount = round($total/$exchangeRate,2);
+        $txHash = $xrplPaymentData['hash'] ?? null;
 
         /** @var XrpPaymentInterface $xrpPayment*/
         $xrpPaymentDetails = $this->xrpPaymentFactory->create();

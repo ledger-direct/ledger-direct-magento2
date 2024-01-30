@@ -11,7 +11,7 @@ use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Payment;
-use function XRPL_PHP\Sugar\dropsToXrp;
+use function Hardcastle\XRPL_PHP\Sugar\dropsToXrp;
 
 class OrderPaymentService
 {
@@ -24,11 +24,12 @@ class OrderPaymentService
     protected XrplTxService $xrplTxService;
 
     public function __construct(
-        SystemConfig $configHelper,
-        OrderRepositoryInterface $orderRepository,
+        SystemConfig                 $configHelper,
+        OrderRepositoryInterface     $orderRepository,
         CryptoPriceProviderInterface $priceFinder,
-        XrplTxService $xrplTxService
-    ){
+        XrplTxService                $xrplTxService
+    )
+    {
         $this->configHelper = $configHelper;
         $this->orderRepository = $orderRepository;
         $this->priceFinder = $priceFinder;
@@ -61,6 +62,7 @@ class OrderPaymentService
     public function prepareOrderPaymentForXrpl(OrderInterface $order): void
     {
         $payment = $order->getPayment();
+        $paymentMethod = $payment->getMethod();
         $rawAdditionalData = $payment->getAdditionalData();
         if (!empty($rawAdditionalData)) {
             $additionalData = json_decode($rawAdditionalData, true);
@@ -74,15 +76,42 @@ class OrderPaymentService
         $destinationTag = $this->xrplTxService->generateDestinationTag($destinationAccount);
 
         $xrplData = [
-            'type' => 'xrp-payment',
+            'xrpl' => [
             'network' => $network,
             'destination_account' => $destinationAccount,
             'destination_tag' => $destinationTag
+            ]
         ];
-        $orderPriceCustomFields = $this->getCurrentPriceForOrder($order);
 
+        $this->addAdditionalDataToPayment($order, $xrplData);
+
+        match ($paymentMethod) {
+            'xrp_payment' => $this->prepareXrpPayment($order),
+            'xrpl_token_payment' => $this->prepareTokenPayment($order),
+        };
+    }
+
+    private function prepareXrpPayment(OrderInterface $order): void
+    {
         $additionalData = [
-            'xrpl' => array_merge($xrplData, $orderPriceCustomFields)
+            'xrpl' => $this->getCurrentPriceForOrder($order)
+        ];
+        $additionalData['xrpl']['type'] = 'xrp_payment';
+
+        $this->addAdditionalDataToPayment($order, $additionalData);
+    }
+
+    private function prepareTokenPayment(OrderInterface $order): void
+    {
+        $issuer = $this->configHelper->getTokenIssuer();
+        $tokenName = $order->getOrderCurrencyCode();
+        $additionalData = [
+            'xrpl' => [
+                'type' => 'xrpl_token_payment',
+                'issuer' => $issuer,
+                'currency' => $tokenName,
+                'value' => $order->getTotalDue(),
+            ]
         ];
 
         $this->addAdditionalDataToPayment($order, $additionalData);
@@ -90,7 +119,12 @@ class OrderPaymentService
 
     public function syncOrderTransactionWithXrpl(OrderInterface $order): ?array
     {
-        $xrplPaymentData = json_decode($order->getPayment()->getAdditionalData(), true)['xrpl'];
+        $customFields = $order->getPayment()->getAdditionalData();
+        if (empty($customFields)) {
+            return null;
+        }
+
+        $xrplPaymentData = json_decode($customFields, true)['xrpl'] ?? null;
         if (isset($xrplPaymentData['destination_account']) && isset($xrplPaymentData['destination_tag'])) {
 
             // TODO: Exception when orderTransaction.customFields are different form xrpl_tx
@@ -103,18 +137,19 @@ class OrderPaymentService
             );
 
             if ($tx) {
-            $txPayload = json_decode($tx['tx'], true);
+                $txMeta = json_decode($tx['meta'], true); // war: 'tx'
                 $this->addAdditionalDataToPayment($order, [
                     'xrpl' => [
                         'hash' => $tx['hash'],
-                        'ctid' => $tx['hash'], // TODO: Add CTID here
-                        'amount_paid' => dropsToXrp($txPayload['Amount'])
+                        'ctid' => $tx['hash'], //TODO: Add CTID here
+                        'amount_paid' => dropsToXrp($txMeta['delivered_amount'])
                     ]
                 ]);
 
                 return $tx;
             }
         }
+
         return null;
     }
 

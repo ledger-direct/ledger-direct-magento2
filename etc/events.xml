@@ -2,8 +2,11 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
 
+    <event name="payment_method_is_active">
+        <observer name="toggle_payment_method" instance="Hardcastle\LedgerDirect\Observer\PaymentMethodIsActive" />
+    </event>
     <event name="payment_method_assign_data">
-        <observer name="ledger_direct_data_assign" instance="Hardcastle\LedgerDirect\Observer\DataAssignObserver" />
+        <observer name="ledger_direct_data_assign" instance="Hardcastle\LedgerDirect\Observer\DataAssign" />
     </event>
 
 </config>

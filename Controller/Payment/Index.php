@@ -1,5 +1,4 @@
 <?php declare(strict_types=1);
-
 /**
  * Copyright (c) Alexander Busse | Hardcastle Technologies.
  *
@@ -18,8 +17,6 @@ use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Framework\App\RequestInterface;
-use Magento\Quote\Api\CartRepositoryInterface;
-use Magento\Sales\Api\OrderRepositoryInterface;
 
 class Index implements HttpGetActionInterface
 {
@@ -52,13 +49,31 @@ class Index implements HttpGetActionInterface
 
     public function execute(): Page|Redirect
     {
-        //TODO: Check Customer Session
+        if (!$this->session->isLoggedIn()) {
+            $redirect = $this->redirectFactory->create();
+            return $redirect->setPath('customer/account/login');
+        }
 
         $orderId = (int)$this->request->getParam('id');
         $order = $this->orderPaymentService->getOrderById($orderId);
 
+        if ($order->getCustomerId() !== $this->session->getCustomerId()) {
+            $redirect = $this->redirectFactory->create();
+            return $redirect->setPath('customer/account/');
+        }
+
+        $paymentMethod = $order->getPayment()->getMethod();
+        if ($paymentMethod !== 'xrp_payment' && $paymentMethod !== 'xrpl_token_payment') {
+            $redirect = $this->redirectFactory->create();
+            // throw new \Error('Endpoint is designed for XRP only');
+            return $redirect->setPath('customer/account/');
+        }
+
         $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
         if ($tx) {
+
+            // Check if amount is correct!
+
             $redirect = $this->redirectFactory->create();
 
             // Order status!
