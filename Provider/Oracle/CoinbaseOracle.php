@@ -1,16 +1,16 @@
-<?php declare(strict_types=1);
+<?php
 
 namespace Hardcastle\LedgerDirect\Provider\Oracle;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
-class KrakenOracle implements OracleInterface
+class CoinbaseOracle implements OracleInterface
 {
     private Client $client;
 
     /**
-     * Fetches the current price for a currency pair from Kraken.
+     * Get the current exchange rate for a currency pair from Coinbase.
      *
      * @param string $code1 Base currency code (e.g., 'XRP').
      * @param string $code2 Quote currency code (e.g., 'USD').
@@ -19,15 +19,13 @@ class KrakenOracle implements OracleInterface
      */
     public function getCurrentPriceForPair(string $code1, string $code2): float
     {
-        $pair = $code1 . $code2;
-        $url = 'https://api.kraken.com/0/public/Ticker?pair=' . $pair;
+        $url = 'https://api.coinbase.com/v2/prices/' . strtoupper($code1) . '-' . strtoupper($code2) . '/spot';
 
         $response = $this->client->get($url);
         $data = json_decode((string) $response->getBody(), true);
 
-        // TODO: Get proper array keys from code1 and code2
-        if (isset($data['result']['XXRPZUSD']['c'])) {
-            return (float) $data['result']['XXRPZUSD']['c'][0];
+        if (isset($data['data']['amount'])) {
+            return (float) $data['data']['amount'];
         }
 
         return 0.0;
@@ -42,7 +40,6 @@ class KrakenOracle implements OracleInterface
     public function prepare(Client $client): OracleInterface
     {
         $this->client = $client;
-
         return $this;
     }
 }

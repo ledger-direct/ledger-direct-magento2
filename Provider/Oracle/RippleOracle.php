@@ -9,33 +9,25 @@ class RippleOracle implements OracleInterface
     private Client $client;
 
     /**
-     * @param string $code1
-     * @param string $code2
-     * @return float
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * Get the current price for a currency pair from Ripple. It seems this is no longer supported as of 2025.
+     *
+     * @param string $code1 Currency code for the first currency (e.g., 'XRP').
+     * @param string $code2 Currency code for the second currency (e.g., 'USD').
+     * @return float Current price of the currency pair.
      */
     public function getCurrentPriceForPair(string $code1, string $code2): float
     {
-        /*
-         * {
-         * "action": "Get Exchange Rate",
-         * "route": "/v2/exchange_rates/{:base}/{:counter}",
-         * "example": "http://data.ripple.com/v2/exchange_rates/XRP/USD+rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
-         * }
-         */
-        $gatehubAccount = 'rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq';
-        $url = 'https://data.ripple.com/v2/exchange_rates/XRP/' . $code2 . '+' . $gatehubAccount;
-
-        $response = $this->client->get($url);
-        $data = json_decode((string) $response->getBody(), true);
-
-        if (isset($data['result']['rate'])) {
-            return (float) $data['result']['rate'];
-        }
+        // This seems obsolete as of 2025
 
         return 0.0;
     }
 
+    /**
+     * Set the HTTP client.
+     *
+     * @param Client $client
+     * @return OracleInterface
+     */
     public function prepare(Client $client): OracleInterface
     {
         $this->client = $client;

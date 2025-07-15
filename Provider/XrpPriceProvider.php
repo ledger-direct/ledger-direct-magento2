@@ -5,8 +5,8 @@ namespace Hardcastle\LedgerDirect\Provider;
 use Exception;
 use GuzzleHttp\Client;
 use Hardcastle\LedgerDirect\Provider\Oracle\BinanceOracle;
+use Hardcastle\LedgerDirect\Provider\Oracle\CoingeckoOracle;
 use Hardcastle\LedgerDirect\Provider\Oracle\KrakenOracle;
-use Hardcastle\LedgerDirect\Provider\Oracle\RippleOracle;
 
 class XrpPriceProvider implements CryptoPriceProviderInterface
 {
@@ -34,8 +34,8 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
 
         $oracles = [
             new BinanceOracle(),
+            new CoingeckoOracle(),
             new KrakenOracle(),
-            new RippleOracle(),
         ];
 
         foreach ($oracles as $oracle) {
@@ -68,7 +68,7 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
     }
 
     /**
-     *
+     * Checks if the given XRP price is plausible.
      *
      * @param float $price
      * @return bool
