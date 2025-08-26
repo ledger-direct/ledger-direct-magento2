@@ -4,6 +4,8 @@ require([],
 
         $ = jQuery.noConflict();
 
+        console.log('Ledger Direct main.js loaded');
+
         const destinationAccount = $('#destination-account');
         const destinationAccountCopy = destinationAccount.next().children().eq(0);
         const destinationAccountQrCode = destinationAccount.next().children().eq(1);
@@ -13,7 +15,6 @@ require([],
 
         const checkPaymentButton = $('#check-payment-button');
 
-        console.log(this)
         //destinationAccountCopy.on('click', copyToClipboard.bind(this, destinationAccount));
         //destinationTagCopy.on('click', copyToClipboard.bind(this, destinationTag));
 

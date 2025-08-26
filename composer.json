@@ -3,9 +3,8 @@
     "type": "magento2-module",
     "description": "Component for accepting online payments in Magento2 using the XRP Ledger",
     "require": {
-        "magento/module-payment": "100.1.*",
-        "magento/module-checkout": "100.1.*",
-        "magento/module-sales": "100.1.*"
+        "php": ">=8.1",
+        "hardcastle/xrpl_php": "0.10.0"
     },
     "license": "MIT",
     "autoload": {
