@@ -1,11 +1,9 @@
-body {
-    &.ledger-direct {
-        font-family: Montserrat, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        outline: 0!important;
-        background-color: #e62355;
-    }
+body.ledger-direct {
+    font-family: Montserrat, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    outline: 0!important;
+    background-color: #e62355;
 }
 
 .ld-container {
@@ -25,7 +23,8 @@ body {
     text-align: center;
 }
 
-.ld-header h2 {
+.ld-header h2,
+.ld-header h3 {
     color: white;
 }
 
@@ -39,6 +38,7 @@ body {
     display: flex;
     background-color: white;
     border-radius: 0.5rem;
+    box-shadow: 0 15px 30px 0 rgb(0 0 0 / 11%), 0 5px 15px 0 rgb(0 0 0 / 8%);
 }
 
 .ld-card-left {
@@ -78,6 +78,7 @@ img.ld-astronaut {
 }
 
 .ld-payment-info-functions {
+    position: relative;
     display: grid;
     column-gap: 6px;
     grid-auto-flow: column;
@@ -160,6 +161,25 @@ img.ld-astronaut {
 .ld-back-to-cart {
     color: #ffffff;
     text-decoration: underline;
+}
+
+.copy-toast {
+    position: absolute;
+    top: -30px;
+    right: 15px;
+    font-size: 10px;
+    background-color: #1daae6;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.copy-toast.fade-out {
+    opacity: 0;
 }
 
 @media only screen and (max-width: 768px) {

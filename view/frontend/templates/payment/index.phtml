@@ -48,7 +48,6 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
 <div class="ld-container" data-xrp-payment-page="true">
     <div class="ld-content">
 
-
         <?php if (!empty($paymentPageTitle)) { ?>
             <div class="ld-header">
                 <h2>
@@ -96,7 +95,7 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
 
                 <div class="ld-payment-info">
                     <span>
-                        <?php echo __('destinationAccountLabel', 'ledger-direct'); ?>
+                        <?php echo __('LedgerDirect.paymentPage.destinationAccountLabel'); ?>
                         <?php echo $ld_get_svg_html('wallet', ['class' => 'inline-svg', 'height' => '16', 'width' => '16', 'viewBox' => '0 0 24 24']); ?>
                     </span>
                     <div class="ld-payment-info-text">
@@ -112,7 +111,7 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
 
                 <div class="ld-payment-info">
                     <span>
-                        <?php echo __('destinationTagLabel', 'ledger-direct'); ?>
+                        <?php echo __('LedgerDirect.paymentPage.destinationTagLabel'); ?>
                         <?php echo $ld_get_svg_html('tag', ['class' => 'inline-svg', 'height' => '16', 'width' => '16', 'viewBox' => '0 0 24 24']); ?>
                     </span>
                     <div class="ld-payment-info-text">
@@ -130,20 +129,23 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
                     <div role="alert" class="alert alert-warning alert-has-icon">
                         <div class="alert-content-container">
                             <div class="alert-content">
-                                <?php echo __('destinationTagWarning', 'ledger-direct'); ?>
+                                <?php echo __('LedgerDirect.paymentPage.destinationTagWarning'); ?>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="ld-sync">
+                    <!-- Wallet buttons -->
+                    <!--
                     <button id="gem-wallet-button" class="wallet-disabled">G</button>
                     <button id="crossmark-wallet-button" class="wallet-disabled">C</button>
                     <button id="xumm-wallet-button" class="wallet-disabled">X</button>
+                    -->
                     <button id="check-payment-button" data-order-id="<?php echo $paymentInfo->getOrderNumber(); ?>">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
                               style="display:none"></span>
-                        <?php echo __('checkPaymentButton', 'ledger-direct'); ?>
+                        <?php echo __('LedgerDirect.paymentPage.checkPaymentButton'); ?>
                     </button>
                 </div>
 
@@ -152,25 +154,25 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
             <div class="ld-card-right">
                 <?php if ($type === 'xrp-payment') { ?>
                     <div class="ld-sum"><?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencySymbol(); ?></div>
-                    <span><?php echo __('orderNumber', 'ledger-direct'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
-                    <span><?php echo __('price', 'ledger-direct'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
-                    <span><?php echo __('price', 'ledger-direct'); ?>: <?php echo $paymentInfo->getXrpAmount(); ?> XRP</span><br/>
-                    <span><?php echo __('exchangeRate', 'ledger-direct'); ?>: <?php echo $paymentInfo->getExchangeRate(); ?> XRP / <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
-                    <span><?php echo __('Network:', 'ledger-direct'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.orderNumber'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getXrpAmount(); ?> XRP</span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.exchangeRate'); ?>: <?php echo $paymentInfo->getExchangeRate(); ?> XRP / <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.network'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
                 <?php } elseif ($type === 'token-payment') { ?>
                     <div class="ld-sum">{{ price|currency }}</div>
-                    <span><?php echo __('orderNumber', 'ledger-direct'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
-                    <span><?php echo __('price', 'ledger-direct'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
-                    <span><?php echo __('Network:', 'ledger-direct'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.orderNumber'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.network'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
                 <?php } ?>
-                <img src="" class="ld-astronaut" alt=""/>
+                <img src="<?= $block->getViewFileUrl('Hardcastle_LedgerDirect::images/astronaut.png') ?>" class="ld-astronaut" alt=""/>
             </div>
 
         </div>
 
         <div class="ld-footer">
             <a href="<?php echo ""; ?>" class="ld-back-to-cart">
-                <?php echo __('backButton', 'ledger-direct'); ?>
+                <?php echo __('LedgerDirect.paymentPage.backButton'); ?>
             </a>
         </div>
 

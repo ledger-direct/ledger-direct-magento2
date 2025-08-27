@@ -6,4 +6,6 @@
 "LedgerDirect.paymentPage.checkPaymentButton","Zahlungseingang prüfen"
 "LedgerDirect.paymentPage.orderNumber","Bestellnummer"
 "LedgerDirect.paymentPage.exchangeRate","Wechselkurs"
-"LedgerDirect.paymentPage.price","Preis"
+"LedgerDirect.paymentPage.total","Preis"
+"LedgerDirect.paymentPage.network","Netzwerk"
+"LedgerDirect.paymentPage.backButton","Zurück"
