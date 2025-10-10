@@ -7,13 +7,15 @@ Project Website: https://www.ledger-direct.com
 
 GitHub: https://github.com/ledger-direct/ledger-direct-magento2
 
+![Payment Page](payment_page.png)
+
 ## Available currencies:
 - XRP (XRP Ledger)
 - RLUSD (XRP Ledger)
 
 ### Install & setup instructions
 
-##### 1. Run the below command to install the payment module
+##### 1. Run the below command to install the payment module from Composer
  ```
  composer require hardcastle/ledger-direct-magento2
  ```
