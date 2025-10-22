@@ -42,8 +42,19 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
     }
 
     return $template->toHtml();
-}
+};
+
+$paymentType = 'XRP';
+$networkName = $paymentInfo->getNetwork();
+
 ?>
+
+<div class="ld-header">
+    <h3>
+        <?php $page_title = 'LedgerDirect - pay with ' . strtoupper($paymentType) . ' directly on XRPL ' .$networkName ; ?>
+        <?php echo $page_title; ?>
+    </h3>
+</div>
 
 <div class="ld-container" data-xrp-payment-page="true">
     <div class="ld-content">
@@ -171,7 +182,7 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
         </div>
 
         <div class="ld-footer">
-            <a href="<?php echo ""; ?>" class="ld-back-to-cart">
+            <a href="<?php echo $block->getUrl('checkout'); ?>" class="ld-back-to-cart">
                 <?php echo __('LedgerDirect.paymentPage.backButton'); ?>
             </a>
         </div>
@@ -182,7 +193,12 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
 <script type="text/x-magento-init">
     {
         "*": {
-            "Hardcastle_LedgerDirect/js/main": {}
+            "Hardcastle_LedgerDirect/js/main": {
+            "deps": [
+                "jquery",
+                "Hardcastle_LedgerDirect/js/jquery-qrcode.min"
+            ]
+        }
         }
     }
 </script>

@@ -19,7 +19,7 @@
     <remove src="mage/polyfill.js"/>
     -->
     <css src="Hardcastle_LedgerDirect::css/base.css" rel="stylesheet" type="text/css"  />
-    <css src="StripeIntegration_Payments::css/admin.css" />
+    <css src="Hardcastle_LedgerDirect::css/qr-bundle.min.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
     <attribute name="class" value="ledger-direct"/>
