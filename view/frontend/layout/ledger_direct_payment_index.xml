@@ -27,7 +27,7 @@
     <referenceBlock name="translate" remove="true"/>
     <!-- <referenceBlock name="requirejs-config" remove="true"/> -->
     <referenceContainer name="root">
-        <block name="ledger-direct.payment.index" template="Hardcastle_LedgerDirect::payment/index.phtml">
+        <block name="ledger-direct.payment.index" template="Hardcastle_LedgerDirect::payment/index.phtml" cacheable="false">
             <arguments>
                 <argument name="xrpl_tx_vm" xsi:type="object">Hardcastle\LedgerDirect\ViewModel\XrplTx</argument>
                 <argument name="payment_info_vm" xsi:type="object">Hardcastle\LedgerDirect\ViewModel\PaymentInfo</argument>
