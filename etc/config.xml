@@ -9,7 +9,7 @@
                 <allow_rlusd_payments>0</allow_rlusd_payments>
             </ledger_direct>
             <xrp_payment>
-                <model>XrpPaymentMethodFacade</model>
+                <model>Hardcastle\LedgerDirect\Model\PaymentMethod\Xrp</model>
                 <title>Pay with XRP | Ledger Direct</title>
                 <active>1</active>
                 <can_use_checkout>1</can_use_checkout>
@@ -19,7 +19,7 @@
                 <expired_status>canceled</expired_status>
             </xrp_payment>
             <xrpl_token_payment>
-                <model>XrplTokenPaymentMethodFacade</model>
+                <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrplToken</model>
                 <title>Pay with Token | Ledger Direct</title>
                 <active>1</active>
                 <can_use_checkout>1</can_use_checkout>

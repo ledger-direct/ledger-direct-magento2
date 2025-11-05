@@ -3,7 +3,6 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
 
     <!-- Console Commands -->
-
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">
@@ -15,7 +14,6 @@
     </type>
 
     <!-- Interface defaults -->
-
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrplTxInterface" type="Hardcastle\LedgerDirect\Model\XrplTx" />
     <preference for="Hardcastle\LedgerDirect\Api\XrplTxRepositoryInterface" type="Hardcastle\LedgerDirect\Model\XrplTxRepository" />
 
@@ -24,83 +22,5 @@
 
     <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\Api\XrpPaymentService" />
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface" type="Hardcastle\LedgerDirect\Model\XrpPayment" />
-
-    <!-- DI -->
-
-    <virtualType name="XrplTokenPaymentMethodFacade" type="Hardcastle\LedgerDirect\Model\PaymentMethod\XrplToken">
-        <arguments>
-            <argument name="eventManager" xsi:type="object">\Magento\Framework\Event\ManagerInterface</argument>
-            <argument name="valueHandlerPool" xsi:type="object">XrpPaymentValueHandlerPool</argument>
-            <argument name="validatorPool" xsi:type="object">XrpPaymentValidatorPool</argument>
-            <argument name="code" xsi:type="string">xrpl_token_payment</argument>
-            <argument name="paymentDataObjectFactory" xsi:type="object">Magento\Payment\Gateway\Data\PaymentDataObjectFactory</argument>
-            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
-            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Payment\Info\Checkout</argument>
-            <argument name="commandPool" xsi:type="object">XrpPaymentCommandPool</argument>
-            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
-            <argument name="quoteRepository" xsi:type="object">Magento\Quote\Api\CartRepositoryInterface</argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="XrpPaymentMethodFacade" type="Hardcastle\LedgerDirect\Model\PaymentMethod\Xrp">
-        <arguments>
-            <argument name="eventManager" xsi:type="object">\Magento\Framework\Event\ManagerInterface</argument>
-            <argument name="valueHandlerPool" xsi:type="object">XrpPaymentValueHandlerPool</argument>
-            <argument name="validatorPool" xsi:type="object">XrpPaymentValidatorPool</argument>
-            <argument name="code" xsi:type="string">xrp_payment</argument>
-            <argument name="paymentDataObjectFactory" xsi:type="object">Magento\Payment\Gateway\Data\PaymentDataObjectFactory</argument>
-            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
-            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Payment\Info\Checkout</argument>
-            <argument name="commandPool" xsi:type="object">XrpPaymentCommandPool</argument>
-            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
-            <argument name="quoteRepository" xsi:type="object">Magento\Quote\Api\CartRepositoryInterface</argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="XrpPaymentValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
-        <arguments>
-            <argument name="handlers" xsi:type="array">
-                <item name="default" xsi:type="string">LedgerDirectConfigValueHandler</item>
-            </argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="LedgerDirectConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
-        <arguments>
-            <argument name="configInterface" xsi:type="object">LedgerDirectConfig</argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="LedgerDirectConfig" type="Magento\Payment\Gateway\Config\Config">
-        <arguments>
-            <argument name="methodCode" xsi:type="string">xrp_payment</argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="XrpPaymentCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
-        <arguments>
-            <argument name="commands" xsi:type="array">
-                <item name="authorize" xsi:type="string">XrpPaymentAuthorizeCommand</item>
-            </argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="XrpPaymentAuthorizeCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
-        <arguments>
-            <argument name="requestBuilder" xsi:type="object">BraintreeAuthorizeRequest</argument>
-            <argument name="transferFactory" xsi:type="object">Magento\Braintree\Gateway\Http\TransferFactory</argument>
-            <argument name="client" xsi:type="object">Magento\Braintree\Gateway\Http\Client\TransactionSale</argument>
-            <argument name="handler" xsi:type="object">BraintreeAuthorizationHandler</argument>
-            <argument name="validator" xsi:type="object">Magento\Braintree\Gateway\Validator\ResponseValidator</argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="XrpPaymentValidatorPool" type="Magento\Payment\Gateway\Validator\ValidatorPool">
-        <arguments>
-            <argument name="validators" xsi:type="array">
-
-            </argument>
-        </arguments>
-    </virtualType>
 
 </config>
