@@ -108,19 +108,34 @@ class XrplTxService
      */
     public function syncAccountTransactions(string $address): void
     {
-        $lastLedgerIndex = $this->xrplTxRepository->getLastLedgerIndex($address) ?? null;
-
-        if (!$lastLedgerIndex) {
-            $lastLedgerIndex = null;
-        }
+        $lastLedgerIndex = $this->xrplTxRepository->getLastLedgerIndex($address) ?: null;
 
         $transactions = $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
 
         foreach ($transactions as $rawTx) {
-            if($rawTx['validated'] && $rawTx['tx']['TransactionType'] === 'Payment') {
-                $xrplTx = $this->xrplTxRepository->createFromArray($rawTx);
-                $this->xrplTxRepository->save($xrplTx);
+            $tx = $rawTx['tx'] ?? null;
+            $validated = $rawTx['validated'] ?? false;
+
+            if (!$validated || !is_array($tx) || ($tx['TransactionType'] ?? null) !== 'Payment') {
+                continue;
             }
+
+            // Skip transactions we already stored (the table has no unique hash index yet).
+            $hash = $tx['hash'] ?? null;
+            if ($hash !== null && $this->transactionExistsByHash($hash)) {
+                continue;
+            }
+
+            $xrplTx = $this->xrplTxRepository->createFromArray($rawTx);
+            $this->xrplTxRepository->save($xrplTx);
         }
+    }
+
+    private function transactionExistsByHash(string $hash): bool
+    {
+        $connection = $this->connection->getConnection();
+        $select = $connection->select()->from('xrpl_tx', 'hash')->where('hash = ?', $hash);
+
+        return (bool) $connection->fetchOne($select);
     }
 }

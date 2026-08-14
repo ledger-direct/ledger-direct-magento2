@@ -49,7 +49,7 @@ class XrplTxRepository implements XrplTxRepositoryInterface
         $connection = $this->xrplTxResourceModel->getConnection();
         $select = $connection
             ->select()
-            ->from($this->xrplTxResourceModel->getMainTable(), ['last_ledger_index' => new \Zend_Db_Expr('MAX(ledger_index)')])
+            ->from($this->xrplTxResourceModel->getMainTable(), ['last_ledger_index' => new \Magento\Framework\DB\Sql\Expression('MAX(ledger_index)')])
             ->where('destination = ?', $accountAddress);
 
         $lastLedgerIndex = (int)$connection->fetchOne($select);

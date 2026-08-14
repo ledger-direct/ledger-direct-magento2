@@ -10,8 +10,8 @@ use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Model\Order;
+use Magento\Sales\Model\OrderFactory;
 use Magento\Sales\Model\Order\Payment;
-use function Hardcastle\XRPL_PHP\Sugar\dropsToXrp;
 
 class OrderPaymentService
 {
@@ -23,17 +23,21 @@ class OrderPaymentService
 
     protected XrplTxService $xrplTxService;
 
+    protected OrderFactory $orderFactory;
+
     public function __construct(
         SystemConfig                 $configHelper,
         OrderRepositoryInterface     $orderRepository,
         CryptoPriceProviderInterface $priceFinder,
-        XrplTxService                $xrplTxService
+        XrplTxService                $xrplTxService,
+        OrderFactory                 $orderFactory
     )
     {
         $this->configHelper = $configHelper;
         $this->orderRepository = $orderRepository;
         $this->priceFinder = $priceFinder;
         $this->xrplTxService = $xrplTxService;
+        $this->orderFactory = $orderFactory;
     }
 
     public function getOrderById(int $orderId): OrderInterface
@@ -43,9 +47,7 @@ class OrderPaymentService
 
     public function getOrderByOrderNumber(string $orderNumber): OrderInterface
     {
-        // TODO: Refactor bad style
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        return $objectManager->get(\Magento\Sales\Api\Data\OrderInterface::class)->loadByIncrementId($orderNumber);
+        return $this->orderFactory->create()->loadByIncrementId($orderNumber);
     }
 
     public function getCurrentPriceForOrder(OrderInterface $order): array
@@ -142,7 +144,7 @@ class OrderPaymentService
                     'xrpl' => [
                         'hash' => $tx['hash'],
                         'ctid' => $tx['hash'], //TODO: Add CTID here
-                        'amount_paid' => dropsToXrp($txMeta['delivered_amount'])
+                        'amount_paid' => $this->formatDeliveredAmount($txMeta['delivered_amount'] ?? null)
                     ]
                 ]);
 
@@ -166,5 +168,19 @@ class OrderPaymentService
         $order->getPayment()->setAdditionalData(json_encode($mergedAdditionalData));
 
         $this->orderRepository->save($order);
+    }
+
+    /**
+     * Normalises an XRPL "delivered_amount" (a drops string for XRP, or an issued
+     * currency object for stablecoins) to a human-readable decimal string.
+     */
+    private function formatDeliveredAmount(mixed $deliveredAmount): string
+    {
+        if (is_array($deliveredAmount)) {
+            return (string) ($deliveredAmount['value'] ?? '0');
+        }
+
+        // XRP is delivered in drops (1 XRP = 1,000,000 drops).
+        return bcdiv((string) $deliveredAmount, '1000000', 6);
     }
 }
