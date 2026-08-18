@@ -1,5 +1,5 @@
 {
-    "xrpl_tx": {
+    "ledger_direct_xrpl_tx": {
         "column": {
             "id": true,
             "ledger_index": true,
@@ -13,10 +13,10 @@
         },
         "constraint": {
             "PRIMARY": true,
-            "XRPL_TX_HASH": true
+            "LEDGER_DIRECT_XRPL_TX_HASH": true
         }
     },
-    "xrpl_destination_tag": {
+    "ledger_direct_xrpl_destination_tag": {
         "column": {
             "destination_tag": true,
             "account": true

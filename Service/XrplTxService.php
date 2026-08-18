@@ -69,13 +69,13 @@ class XrplTxService
 
             $select = $this->connection->getConnection()
                 ->select('destination_tag')
-                ->from('xrpl_destination_tag')
+                ->from('ledger_direct_xrpl_destination_tag')
                 ->where('account = ?', $accountAddress)
                 ->where('destination_tag = ?', $destinationTag);
 
             if (!$this->connection->getConnection()->fetchOne($select)) {
                 $this->connection->getConnection()->insert(
-                    'xrpl_destination_tag',
+                    'ledger_direct_xrpl_destination_tag',
                     ['destination_tag' => $destinationTag]
                 );
 
@@ -95,7 +95,7 @@ class XrplTxService
     {
         $select = $this->connection->getConnection()
             ->select('*')
-            ->from('xrpl_tx')
+            ->from('ledger_direct_xrpl_tx')
             ->where('destination = ?', $destination)
             ->where('destination_tag = ?', $destinationTag);
         $matches = $this->connection->getConnection()->fetchAll($select);
@@ -173,7 +173,7 @@ class XrplTxService
     private function transactionExistsByHash(string $hash): bool
     {
         $connection = $this->connection->getConnection();
-        $select = $connection->select()->from('xrpl_tx', 'hash')->where('hash = ?', $hash);
+        $select = $connection->select()->from('ledger_direct_xrpl_tx', 'hash')->where('hash = ?', $hash);
 
         return (bool) $connection->fetchOne($select);
     }

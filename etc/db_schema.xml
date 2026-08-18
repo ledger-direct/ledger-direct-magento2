@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
-    <table name="xrpl_tx" resource="default" engine="innodb" comment="XRPL Transactions Table">
+    <table name="ledger_direct_xrpl_tx" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="" />
         <column xsi:type="varchar" name="ledger_index" length="64" nullable="false" comment="" />
         <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="" />
@@ -18,7 +18,7 @@
             <column name="hash"/>
         </constraint>
     </table>
-    <table name="xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Transactions Table">
+    <table name="ledger_direct_xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="destination_tag" unsigned="true" nullable="false" identity="true" comment="" />
         <column xsi:type="varchar" name="account" length="35" nullable="false" comment="" />
         <constraint xsi:type="primary" referenceId="PRIMARY">
