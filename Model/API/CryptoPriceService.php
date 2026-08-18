@@ -4,20 +4,30 @@ namespace Hardcastle\LedgerDirect\Model\API;
 
 use Hardcastle\LedgerDirect\Api\CryptoPriceServiceInterface;
 use Magento\Framework\DataObject;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 
 class CryptoPriceService implements CryptoPriceServiceInterface
 {
-
+    /**
+     * @var OrderRepositoryInterface
+     */
     protected OrderRepositoryInterface $orderRepository;
 
+    /**
+     * @var SerializerInterface
+     */
     protected SerializerInterface $serializer;
 
+    /**
+     * @param OrderRepositoryInterface $orderRepository
+     * @param SerializerInterface $serializer
+     */
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         SerializerInterface $serializer
-    ){
+    ) {
         $this->orderRepository = $orderRepository;
         $this->serializer = $serializer;
     }
@@ -48,12 +58,10 @@ class CryptoPriceService implements CryptoPriceServiceInterface
     }
 
     /**
-     * @param string $token
-     * @param string $iso
      * @inheritdoc
      */
     public function getExchangeRate(string $token, string $iso): string
     {
-        // TODO: Implement getQuote() method.
+        throw new LocalizedException(__('getExchangeRate() is not implemented.'));
     }
 }

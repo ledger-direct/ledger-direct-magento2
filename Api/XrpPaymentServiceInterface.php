@@ -25,5 +25,4 @@ interface XrpPaymentServiceInterface
      * @return XrpPaymentInterface
      */
     public function getPaymentDetailsByOrderNumber(string  $orderNumber): XrpPaymentInterface;
-
 }

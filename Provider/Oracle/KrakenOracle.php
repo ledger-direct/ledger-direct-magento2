@@ -7,6 +7,9 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class KrakenOracle implements OracleInterface
 {
+    /**
+     * @var Client
+     */
     private Client $client;
 
     /**

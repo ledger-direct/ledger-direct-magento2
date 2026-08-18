@@ -14,12 +14,22 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+
 class XrplTransactionLookupCommand extends Command
 {
+    /**
+     * @var string
+     */
     protected static $defaultName = 'ledger-direct:xrpl-transaction:lookup';
 
+    /**
+     * @var XrplTxService
+     */
     protected XrplTxService $txService;
 
+    /**
+     * @param XrplTxService $txService
+     */
     public function __construct(
         XrplTxService $txService
     ) {
@@ -55,10 +65,10 @@ class XrplTransactionLookupCommand extends Command
 
             if ($source === 'XRPL') {
                 $txResult = $this->txService->fetchTransaction($hash);
-                $output->writeln(print_r($txResult, true));
+                $output->writeln(json_encode($txResult, JSON_PRETTY_PRINT));
 
                 return Command::SUCCESS;
-            } else if ($source === 'DB') {
+            } elseif ($source === 'DB') {
 
                 return Command::SUCCESS;
             }

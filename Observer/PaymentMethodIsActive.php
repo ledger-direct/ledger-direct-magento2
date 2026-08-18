@@ -11,8 +11,14 @@ use Magento\Quote\Model\Quote\Item;
 
 class PaymentMethodIsActive implements ObserverInterface
 {
+    /**
+     * @var ProductRepositoryInterface
+     */
     protected ProductRepositoryInterface $productRepository;
 
+    /**
+     * @param ProductRepositoryInterface $productRepository
+     */
     public function __construct(
         ProductRepositoryInterface $productRepository
     ) {
@@ -20,6 +26,8 @@ class PaymentMethodIsActive implements ObserverInterface
     }
 
     /**
+     * Disable xrpl_token_payment availability if any cart item lacks a token price
+     *
      * @param Observer $observer
      * @return void
      * @throws LocalizedException
@@ -41,6 +49,8 @@ class PaymentMethodIsActive implements ObserverInterface
     }
 
     /**
+     * Check whether the item's product has a token price configured
+     *
      * @param Item $item
      * @return bool
      */

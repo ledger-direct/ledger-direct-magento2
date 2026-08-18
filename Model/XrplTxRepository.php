@@ -13,15 +13,24 @@ use Magento\Framework\Exception\NoSuchEntityException;
 
 class XrplTxRepository implements XrplTxRepositoryInterface
 {
+    /**
+     * @var XrplTxFactory
+     */
     private XrplTxFactory $xrplTxFactory;
 
+    /**
+     * @var XrplTxResourceModel
+     */
     private XrplTxResourceModel $xrplTxResourceModel;
 
+    /**
+     * @param XrplTxFactory $xrplTxFactory
+     * @param XrplTxResourceModel $xrplTxResourceModel
+     */
     public function __construct(
         XrplTxFactory       $xrplTxFactory,
         XrplTxResourceModel $xrplTxResourceModel
-    )
-    {
+    ) {
         $this->xrplTxFactory = $xrplTxFactory;
         $this->xrplTxResourceModel = $xrplTxResourceModel;
     }
@@ -49,15 +58,23 @@ class XrplTxRepository implements XrplTxRepositoryInterface
         $connection = $this->xrplTxResourceModel->getConnection();
         $select = $connection
             ->select()
-            ->from($this->xrplTxResourceModel->getMainTable(), ['last_ledger_index' => new \Magento\Framework\DB\Sql\Expression('MAX(ledger_index)')])
+            ->from(
+                $this->xrplTxResourceModel->getMainTable(),
+                ['last_ledger_index' => new \Magento\Framework\DB\Sql\Expression('MAX(ledger_index)')]
+            )
             ->where('destination = ?', $accountAddress);
 
         $lastLedgerIndex = (int)$connection->fetchOne($select);
 
         return $lastLedgerIndex === 0 ? null : $lastLedgerIndex;
-
     }
 
+    /**
+     * Build and persist a transaction entity from a raw XRPL account_tx result entry
+     *
+     * @param array $rawTx
+     * @return XrplTxInterface
+     */
     public function createFromArray(array $rawTx): XrplTxInterface
     {
         /** @var XrplTxInterface $xrplTx */
@@ -99,6 +116,6 @@ class XrplTxRepository implements XrplTxRepositoryInterface
      */
     public function deleteById(int $id): bool
     {
-        // TODO: Implement deleteById() method.
+        throw new LocalizedException(__('deleteById() is not implemented.'));
     }
 }

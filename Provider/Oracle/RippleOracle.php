@@ -6,6 +6,9 @@ use GuzzleHttp\Client;
 
 class RippleOracle implements OracleInterface
 {
+    /**
+     * @var Client
+     */
     private Client $client;
 
     /**

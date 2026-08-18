@@ -15,24 +15,45 @@ use Magento\Sales\Model\Order\Payment;
 
 class OrderPaymentService
 {
+    /**
+     * @var SystemConfig
+     */
     protected SystemConfig $configHelper;
 
+    /**
+     * @var OrderRepositoryInterface
+     */
     protected OrderRepositoryInterface $orderRepository;
 
+    /**
+     * @var CryptoPriceProviderInterface
+     */
     protected CryptoPriceProviderInterface $priceFinder;
 
+    /**
+     * @var XrplTxService
+     */
     protected XrplTxService $xrplTxService;
 
+    /**
+     * @var OrderFactory
+     */
     protected OrderFactory $orderFactory;
 
+    /**
+     * @param SystemConfig $configHelper
+     * @param OrderRepositoryInterface $orderRepository
+     * @param CryptoPriceProviderInterface $priceFinder
+     * @param XrplTxService $xrplTxService
+     * @param OrderFactory $orderFactory
+     */
     public function __construct(
         SystemConfig                 $configHelper,
         OrderRepositoryInterface     $orderRepository,
         CryptoPriceProviderInterface $priceFinder,
         XrplTxService                $xrplTxService,
         OrderFactory                 $orderFactory
-    )
-    {
+    ) {
         $this->configHelper = $configHelper;
         $this->orderRepository = $orderRepository;
         $this->priceFinder = $priceFinder;
@@ -40,16 +61,34 @@ class OrderPaymentService
         $this->orderFactory = $orderFactory;
     }
 
+    /**
+     * Get an order by its entity ID
+     *
+     * @param int $orderId
+     * @return OrderInterface
+     */
     public function getOrderById(int $orderId): OrderInterface
     {
         return $this->orderRepository->get($orderId);
     }
 
+    /**
+     * Get an order by its increment ID
+     *
+     * @param string $orderNumber
+     * @return OrderInterface
+     */
     public function getOrderByOrderNumber(string $orderNumber): OrderInterface
     {
         return $this->orderFactory->create()->loadByIncrementId($orderNumber);
     }
 
+    /**
+     * Get the current XRP price and requested amount for the order
+     *
+     * @param OrderInterface $order
+     * @return array
+     */
     public function getCurrentPriceForOrder(OrderInterface $order): array
     {
         $baseAsset = XrpPriceProvider::CRYPTO_CODE;
@@ -65,6 +104,12 @@ class OrderPaymentService
         ];
     }
 
+    /**
+     * Assign the destination account/tag and payment-method-specific price data to the order's payment
+     *
+     * @param OrderInterface $order
+     * @return void
+     */
     public function prepareOrderPaymentForXrpl(OrderInterface $order): void
     {
         $payment = $order->getPayment();
@@ -97,6 +142,12 @@ class OrderPaymentService
         };
     }
 
+    /**
+     * Assign XRP price data to the order's payment
+     *
+     * @param OrderInterface $order
+     * @return void
+     */
     private function prepareXrpPayment(OrderInterface $order): void
     {
         $additionalData = [
@@ -107,6 +158,12 @@ class OrderPaymentService
         $this->addAdditionalDataToPayment($order, $additionalData);
     }
 
+    /**
+     * Assign token payment data to the order's payment
+     *
+     * @param OrderInterface $order
+     * @return void
+     */
     private function prepareTokenPayment(OrderInterface $order): void
     {
         $issuer = $this->configHelper->getTokenIssuer();
@@ -123,6 +180,12 @@ class OrderPaymentService
         $this->addAdditionalDataToPayment($order, $additionalData);
     }
 
+    /**
+     * Sync XRPL account transactions and match the settling transaction to the order, if found
+     *
+     * @param OrderInterface $order
+     * @return array|null
+     */
     public function syncOrderTransactionWithXrpl(OrderInterface $order): ?array
     {
         $customFields = $order->getPayment()->getAdditionalData();
@@ -159,6 +222,13 @@ class OrderPaymentService
         return null;
     }
 
+    /**
+     * Merge the given data into the order payment's additional_data under the "xrpl" key
+     *
+     * @param OrderInterface $order
+     * @param array $xrplAdditionalData
+     * @return void
+     */
     private function addAdditionalDataToPayment(OrderInterface $order, array $xrplAdditionalData): void
     {
         $rawAdditionalData = $order->getPayment()->getAdditionalData();
@@ -175,8 +245,12 @@ class OrderPaymentService
     }
 
     /**
-     * Normalises an XRPL "delivered_amount" (a drops string for XRP, or an issued
-     * currency object for stablecoins) to a human-readable decimal string.
+     * Normalises an XRPL "delivered_amount" to a human-readable decimal string
+     *
+     * Accepts either a drops string (XRP) or an issued currency object (stablecoins).
+     *
+     * @param mixed $deliveredAmount
+     * @return string
      */
     private function formatDeliveredAmount(mixed $deliveredAmount): string
     {

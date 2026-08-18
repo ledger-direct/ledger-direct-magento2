@@ -7,6 +7,9 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class CoingeckoOracle implements OracleInterface
 {
+    /**
+     * @var Client
+     */
     private Client $client;
 
     /**
@@ -22,7 +25,8 @@ class CoingeckoOracle implements OracleInterface
         $code1 = $this->mapCurrencyCode($code1);
         $code2 = $this->mapCurrencyCode($code2);
 
-        $url = 'https://api.coingecko.com/api/v3/simple/price?ids=' . strtolower($code1) . '&vs_currencies=' . strtolower($code2);
+        $url = 'https://api.coingecko.com/api/v3/simple/price?ids=' . strtolower($code1)
+            . '&vs_currencies=' . strtolower($code2);
 
         $response = $this->client->get($url);
         $data = json_decode((string) $response->getBody(), true);

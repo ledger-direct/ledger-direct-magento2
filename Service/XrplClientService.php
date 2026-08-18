@@ -17,10 +17,20 @@ class XrplClientService
 
     private const MAINNET_JSON_RPC_URL = 'https://xrplcluster.com/';
 
+    /**
+     * @var SystemConfig
+     */
     private SystemConfig $configHelper;
 
+    /**
+     * @var Curl
+     */
     private Curl $curl;
 
+    /**
+     * @param SystemConfig $configHelper
+     * @param Curl $curl
+     */
     public function __construct(SystemConfig $configHelper, Curl $curl)
     {
         $this->configHelper = $configHelper;
@@ -30,6 +40,7 @@ class XrplClientService
     /**
      * Fetches a single transaction by its hash.
      *
+     * @param string $txHash
      * @return array The JSON-RPC "result" payload, or an empty array on error.
      */
     public function fetchTransaction(string $txHash): array
@@ -49,6 +60,8 @@ class XrplClientService
      * the node's available range (e.g. after a testnet reset), which makes the whole
      * query fail. De-duplication happens on storage.
      *
+     * @param string $address
+     * @param int|null $lastLedgerIndex
      * @return array The list of transaction envelopes, or an empty array on error.
      */
     public function fetchAccountTransactions(string $address, ?int $lastLedgerIndex = null): array
@@ -67,6 +80,8 @@ class XrplClientService
     }
 
     /**
+     * Get the active network name and its JSON-RPC endpoint
+     *
      * @return array{network: string, jsonRpcUrl: string}
      */
     public function getNetwork(): array
@@ -81,6 +96,10 @@ class XrplClientService
     /**
      * Performs a JSON-RPC request against the active network and returns the
      * "result" payload, or null on any transport / JSON / XRPL error.
+     *
+     * @param string $method
+     * @param array $params
+     * @return array|null
      */
     private function jsonRpc(string $method, array $params): ?array
     {

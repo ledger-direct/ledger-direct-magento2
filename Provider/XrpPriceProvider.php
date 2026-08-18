@@ -7,6 +7,7 @@ use GuzzleHttp\Client;
 use Hardcastle\LedgerDirect\Provider\Oracle\BinanceOracle;
 use Hardcastle\LedgerDirect\Provider\Oracle\CoingeckoOracle;
 use Hardcastle\LedgerDirect\Provider\Oracle\KrakenOracle;
+use Psr\Log\LoggerInterface;
 
 class XrpPriceProvider implements CryptoPriceProviderInterface
 {
@@ -14,11 +15,24 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
 
     public const DEFAULT_ALLOWED_DIVERGENCE = 0.05;
 
+    /**
+     * @var Client
+     */
     private Client $client;
 
-    public function __construct(Client $client)
+    /**
+     * @var LoggerInterface
+     */
+    private LoggerInterface $logger;
+
+    /**
+     * @param Client $client
+     * @param LoggerInterface $logger
+     */
+    public function __construct(Client $client, LoggerInterface $logger)
     {
         $this->client = $client;
+        $this->logger = $logger;
     }
 
     /**
@@ -45,11 +59,13 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
                     $oracleResults[] = $price;
                 }
             } catch (Exception $exception) {
-                // TODO: Log error
+                $this->logger->warning(
+                    sprintf('XRP price oracle %s failed: %s', get_class($oracle), $exception->getMessage())
+                );
             }
         }
 
-        if(count($oracleResults) === 0) {
+        if (count($oracleResults) === 0) {
             return false;
         }
 
@@ -60,7 +76,7 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
             }
         }
 
-        if(count($filteredPrices) > 0) {
+        if (count($filteredPrices) > 0) {
             return array_sum($filteredPrices) / count($filteredPrices);
         }
 

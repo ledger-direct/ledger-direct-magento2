@@ -7,9 +7,15 @@ use Magento\Framework\View\Element\Block\ArgumentInterface;
 
 class PaymentInfo implements ArgumentInterface
 {
+    /**
+     * @var DataObject
+     */
     private DataObject $internalDataObject;
 
-    function __construct()
+    /**
+     * Populate the view model with static sample payment data
+     */
+    public function __construct()
     {
         $this->internalDataObject = new DataObject([
             'orderId' => '1',
@@ -26,6 +32,12 @@ class PaymentInfo implements ArgumentInterface
             'showNoTransactionFoundError' => true,
         ]);
     }
+
+    /**
+     * Get the sample payment info data object
+     *
+     * @return DataObject
+     */
     public function getPaymentInfo(): DataObject
     {
         return $this->internalDataObject;

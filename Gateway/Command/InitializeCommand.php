@@ -12,6 +12,9 @@ use Magento\Sales\Model\Order;
  */
 class InitializeCommand implements CommandInterface
 {
+    /**
+     * @inheritdoc
+     */
     public function execute(array $commandSubject)
     {
         /** @var PaymentDataObjectInterface $paymentDataObject */

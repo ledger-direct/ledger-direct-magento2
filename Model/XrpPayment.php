@@ -7,33 +7,72 @@ use Magento\Framework\Model\AbstractModel;
 
 class XrpPayment extends AbstractModel implements XrpPaymentInterface
 {
+    /**
+     * @var int
+     */
     private int $orderId;
 
+    /**
+     * @var string
+     */
     private string $orderNumber;
 
+    /**
+     * @var string
+     */
     private string $currencyCode;
 
+    /**
+     * @var string
+     */
     private string $currencySymbol;
 
+    /**
+     * @var float
+     */
     private float $price;
 
+    /**
+     * @var string
+     */
     private string $network;
 
+    /**
+     * @var string
+     */
     private string $destinationAccount;
 
+    /**
+     * @var int
+     */
     private int $destinationTag;
 
+    /**
+     * @var float
+     */
     private float $xrpAmount;
 
+    /**
+     * @var float
+     */
     private float $exchangeRate;
 
+    /**
+     * @var string|null
+     */
     private ?string $txHash;
 
+    /**
+     * @inheritDoc
+     */
     public function getOrderId(): int
     {
         return $this->orderId;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setOrderId(int $orderId): self
     {
         $this->orderId = $orderId;
@@ -41,11 +80,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getOrderNumber(): string
     {
         return $this->orderNumber;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setOrderNumber(string $orderNumber): self
     {
         $this->orderNumber = $orderNumber;
@@ -53,11 +98,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getCurrencyCode(): string
     {
         return $this->currencyCode;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setCurrencyCode(string $currencyCode): self
     {
         $this->currencyCode = $currencyCode;
@@ -65,11 +116,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getCurrencySymbol(): string
     {
         return $this->currencySymbol;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setCurrencySymbol(string $currencySymbol): self
     {
         $this->currencySymbol = $currencySymbol;
@@ -77,11 +134,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getPrice(): float
     {
         return $this->price;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setPrice(float $price): self
     {
         $this->price = $price;
@@ -89,11 +152,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getNetwork(): string
     {
         return $this->network;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setNetwork(string $network): self
     {
         $this->network = $network;
@@ -101,11 +170,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getDestinationAccount(): string
     {
         return $this->destinationAccount;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setDestinationAccount(string $destinationAccount): self
     {
         $this->destinationAccount = $destinationAccount;
@@ -113,11 +188,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getDestinationTag(): int
     {
         return $this->destinationTag;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setDestinationTag(int $destinationTag): self
     {
         $this->destinationTag = $destinationTag;
@@ -125,11 +206,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getXrpAmount(): float
     {
         return $this->xrpAmount;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setXrpAmount(float $xrpAmount): self
     {
         $this->xrpAmount = $xrpAmount;
@@ -137,11 +224,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getExchangeRate(): float
     {
         return $this->exchangeRate;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setExchangeRate(float $exchangeRate): self
     {
         $this->exchangeRate = $exchangeRate;
@@ -149,11 +242,17 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getTxHash(): string|null
     {
         return $this->txHash;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function setTxHash(string|null $txHash): self
     {
         $this->txHash = $txHash;

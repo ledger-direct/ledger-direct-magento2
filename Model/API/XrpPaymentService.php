@@ -15,20 +15,38 @@ use Symfony\Component\Intl\Currencies;
 
 class XrpPaymentService implements XrpPaymentServiceInterface
 {
+    /**
+     * @var SystemConfig
+     */
     protected SystemConfig $configHelper;
 
+    /**
+     * @var OrderPaymentService
+     */
     protected OrderPaymentService $orderPaymentService;
 
+    /**
+     * @var XrpPaymentInterfaceFactory
+     */
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
+    /**
+     * @var LoggerInterface
+     */
     protected LoggerInterface $logger;
 
+    /**
+     * @param SystemConfig $configHelper
+     * @param OrderPaymentService $orderPaymentService
+     * @param XrpPaymentInterfaceFactory $xrpPaymentFactory
+     * @param LoggerInterface $logger
+     */
     public function __construct(
         SystemConfig $configHelper,
         OrderPaymentService $orderPaymentService,
         XrpPaymentInterfaceFactory $xrpPaymentFactory,
         LoggerInterface $logger
-    ){
+    ) {
         $this->configHelper = $configHelper;
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
@@ -37,6 +55,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     /**
      * @inheritdoc
+     *
      * @throws Exception
      */
     public function getPaymentDetailsByOrderId(int $orderId): XrpPaymentInterface
@@ -48,6 +67,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     /**
      * @inheritdoc
+     *
      * @throws Exception
      */
     public function getPaymentDetailsByOrderNumber(string $orderNumber): XrpPaymentInterface
@@ -57,7 +77,9 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         return $this->getPaymentDetails($order);
     }
 
-    /**+
+    /**
+     * Build the XRP payment details data object for the given order
+     *
      * @param OrderInterface $order
      * @return XrpPaymentInterface
      * @throws WebapiException
@@ -75,7 +97,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $network = $xrplPaymentData['network'];
         $destinationAccount = $this->configHelper->getDestinationAccount();
         $destinationTag = $xrplPaymentData['destination_tag'];
-        $xrpAmount = round($total/$exchangeRate,2);
+        $xrpAmount = round($total/$exchangeRate, 2);
         $txHash = $xrplPaymentData['hash'] ?? null;
 
         /** @var XrpPaymentInterface $xrpPayment*/

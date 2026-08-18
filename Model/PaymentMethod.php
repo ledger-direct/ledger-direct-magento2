@@ -14,4 +14,3 @@ use Magento\Payment\Model\Method\Adapter;
 class PaymentMethod extends Adapter
 {
 }
-

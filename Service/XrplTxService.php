@@ -15,28 +15,50 @@ class XrplTxService
 
     public const DESTINATION_TAG_RANGE_MAX = 2140000000;
 
+    /**
+     * @var Data
+     */
     protected Data $data;
 
+    /**
+     * @var XrplClientService
+     */
     protected XrplClientService $clientService;
 
+    /**
+     * @var XrplTxRepositoryInterface
+     */
     protected XrplTxRepositoryInterface $xrplTxRepository;
 
+    /**
+     * @var ResourceConnection
+     */
     private ResourceConnection $connection;
 
+    /**
+     * @param Data $data
+     * @param XrplClientService $clientService
+     * @param XrplTxRepositoryInterface $xrplTxRepository
+     * @param ResourceConnection $connection
+     */
     public function __construct(
         Data               $data,
         XrplClientService  $clientService,
         XrplTxRepositoryInterface $xrplTxRepository,
         ResourceConnection $connection
-    )
-    {
+    ) {
         $this->data = $data;
         $this->clientService = $clientService;
         $this->xrplTxRepository = $xrplTxRepository;
         $this->connection = $connection;
     }
 
-
+    /**
+     * Generate a destination tag not already reserved for the given account
+     *
+     * @param string $accountAddress
+     * @return int
+     */
     public function generateDestinationTag(string $accountAddress): int
     {
         // https://xrpl.org/source-and-destination-tags.html
@@ -52,15 +74,19 @@ class XrplTxService
                 ->where('destination_tag = ?', $destinationTag);
 
             if (!$this->connection->getConnection()->fetchOne($select)) {
-                $this->connection->getConnection()->insert('xrpl_destination_tag', ['destination_tag' => $destinationTag]);
+                $this->connection->getConnection()->insert(
+                    'xrpl_destination_tag',
+                    ['destination_tag' => $destinationTag]
+                );
 
                 return $destinationTag;
             }
         }
     }
 
-
     /**
+     * Find a stored transaction matching the destination account and tag
+     *
      * @param string $destination
      * @param int $destinationTag
      * @return array|null
@@ -82,6 +108,8 @@ class XrplTxService
     }
 
     /**
+     * Fetch a single transaction from the XRPL node by its hash
+     *
      * @param string $txHash
      * @return array
      * @throws GuzzleException
@@ -92,6 +120,8 @@ class XrplTxService
     }
 
     /**
+     * Fetch recent transactions for an XRPL account
+     *
      * @param string $address
      * @param int|null $lastLedgerIndex
      * @return array
@@ -103,7 +133,10 @@ class XrplTxService
     }
 
     /**
+     * Fetch and store validated Payment transactions for an XRPL account, skipping duplicates
+     *
      * @param string $address
+     * @return void
      * @throws GuzzleException|LocalizedException
      */
     public function syncAccountTransactions(string $address): void
@@ -131,6 +164,12 @@ class XrplTxService
         }
     }
 
+    /**
+     * Check whether a transaction with the given hash is already stored
+     *
+     * @param string $hash
+     * @return bool
+     */
     private function transactionExistsByHash(string $hash): bool
     {
         $connection = $this->connection->getConnection();

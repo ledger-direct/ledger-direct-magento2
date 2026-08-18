@@ -7,6 +7,11 @@ use Magento\Framework\View\Element\Block\ArgumentInterface;
 
 class XrplTx implements ArgumentInterface
 {
+    /**
+     * Get the list of XRPL transactions
+     *
+     * @return DataObject[]
+     */
     public function getList(): array
     {
         return [
