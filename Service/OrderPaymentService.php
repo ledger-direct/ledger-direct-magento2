@@ -52,10 +52,14 @@ class OrderPaymentService
 
     public function getCurrentPriceForOrder(OrderInterface $order): array
     {
-        $xrpUnitPrice = $this->priceFinder->getCurrentExchangeRate($order->getOrderCurrencyCode());
+        $baseAsset = XrpPriceProvider::CRYPTO_CODE;
+        $quoteCurrency = $order->getOrderCurrencyCode();
+        $xrpUnitPrice = $this->priceFinder->getCurrentExchangeRate($quoteCurrency);
 
         return [
-            'pairing' => XrpPriceProvider::CRYPTO_CODE . '/' . $order->getOrderCurrencyCode(),
+            'base_asset' => $baseAsset,
+            'quote_currency' => $quoteCurrency,
+            'pairing' => $baseAsset . '/' . $quoteCurrency,
             'exchange_rate' => $xrpUnitPrice,
             'amount_requested' => $order->getTotalDue() / $xrpUnitPrice
         ];
