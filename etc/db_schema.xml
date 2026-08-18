@@ -14,6 +14,9 @@
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="id"/>
         </constraint>
+        <constraint xsi:type="unique" referenceId="LEDGERDIRECT_XRPL_TX_HASH">
+            <column name="hash"/>
+        </constraint>
     </table>
     <table name="xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="destination_tag" unsigned="true" nullable="false" identity="true" comment="" />
