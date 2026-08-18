@@ -59,7 +59,7 @@ class OrderPaymentServiceTest extends TestCase
 
         $this->priceFinder->expects($this->once())
             ->method('getCurrentExchangeRate')
-            ->with('USD')
+            ->with('XRP', 'USD')
             ->willReturn(0.5);
 
         $result = $this->service->getCurrentPriceForOrder($order);
@@ -134,6 +134,53 @@ class OrderPaymentServiceTest extends TestCase
         $result = $this->service->syncOrderTransactionWithXrpl($order);
 
         $this->assertSame($tx, $result);
+    }
+
+    public function testPrepareOrderPaymentForXrplSetsTokenMetadataForTokenPayment()
+    {
+        /** @var OrderPaymentInterface|MockObject $payment */
+        $payment = $this->createMock(OrderPaymentInterface::class);
+        $payment->method('getAdditionalData')->willReturn('');
+        $payment->method('getMethod')->willReturn('xrpl_token_payment');
+
+        $capturedPayloads = [];
+        $payment->method('setAdditionalData')->willReturnCallback(function (string $json) use (&$capturedPayloads) {
+            $capturedPayloads[] = json_decode($json, true);
+        });
+
+        /** @var OrderInterface|MockObject $order */
+        $order = $this->createMock(OrderInterface::class);
+        $order->method('getPayment')->willReturn($payment);
+        $order->method('getOrderCurrencyCode')->willReturn('USD');
+        $order->method('getTotalDue')->willReturn(150.0);
+
+        $this->configHelper->method('isTest')->willReturn(true);
+        $this->configHelper->method('getDestinationAccount')->willReturn('rMerchantDest');
+        $this->configHelper->method('getTokenIssuer')->willReturn('rIssuerAccount');
+        $this->configHelper->method('getTokenName')->willReturn('USDC');
+
+        $this->xrplTxService->method('generateDestinationTag')->willReturn(999);
+
+        // A real (non-1:1) rate proves the amount is actually converted, not just passed through.
+        $this->priceFinder->expects($this->once())
+            ->method('getCurrentExchangeRate')
+            ->with('USDC', 'USD')
+            ->willReturn(0.99);
+
+        $this->orderRepository->expects($this->exactly(2))->method('save');
+
+        $this->service->prepareOrderPaymentForXrpl($order);
+
+        $this->assertCount(2, $capturedPayloads);
+        $tokenPayload = $capturedPayloads[1]['xrpl'];
+        $this->assertSame('USDC', $tokenPayload['currency']);
+        $this->assertSame('USDC', $tokenPayload['base_asset']);
+        $this->assertSame('USD', $tokenPayload['quote_currency']);
+        $this->assertSame('USDC/USD', $tokenPayload['pairing']);
+        $this->assertEquals(0.99, $tokenPayload['exchange_rate']);
+        // 150 / 0.99 = 151.515151515... truncated to USDC's 6 decimals.
+        $this->assertSame('151.515151', $tokenPayload['value']);
+        $this->assertSame('rIssuerAccount', $tokenPayload['issuer']);
     }
 
     public function testSyncOrderTransactionWithXrplReturnsNullWhenNoMatchFound()

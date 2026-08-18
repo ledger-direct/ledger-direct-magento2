@@ -9,10 +9,8 @@ use Hardcastle\LedgerDirect\Provider\Oracle\CoingeckoOracle;
 use Hardcastle\LedgerDirect\Provider\Oracle\KrakenOracle;
 use Psr\Log\LoggerInterface;
 
-class XrpPriceProvider implements CryptoPriceProviderInterface
+class CryptoPriceProvider implements CryptoPriceProviderInterface
 {
-    public const CRYPTO_CODE = 'XRP';
-
     public const DEFAULT_ALLOWED_DIVERGENCE = 0.05;
 
     /**
@@ -36,12 +34,13 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
     }
 
     /**
-     * Gets the current XRP price by querying averaging multiple oracles
+     * Gets the current price of the given base asset, quoted in the given currency
      *
-     * @param string $code
+     * @param string $baseAsset
+     * @param string $quoteCurrency
      * @return float|false
      */
-    public function getCurrentExchangeRate(string $code): float|false
+    public function getCurrentExchangeRate(string $baseAsset, string $quoteCurrency): float|false
     {
         $oracleResults = [];
         $filteredPrices = [];
@@ -54,13 +53,19 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
 
         foreach ($oracles as $oracle) {
             try {
-                $price = $oracle->prepare($this->client)->getCurrentPriceForPair(self::CRYPTO_CODE, $code);
+                $price = $oracle->prepare($this->client)->getCurrentPriceForPair($baseAsset, $quoteCurrency);
                 if ($price > 0.0) {
                     $oracleResults[] = $price;
                 }
             } catch (Exception $exception) {
                 $this->logger->warning(
-                    sprintf('XRP price oracle %s failed: %s', get_class($oracle), $exception->getMessage())
+                    sprintf(
+                        '%s/%s price oracle %s failed: %s',
+                        $baseAsset,
+                        $quoteCurrency,
+                        get_class($oracle),
+                        $exception->getMessage()
+                    )
                 );
             }
         }
@@ -84,17 +89,13 @@ class XrpPriceProvider implements CryptoPriceProviderInterface
     }
 
     /**
-     * Checks if the given XRP price is plausible.
+     * Checks if the given price is plausible.
      *
      * @param float $price
      * @return bool
      */
     public function checkPricePlausibility(float $price): bool
     {
-        if ($price > 0.0) {
-            return true;
-        }
-
-        return false ;
+        return $price > 0.0;
     }
 }

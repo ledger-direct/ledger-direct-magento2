@@ -4,7 +4,6 @@ namespace Hardcastle\LedgerDirect\Service;
 
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
-use Hardcastle\LedgerDirect\Provider\XrpPriceProvider;
 use Hardcastle\LedgerDirect\Service\XrplTxService;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
@@ -15,6 +14,23 @@ use Magento\Sales\Model\Order\Payment;
 
 class OrderPaymentService
 {
+    private const XRP_ASSET_CODE = 'XRP';
+
+    /**
+     * Fallback precision (decimal places) for the requested token amount when the configured
+     * token isn't in TOKEN_DECIMALS. Matches the common stablecoin convention (e.g. USDC).
+     */
+    private const DEFAULT_TOKEN_DECIMALS = 6;
+
+    /**
+     * Decimal precision per known XRPL token, for formatting the requested payment amount.
+     */
+    private const TOKEN_DECIMALS = [
+        'RLUSD' => 6,
+        'USDC' => 6,
+        'EURC' => 6,
+    ];
+
     /**
      * @var SystemConfig
      */
@@ -91,9 +107,9 @@ class OrderPaymentService
      */
     public function getCurrentPriceForOrder(OrderInterface $order): array
     {
-        $baseAsset = XrpPriceProvider::CRYPTO_CODE;
+        $baseAsset = self::XRP_ASSET_CODE;
         $quoteCurrency = $order->getOrderCurrencyCode();
-        $xrpUnitPrice = $this->priceFinder->getCurrentExchangeRate($quoteCurrency);
+        $xrpUnitPrice = $this->priceFinder->getCurrentExchangeRate($baseAsset, $quoteCurrency);
 
         return [
             'base_asset' => $baseAsset,
@@ -161,23 +177,49 @@ class OrderPaymentService
     /**
      * Assign token payment data to the order's payment
      *
+     * Queries the token's actual market price in the order's currency (rather than assuming
+     * a 1:1 peg), so a de-pegged stablecoin or a store/token currency mismatch (e.g. a EUR
+     * store with a USD-pegged token) is still converted correctly - same formula as the XRP
+     * path: amount = order total / exchange rate.
+     *
      * @param OrderInterface $order
      * @return void
      */
     private function prepareTokenPayment(OrderInterface $order): void
     {
         $issuer = $this->configHelper->getTokenIssuer();
-        $tokenName = $order->getOrderCurrencyCode();
+        $baseAsset = $this->configHelper->getTokenName();
+        $quoteCurrency = $order->getOrderCurrencyCode();
+        $exchangeRate = $this->priceFinder->getCurrentExchangeRate($baseAsset, $quoteCurrency);
+
         $additionalData = [
             'xrpl' => [
                 'type' => 'xrpl_token_payment',
                 'issuer' => $issuer,
-                'currency' => $tokenName,
-                'value' => $order->getTotalDue(),
+                'currency' => $baseAsset,
+                'base_asset' => $baseAsset,
+                'quote_currency' => $quoteCurrency,
+                'pairing' => $baseAsset . '/' . $quoteCurrency,
+                'exchange_rate' => $exchangeRate,
+                'value' => $this->formatTokenAmount($baseAsset, $order->getTotalDue() / $exchangeRate),
             ]
         ];
 
         $this->addAdditionalDataToPayment($order, $additionalData);
+    }
+
+    /**
+     * Format a requested token amount to that token's decimal precision
+     *
+     * @param string $tokenName
+     * @param float $amount
+     * @return string
+     */
+    private function formatTokenAmount(string $tokenName, float $amount): string
+    {
+        $decimals = self::TOKEN_DECIMALS[$tokenName] ?? self::DEFAULT_TOKEN_DECIMALS;
+
+        return bcdiv((string) $amount, '1', $decimals);
     }
 
     /**

@@ -5,12 +5,13 @@ namespace Hardcastle\LedgerDirect\Provider;
 interface CryptoPriceProviderInterface
 {
     /**
-     * Get the current exchange rate for the given currency code
+     * Get the current price of the given base asset, quoted in the given currency
      *
-     * @param string $code
+     * @param string $baseAsset
+     * @param string $quoteCurrency
      * @return float|false
      */
-    public function getCurrentExchangeRate(string $code): float|false;
+    public function getCurrentExchangeRate(string $baseAsset, string $quoteCurrency): float|false;
 
     /**
      * Check whether the given price is plausible

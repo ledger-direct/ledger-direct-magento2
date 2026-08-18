@@ -76,7 +76,7 @@ class XrplTxService
             if (!$this->connection->getConnection()->fetchOne($select)) {
                 $this->connection->getConnection()->insert(
                     'ledger_direct_xrpl_destination_tag',
-                    ['destination_tag' => $destinationTag]
+                    ['destination_tag' => $destinationTag, 'account' => $accountAddress]
                 );
 
                 return $destinationTag;

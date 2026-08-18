@@ -57,7 +57,7 @@ class XrplPriceLookupCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $iso = $input->getOption('iso');
-        $currentPrice = $this->priceFinder->getCurrentExchangeRate($iso);
+        $currentPrice = $this->priceFinder->getCurrentExchangeRate('XRP', $iso);
         if (!$currentPrice) {
             $output->writeln('Error: XRP price in "' . $iso . '" is not available');
 
