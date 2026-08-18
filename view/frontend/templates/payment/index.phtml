@@ -1,21 +1,13 @@
 <?php
 
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
-use Hardcastle\LedgerDirect\ViewModel\PaymentInfo;
-use Hardcastle\LedgerDirect\ViewModel\XrplTx;
 use Magento\Framework\View\Element\Template;
-use Magento\Framework\App\View;
 
 /** @var Template $block */
+/** @var XrpPaymentInterface $paymentInfo */
 
-/** @var XrplTx $xrplTxVm */
-/** @var PaymentInfo $paymentInfoVm */
-
-$xrplTxVm = $block->getData('xrpl_tx_vm');
 $paymentInfo = $block->getData('payment_info');
-
-$paymentPageTitle = '';
-$type = 'xrp-payment'; //$type = $xrpl_order_meta['type'];
+$type = $paymentInfo->getType();
 
 $ld_get_svg_html = function (string $icon, array $properties = []): string
 {
@@ -44,14 +36,19 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
     return $template->toHtml();
 };
 
-$paymentType = 'XRP';
+$tokenLabels = [
+    'xrp_payment' => 'XRP',
+    'xrpl_rlusd_payment' => 'RLUSD',
+    'xrpl_usdc_payment' => 'USDC',
+];
+$paymentType = $tokenLabels[$type] ?? 'XRP';
 $networkName = $paymentInfo->getNetwork();
 
 ?>
 
 <div class="ld-header">
     <h3>
-        <?php $page_title = 'LedgerDirect - pay with ' . strtoupper($paymentType) . ' directly on XRPL ' .$networkName ; ?>
+        <?php $page_title = 'LedgerDirect - pay with ' . $paymentType . ' directly on XRPL ' . $networkName; ?>
         <?php echo $page_title; ?>
     </h3>
 </div>
@@ -59,18 +56,10 @@ $networkName = $paymentInfo->getNetwork();
 <div class="ld-container" data-xrp-payment-page="true">
     <div class="ld-content">
 
-        <?php if (!empty($paymentPageTitle)) { ?>
-            <div class="ld-header">
-                <h2>
-                    <?php echo $paymentPageTitle; ?>
-                </h2>
-            </div>
-        <?php } ?>
-
         <div class="ld-card">
 
             <div class="ld-card-left">
-                <?php if ($type === 'xrp-payment') { ?>
+                <?php if ($type === 'xrp_payment') { ?>
                     <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo->getXrpAmount()) ?></p>
                     <input id="xrp-amount"
                            type="text"
@@ -79,8 +68,8 @@ $networkName = $paymentInfo->getNetwork();
                            readonly
                            style="display: none;"
                     />
-                <?php } elseif ($type === 'token-payment') { ?>
-                    <p><?php echo sprintf(__('sendTokenMessage', 'ledger-direct'), $paymentInfo->getTokenAmount); ?></p>
+                <?php } else { ?>
+                    <p><?= __('LedgerDirect.paymentPage.sendTokenMessage', $paymentInfo->getTokenAmount(), $paymentType) ?></p>
                     <input id="token-amount"
                            type="text"
                            name="token-amount"
@@ -90,7 +79,7 @@ $networkName = $paymentInfo->getNetwork();
                     />
                     <input id="issuer"
                            type="text"
-                           name="token-amount"
+                           name="issuer"
                            value="<?php echo $paymentInfo->getIssuer(); ?>"
                            readonly
                            style="display: none;"
@@ -98,7 +87,7 @@ $networkName = $paymentInfo->getNetwork();
                     <input id="currency"
                            type="text"
                            name="currency"
-                           value="<?php echo $paymentInfo->getCurrencyCode(); ?>"
+                           value="<?php echo $paymentInfo->getCurrency(); ?>"
                            readonly
                            style="display: none;"
                     />
@@ -163,17 +152,19 @@ $networkName = $paymentInfo->getNetwork();
             </div>
 
             <div class="ld-card-right">
-                <?php if ($type === 'xrp-payment') { ?>
+                <?php if ($type === 'xrp_payment') { ?>
                     <div class="ld-sum"><?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencySymbol(); ?></div>
                     <span><?php echo __('LedgerDirect.paymentPage.orderNumber'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getXrpAmount(); ?> XRP</span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.exchangeRate'); ?>: <?php echo $paymentInfo->getExchangeRate(); ?> XRP / <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.network'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
-                <?php } elseif ($type === 'token-payment') { ?>
-                    <div class="ld-sum">{{ price|currency }}</div>
+                <?php } else { ?>
+                    <div class="ld-sum"><?php echo $paymentInfo->getTokenAmount(); ?> <?php echo $paymentType; ?></div>
                     <span><?php echo __('LedgerDirect.paymentPage.orderNumber'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getTokenAmount(); ?> <?php echo $paymentType; ?></span><br/>
+                    <span><?php echo __('LedgerDirect.paymentPage.exchangeRate'); ?>: <?php echo $paymentInfo->getExchangeRate(); ?> <?php echo $paymentType; ?> / <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.network'); ?>: <?php echo $paymentInfo->getNetwork(); ?></span><br/>
                 <?php } ?>
                 <img src="<?= $block->getViewFileUrl('Hardcastle_LedgerDirect::images/astronaut.png') ?>" class="ld-astronaut" alt=""/>

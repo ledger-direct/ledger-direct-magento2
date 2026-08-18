@@ -95,9 +95,9 @@ class Index implements HttpGetActionInterface
         }
 
         $paymentMethod = $order->getPayment()->getMethod();
-        if ($paymentMethod !== 'xrp_payment' && $paymentMethod !== 'xrpl_token_payment') {
+        $supportedMethods = ['xrp_payment', 'xrpl_rlusd_payment', 'xrpl_usdc_payment'];
+        if (!in_array($paymentMethod, $supportedMethods, true)) {
             $redirect = $this->redirectFactory->create();
-            // throw new \Error('Endpoint is designed for XRP only');
             return $redirect->setPath('customer/account/');
         }
 

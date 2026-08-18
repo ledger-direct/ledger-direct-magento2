@@ -93,17 +93,18 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $total = $order->getTotalDue();
         $currencyCode = $order->getOrderCurrencyCode();
         $currencySymbol = Currencies::getSymbol($currencyCode);
+        $type = $xrplPaymentData['type'];
         $exchangeRate = $xrplPaymentData['exchange_rate'];
         $network = $xrplPaymentData['network'];
         $destinationAccount = $this->configHelper->getDestinationAccount();
         $destinationTag = $xrplPaymentData['destination_tag'];
-        $xrpAmount = round($total/$exchangeRate, 2);
         $txHash = $xrplPaymentData['hash'] ?? null;
 
-        /** @var XrpPaymentInterface $xrpPayment*/
+        /** @var XrpPaymentInterface $xrpPaymentDetails */
         $xrpPaymentDetails = $this->xrpPaymentFactory->create();
 
         $xrpPaymentDetails
+            ->setType($type)
             ->setOrderId((int) $order->getEntityId())
             ->setOrderNumber($order->getIncrementId())
             ->setCurrencyCode($currencyCode)
@@ -112,9 +113,21 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setNetwork($network)
             ->setDestinationAccount($destinationAccount)
             ->setDestinationTag($destinationTag)
-            ->setXrpAmount($xrpAmount)
             ->setExchangeRate($exchangeRate)
             ->setTxHash($txHash);
+
+        if ($type === 'xrp_payment') {
+            $xrpPaymentDetails->setXrpAmount(round($total / $exchangeRate, 2));
+        } else {
+            // xrpl_rlusd_payment / xrpl_usdc_payment: amount_requested is the full
+            // XRPL issued-currency amount object built by StablecoinRegistry.
+            $amountRequested = $xrplPaymentData['amount_requested'];
+            $xrpPaymentDetails
+                ->setXrpAmount(0.0)
+                ->setTokenAmount((string) $amountRequested['value'])
+                ->setCurrency((string) $amountRequested['currency'])
+                ->setIssuer((string) $amountRequested['issuer']);
+        }
 
         return $xrpPaymentDetails;
     }

@@ -5,6 +5,21 @@ namespace Hardcastle\LedgerDirect\Api\Data;
 interface XrpPaymentInterface
 {
     /**
+     * Get the payment method type: xrp_payment, xrpl_rlusd_payment, or xrpl_usdc_payment
+     *
+     * @return string
+     */
+    public function getType(): string;
+
+    /**
+     * Set the payment method type
+     *
+     * @param string $type
+     * @return self
+     */
+    public function setType(string $type): self;
+
+    /**
      * Get the order entity ID
      *
      * @return int
@@ -164,8 +179,53 @@ interface XrpPaymentInterface
     /**
      * Set the settling transaction hash
      *
-     * @param string $txHash
+     * @param string|null $txHash
      * @return self
      */
-    public function setTxHash(string $txHash): self;
+    public function setTxHash(?string $txHash): self;
+
+    /**
+     * Get the amount of the stablecoin requested (RLUSD/USDC payments only)
+     *
+     * @return string|null
+     */
+    public function getTokenAmount(): ?string;
+
+    /**
+     * Set the amount of the stablecoin requested
+     *
+     * @param string|null $tokenAmount
+     * @return self
+     */
+    public function setTokenAmount(?string $tokenAmount): self;
+
+    /**
+     * Get the XRPL on-ledger currency code of the requested stablecoin (RLUSD/USDC payments only)
+     *
+     * @return string|null
+     */
+    public function getCurrency(): ?string;
+
+    /**
+     * Set the XRPL on-ledger currency code of the requested stablecoin
+     *
+     * @param string|null $currency
+     * @return self
+     */
+    public function setCurrency(?string $currency): self;
+
+    /**
+     * Get the XRPL issuer account of the requested stablecoin (RLUSD/USDC payments only)
+     *
+     * @return string|null
+     */
+    public function getIssuer(): ?string;
+
+    /**
+     * Set the XRPL issuer account of the requested stablecoin
+     *
+     * @param string|null $issuer
+     * @return self
+     */
+    public function setIssuer(?string $issuer): self;
 }

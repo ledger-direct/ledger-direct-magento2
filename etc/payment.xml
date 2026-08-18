@@ -4,7 +4,10 @@
         <method name="xrp_payment">
             <allow_multiple_address>1</allow_multiple_address>
         </method>
-        <method name="xrpl_token_payment">
+        <method name="xrpl_rlusd_payment">
+            <allow_multiple_address>1</allow_multiple_address>
+        </method>
+        <method name="xrpl_usdc_payment">
             <allow_multiple_address>1</allow_multiple_address>
         </method>
     </methods>

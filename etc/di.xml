@@ -34,12 +34,22 @@
         </arguments>
     </virtualType>
 
-    <virtualType name="Hardcastle\LedgerDirect\Model\PaymentMethod\XrplTokenFacade" type="Magento\Payment\Model\Method\Adapter">
+    <virtualType name="Hardcastle\LedgerDirect\Model\PaymentMethod\XrplRlusdFacade" type="Magento\Payment\Model\Method\Adapter">
         <arguments>
-            <argument name="code" xsi:type="string">xrpl_token_payment</argument>
+            <argument name="code" xsi:type="string">xrpl_rlusd_payment</argument>
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
             <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
-            <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplTokenValueHandlerPool</argument>
+            <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdValueHandlerPool</argument>
+            <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="Hardcastle\LedgerDirect\Model\PaymentMethod\XrplUsdcFacade" type="Magento\Payment\Model\Method\Adapter">
+        <arguments>
+            <argument name="code" xsi:type="string">xrpl_usdc_payment</argument>
+            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
+            <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
+            <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcValueHandlerPool</argument>
             <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
         </arguments>
     </virtualType>
@@ -72,20 +82,38 @@
         </arguments>
     </virtualType>
 
-    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplTokenConfig" type="Magento\Payment\Gateway\Config\Config">
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfig" type="Magento\Payment\Gateway\Config\Config">
         <arguments>
-            <argument name="methodCode" xsi:type="string">xrpl_token_payment</argument>
+            <argument name="methodCode" xsi:type="string">xrpl_rlusd_payment</argument>
         </arguments>
     </virtualType>
-    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplTokenConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
         <arguments>
-            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplTokenConfig</argument>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfig</argument>
         </arguments>
     </virtualType>
-    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplTokenValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
         <arguments>
             <argument name="handlers" xsi:type="array">
-                <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplTokenConfigValueHandler</item>
+                <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfigValueHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfig" type="Magento\Payment\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="string">xrpl_usdc_payment</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfig</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfigValueHandler</item>
             </argument>
         </arguments>
     </virtualType>

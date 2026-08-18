@@ -8,6 +8,26 @@ use Magento\Framework\Model\AbstractModel;
 class XrpPayment extends AbstractModel implements XrpPaymentInterface
 {
     /**
+     * @var string
+     */
+    private string $type;
+
+    /**
+     * @var string|null
+     */
+    private ?string $tokenAmount = null;
+
+    /**
+     * @var string|null
+     */
+    private ?string $currency = null;
+
+    /**
+     * @var string|null
+     */
+    private ?string $issuer = null;
+
+    /**
      * @var int
      */
     private int $orderId;
@@ -61,6 +81,24 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
      * @var string|null
      */
     private ?string $txHash;
+
+    /**
+     * @inheritDoc
+     */
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setType(string $type): self
+    {
+        $this->type = $type;
+
+        return $this;
+    }
 
     /**
      * @inheritDoc
@@ -256,6 +294,60 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
     public function setTxHash(string|null $txHash): self
     {
         $this->txHash = $txHash;
+
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getTokenAmount(): ?string
+    {
+        return $this->tokenAmount;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setTokenAmount(?string $tokenAmount): self
+    {
+        $this->tokenAmount = $tokenAmount;
+
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getCurrency(): ?string
+    {
+        return $this->currency;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setCurrency(?string $currency): self
+    {
+        $this->currency = $currency;
+
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getIssuer(): ?string
+    {
+        return $this->issuer;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setIssuer(?string $issuer): self
+    {
+        $this->issuer = $issuer;
 
         return $this;
     }

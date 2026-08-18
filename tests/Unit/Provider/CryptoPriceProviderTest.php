@@ -52,6 +52,34 @@ class CryptoPriceProviderTest extends TestCase
         $this->assertEqualsWithDelta(0.925, $rate, 0.0001);
     }
 
+    /**
+     * RLUSD/USDC are pegged to USD, so a USD quote returns rate=1 without ever calling
+     * an oracle - this is the fast-path used to avoid a redundant round-trip for the
+     * common case of a USD store, matching Shopware's RlusdPriceProvider/UsdcPriceProvider.
+     */
+    public function testGetCurrentExchangeRateShortCircuitsToOneForUsdPeggedAssetQuotedInUsd()
+    {
+        $this->client->expects($this->never())->method('get');
+
+        $this->assertSame(1.0, $this->provider->getCurrentExchangeRate('RLUSD', 'USD'));
+        $this->assertSame(1.0, $this->provider->getCurrentExchangeRate('USDC', 'USD'));
+    }
+
+    /**
+     * XRP is deliberately not treated as USD-pegged: even for a USD quote, its price must
+     * always come from a real oracle query.
+     */
+    public function testGetCurrentExchangeRateStillQueriesOraclesForXrpQuotedInUsd()
+    {
+        $this->client->expects($this->atLeastOnce())
+            ->method('get')
+            ->willReturn(new Response(200, [], json_encode(['price' => '1.0006'])));
+
+        $rate = $this->provider->getCurrentExchangeRate('XRP', 'USD');
+
+        $this->assertEqualsWithDelta(1.0006, $rate, 0.0001);
+    }
+
     public function testGetCurrentExchangeRateReturnsFalseWhenAllOraclesFail()
     {
         $this->client->method('get')->willThrowException(

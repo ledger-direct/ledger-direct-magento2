@@ -48,32 +48,4 @@ class SystemConfig extends AbstractHelper
 
         return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_account');
     }
-
-    /**
-     * Get the configured custom token name for the active network
-     *
-     * @return string
-     */
-    public function getTokenName(): string
-    {
-        if (!$this->isTest()) {
-            return $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_custom_token_name');
-        }
-
-        return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_custom_token_name');
-    }
-
-    /**
-     * Get the configured custom token issuer for the active network
-     *
-     * @return string
-     */
-    public function getTokenIssuer(): string
-    {
-        if (!$this->isTest()) {
-            return $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_custom_token_issuer');
-        }
-
-        return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_custom_token_issuer');
-    }
 }

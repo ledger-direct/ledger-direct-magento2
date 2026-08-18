@@ -6,7 +6,6 @@
             <ledger_direct>
                 <active>1</active>
                 <use_testnet>0</use_testnet>
-                <allow_rlusd_payments>0</allow_rlusd_payments>
             </ledger_direct>
             <xrp_payment>
                 <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrpFacade</model>
@@ -20,10 +19,10 @@
                 <processing_status>processing</processing_status>
                 <expired_status>canceled</expired_status>
             </xrp_payment>
-            <xrpl_token_payment>
-                <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrplTokenFacade</model>
-                <title>Pay with Token | Ledger Direct</title>
-                <active>1</active>
+            <xrpl_rlusd_payment>
+                <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrplRlusdFacade</model>
+                <title>Pay with RLUSD | Ledger Direct</title>
+                <active>0</active>
                 <can_use_checkout>1</can_use_checkout>
                 <can_initialize>1</can_initialize>
                 <is_offline>1</is_offline>
@@ -31,7 +30,19 @@
                 <settled_status>processing</settled_status>
                 <processing_status>processing</processing_status>
                 <expired_status>canceled</expired_status>
-            </xrpl_token_payment>
+            </xrpl_rlusd_payment>
+            <xrpl_usdc_payment>
+                <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrplUsdcFacade</model>
+                <title>Pay with USDC | Ledger Direct</title>
+                <active>0</active>
+                <can_use_checkout>1</can_use_checkout>
+                <can_initialize>1</can_initialize>
+                <is_offline>1</is_offline>
+                <order_status>pending</order_status>
+                <settled_status>processing</settled_status>
+                <processing_status>processing</processing_status>
+                <expired_status>canceled</expired_status>
+            </xrpl_usdc_payment>
         </payment>
     </default>
 </config>

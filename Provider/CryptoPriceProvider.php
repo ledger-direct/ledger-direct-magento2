@@ -14,6 +14,13 @@ class CryptoPriceProvider implements CryptoPriceProviderInterface
     public const DEFAULT_ALLOWED_DIVERGENCE = 0.05;
 
     /**
+     * Assets that are pegged 1:1 to USD, matching Shopware's RlusdPriceProvider/UsdcPriceProvider:
+     * a USD quote skips the oracle round-trip entirely. XRP is deliberately not in this list -
+     * its price genuinely fluctuates and must always come from a real oracle query.
+     */
+    private const USD_PEGGED_ASSETS = ['RLUSD', 'USDC'];
+
+    /**
      * @var Client
      */
     private Client $client;
@@ -42,6 +49,10 @@ class CryptoPriceProvider implements CryptoPriceProviderInterface
      */
     public function getCurrentExchangeRate(string $baseAsset, string $quoteCurrency): float|false
     {
+        if ($quoteCurrency === 'USD' && in_array($baseAsset, self::USD_PEGGED_ASSETS, true)) {
+            return 1.0;
+        }
+
         $oracleResults = [];
         $filteredPrices = [];
 

@@ -23,7 +23,10 @@
                                                                     <item name="xrp_payment" xsi:type="array">
                                                                         <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
                                                                     </item>
-                                                                    <item name="xrpl_token_payment" xsi:type="array">
+                                                                    <item name="xrpl_rlusd_payment" xsi:type="array">
+                                                                        <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
+                                                                    </item>
+                                                                    <item name="xrpl_usdc_payment" xsi:type="array">
                                                                         <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
                                                                     </item>
                                                                 </item>

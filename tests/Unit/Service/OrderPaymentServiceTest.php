@@ -5,6 +5,7 @@ namespace Hardcastle\LedgerDirect\Tests\Unit\Service;
 
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
+use Hardcastle\LedgerDirect\Provider\StablecoinRegistry;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Service\XrplTxService;
 use Magento\Sales\Api\Data\OrderInterface;
@@ -46,7 +47,8 @@ class OrderPaymentServiceTest extends TestCase
             $this->orderRepository,
             $this->priceFinder,
             $this->xrplTxService,
-            $this->orderFactory
+            $this->orderFactory,
+            new StablecoinRegistry()
         );
     }
 
@@ -136,12 +138,60 @@ class OrderPaymentServiceTest extends TestCase
         $this->assertSame($tx, $result);
     }
 
-    public function testPrepareOrderPaymentForXrplSetsTokenMetadataForTokenPayment()
+    public function testPrepareOrderPaymentForXrplSetsRlusdMetadataForNonUsdStore()
     {
         /** @var OrderPaymentInterface|MockObject $payment */
         $payment = $this->createMock(OrderPaymentInterface::class);
         $payment->method('getAdditionalData')->willReturn('');
-        $payment->method('getMethod')->willReturn('xrpl_token_payment');
+        $payment->method('getMethod')->willReturn('xrpl_rlusd_payment');
+
+        $capturedPayloads = [];
+        $payment->method('setAdditionalData')->willReturnCallback(function (string $json) use (&$capturedPayloads) {
+            $capturedPayloads[] = json_decode($json, true);
+        });
+
+        /** @var OrderInterface|MockObject $order */
+        $order = $this->createMock(OrderInterface::class);
+        $order->method('getPayment')->willReturn($payment);
+        $order->method('getOrderCurrencyCode')->willReturn('EUR');
+        $order->method('getTotalDue')->willReturn(100.0);
+
+        $this->configHelper->method('isTest')->willReturn(true);
+        $this->configHelper->method('getDestinationAccount')->willReturn('rMerchantDest');
+        $this->xrplTxService->method('generateDestinationTag')->willReturn(999);
+
+        // A real (non-1:1) rate proves a EUR store's amount is actually converted, not
+        // just passed through as if RLUSD were pegged to EUR too.
+        $this->priceFinder->expects($this->once())
+            ->method('getCurrentExchangeRate')
+            ->with('RLUSD', 'EUR')
+            ->willReturn(0.92);
+
+        $this->orderRepository->expects($this->exactly(2))->method('save');
+
+        $this->service->prepareOrderPaymentForXrpl($order);
+
+        $this->assertCount(2, $capturedPayloads);
+        $payload = $capturedPayloads[1]['xrpl'];
+        $this->assertSame('xrpl_rlusd_payment', $payload['type']);
+        $this->assertSame('RLUSD', $payload['base_asset']);
+        $this->assertSame('EUR', $payload['quote_currency']);
+        $this->assertSame('RLUSD/EUR', $payload['pairing']);
+        $this->assertEquals(0.92, $payload['exchange_rate']);
+        // 100 / 0.92 = 108.6956... rounded to 2 decimals = 108.7
+        $this->assertSame([
+            'currency' => '524C555344000000000000000000000000000000',
+            'value' => '108.7',
+            'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV', // testnet RLUSD issuer
+        ], $payload['amount_requested']);
+    }
+
+    public function testPrepareOrderPaymentForXrplSetsUsdcMetadataOnMainnet()
+    {
+        /** @var OrderPaymentInterface|MockObject $payment */
+        $payment = $this->createMock(OrderPaymentInterface::class);
+        $payment->method('getAdditionalData')->willReturn('');
+        $payment->method('getMethod')->willReturn('xrpl_usdc_payment');
 
         $capturedPayloads = [];
         $payment->method('setAdditionalData')->willReturnCallback(function (string $json) use (&$capturedPayloads) {
@@ -154,33 +204,28 @@ class OrderPaymentServiceTest extends TestCase
         $order->method('getOrderCurrencyCode')->willReturn('USD');
         $order->method('getTotalDue')->willReturn(150.0);
 
-        $this->configHelper->method('isTest')->willReturn(true);
+        // false = mainnet, exercising StablecoinRegistry's other branch (vs. the RLUSD/
+        // testnet case above).
+        $this->configHelper->method('isTest')->willReturn(false);
         $this->configHelper->method('getDestinationAccount')->willReturn('rMerchantDest');
-        $this->configHelper->method('getTokenIssuer')->willReturn('rIssuerAccount');
-        $this->configHelper->method('getTokenName')->willReturn('USDC');
-
         $this->xrplTxService->method('generateDestinationTag')->willReturn(999);
 
-        // A real (non-1:1) rate proves the amount is actually converted, not just passed through.
         $this->priceFinder->expects($this->once())
             ->method('getCurrentExchangeRate')
             ->with('USDC', 'USD')
-            ->willReturn(0.99);
+            ->willReturn(1.0);
 
         $this->orderRepository->expects($this->exactly(2))->method('save');
 
         $this->service->prepareOrderPaymentForXrpl($order);
 
-        $this->assertCount(2, $capturedPayloads);
-        $tokenPayload = $capturedPayloads[1]['xrpl'];
-        $this->assertSame('USDC', $tokenPayload['currency']);
-        $this->assertSame('USDC', $tokenPayload['base_asset']);
-        $this->assertSame('USD', $tokenPayload['quote_currency']);
-        $this->assertSame('USDC/USD', $tokenPayload['pairing']);
-        $this->assertEquals(0.99, $tokenPayload['exchange_rate']);
-        // 150 / 0.99 = 151.515151515... truncated to USDC's 6 decimals.
-        $this->assertSame('151.515151', $tokenPayload['value']);
-        $this->assertSame('rIssuerAccount', $tokenPayload['issuer']);
+        $payload = $capturedPayloads[1]['xrpl'];
+        $this->assertSame('xrpl_usdc_payment', $payload['type']);
+        $this->assertSame([
+            'currency' => '5553444300000000000000000000000000000000',
+            'value' => '150',
+            'issuer' => 'rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE', // mainnet USDC issuer
+        ], $payload['amount_requested']);
     }
 
     public function testSyncOrderTransactionWithXrplReturnsNullWhenNoMatchFound()
