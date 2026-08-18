@@ -65,9 +65,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - magento-version: '2.4.7'
+          # Constraints, not exact tags: composer resolves the latest patch of each
+          # line (e.g. 2.4.7-p3) rather than a pinned GA tag, which may be flagged
+          # by Composer's security-advisory audit once a patch has superseded it.
+          - magento-version: '~2.4.7'
             php-version: '8.3'
-          - magento-version: '2.4.8'
+          - magento-version: '~2.4.8'
             php-version: '8.3'
     steps:
       - uses: actions/checkout@v4
@@ -110,12 +113,15 @@ jobs:
           mkdir -p magento/app/code/Hardcastle
           cp -r module magento/app/code/Hardcastle/LedgerDirect
 
+      # --no-audit: this CI only cares whether our code still works against the
+      # Magento core classes/interfaces, not whether that Magento build is free of
+      # known CVEs - a real deployment would run its own audit separately.
       - name: composer install
         if: steps.auth.outputs.has_auth == 'true'
         env:
           COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
         working-directory: magento
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: composer install --no-interaction --prefer-dist --no-progress --no-audit
 
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
