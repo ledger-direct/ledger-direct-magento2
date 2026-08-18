@@ -65,12 +65,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Constraints, not exact tags: composer resolves the latest patch of each
-          # line (e.g. 2.4.7-p3) rather than a pinned GA tag, which may be flagged
-          # by Composer's security-advisory audit once a patch has superseded it.
-          - magento-version: '~2.4.7'
+          # Constraints, not exact tags: composer resolves the latest -pN patch of
+          # each release (e.g. 2.4.7-p10) rather than a pinned GA tag, which may be
+          # flagged by Composer's security-advisory audit once a patch has
+          # superseded it. Note the 4-segment form (~2.4.7.0, not ~2.4.7): Magento's
+          # "2.4.7"/"2.4.8"/"2.4.9" are patch-level releases within the same 2.4
+          # minor line, not separate minors - a 3-segment ~2.4.7 tilde constraint
+          # floats the third segment and jumps straight past 2.4.8 to 2.4.9.
+          # Verified locally against real repo.magento.com: ~2.4.7.0 -> 2.4.7-p10,
+          # ~2.4.8.0 -> 2.4.8-p5.
+          - magento-version: '~2.4.7.0'
             php-version: '8.3'
-          - magento-version: '~2.4.8'
+          - magento-version: '~2.4.8.0'
             php-version: '8.3'
     steps:
       - uses: actions/checkout@v4
@@ -113,15 +119,19 @@ jobs:
           mkdir -p magento/app/code/Hardcastle
           cp -r module magento/app/code/Hardcastle/LedgerDirect
 
-      # --no-audit: this CI only cares whether our code still works against the
-      # Magento core classes/interfaces, not whether that Magento build is free of
-      # known CVEs - a real deployment would run its own audit separately.
+      # --no-blocking: Composer 2.9+ fails install/update by default if any
+      # dependency has a known security advisory. This CI only cares whether our
+      # code still works against the Magento core classes/interfaces, not whether
+      # that Magento build is free of known CVEs - a real deployment would run its
+      # own audit separately. (--no-audit only suppresses the report, not the
+      # blocking itself, and isn't a valid `install` option in this Composer
+      # version anyway.)
       - name: composer install
         if: steps.auth.outputs.has_auth == 'true'
         env:
           COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
         working-directory: magento
-        run: composer install --no-interaction --prefer-dist --no-progress --no-audit
+        run: composer install --no-interaction --prefer-dist --no-progress --no-blocking
 
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
