@@ -127,7 +127,7 @@ class XrplTxService
      * @return array
      * @throws GuzzleException
      */
-    public function fetchAccountTransactions(string $address, int $lastLedgerIndex = null): array
+    public function fetchAccountTransactions(string $address, ?int $lastLedgerIndex = null): array
     {
         return $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
     }
@@ -153,7 +153,7 @@ class XrplTxService
                 continue;
             }
 
-            // Skip transactions we already stored (the table has no unique hash index yet).
+            // Skip transactions we already stored.
             $hash = $tx['hash'] ?? null;
             if ($hash !== null && $this->transactionExistsByHash($hash)) {
                 continue;
