@@ -66,6 +66,7 @@ class CoingeckoOracle implements OracleInterface
             'XRP' => 'ripple',
             'USDC' => 'usd-coin',
             'RLUSD' => 'ripple-usd',
+            'EURC' => 'euro-coin',
         ];
 
         return $mappings[$currencyCode] ?? strtolower($currencyCode);
