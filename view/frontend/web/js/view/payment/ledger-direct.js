@@ -22,8 +22,14 @@ define(
         );
         rendererList.push(
             {
-                type: 'xrpl_token_payment',
-                component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrpl-token-method'
+                type: 'xrpl_rlusd_payment',
+                component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrpl-rlusd-method'
+            }
+        );
+        rendererList.push(
+            {
+                type: 'xrpl_usdc_payment',
+                component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrpl-usdc-method'
             }
         );
         return Component.extend({});

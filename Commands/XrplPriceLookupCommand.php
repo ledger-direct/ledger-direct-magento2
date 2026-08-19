@@ -15,13 +15,24 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+
 class XrplPriceLookupCommand extends Command
 {
+    /**
+     * @var string
+     */
     protected static $defaultName = 'ledger-direct:xrp-price:lookup';
 
+    /**
+     * @var CryptoPriceProviderInterface
+     */
     protected CryptoPriceProviderInterface $priceFinder;
 
-    public function __construct(CryptoPriceProviderInterface $priceFinder) {
+    /**
+     * @param CryptoPriceProviderInterface $priceFinder
+     */
+    public function __construct(CryptoPriceProviderInterface $priceFinder)
+    {
         $this->priceFinder = $priceFinder;
 
         parent::__construct(static::$defaultName);
@@ -33,10 +44,11 @@ class XrplPriceLookupCommand extends Command
     public function configure(): void
     {
         $this->setName(static::$defaultName);
-        $this->setDescription('XRP price lookup, when no options are provided, default price providers will be looked up');
+        $this->setDescription(
+            'XRP price lookup, when no options are provided, default price providers will be looked up'
+        );
         $this->addOption('iso', null, InputOption::VALUE_REQUIRED, 'define providers to be queried for price');
         $this->addOption('provider', null, InputOption::VALUE_OPTIONAL, 'define providers to be queried for price');
-
     }
 
     /**
@@ -45,7 +57,7 @@ class XrplPriceLookupCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $iso = $input->getOption('iso');
-        $currentPrice = $this->priceFinder->getCurrentExchangeRate($iso);
+        $currentPrice = $this->priceFinder->getCurrentExchangeRate('XRP', $iso);
         if (!$currentPrice) {
             $output->writeln('Error: XRP price in "' . $iso . '" is not available');
 

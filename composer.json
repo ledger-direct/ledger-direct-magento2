@@ -2,9 +2,37 @@
     "name": "hardcastle/ledger-direct-magento2",
     "type": "magento2-module",
     "description": "Component for accepting online payments in Magento2 using the XRP Ledger",
+    "keywords": [
+        "magento2",
+        "payment",
+        "xrp",
+        "xrpl",
+        "crypto",
+        "cryptocurrency",
+        "blockchain",
+        "stablecoin"
+    ],
+    "homepage": "https://www.ledger-direct.com",
+    "support": {
+        "issues": "https://github.com/ledger-direct/ledger-direct-magento2/issues",
+        "source": "https://github.com/ledger-direct/ledger-direct-magento2"
+    },
     "require": {
-        "php": ">=8.1",
-        "hardcastle/xrpl_php": "0.10.0"
+        "php": "~8.2.0 || ~8.3.0 || ~8.4.0",
+        "magento/framework": ">=103.0.7",
+        "magento/module-catalog": ">=104.0.7",
+        "magento/module-checkout": ">=100.4.7",
+        "magento/module-customer": ">=103.0.7",
+        "magento/module-payment": ">=100.4.7",
+        "magento/module-quote": ">=101.2.7",
+        "magento/module-sales": ">=103.0.7",
+        "magento/module-store": ">=101.1.7",
+        "guzzlehttp/guzzle": "^7.4",
+        "symfony/console": "^6.4"
+    },
+    "require-dev": {
+        "magento/magento-coding-standard": "*",
+        "phpunit/phpunit": "^9.5"
     },
     "license": "MIT",
     "autoload": {

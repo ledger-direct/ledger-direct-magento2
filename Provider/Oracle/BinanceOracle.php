@@ -7,6 +7,9 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class BinanceOracle implements OracleInterface
 {
+    /**
+     * @var Client
+     */
     private Client $client;
 
     /**
@@ -21,7 +24,6 @@ class BinanceOracle implements OracleInterface
     {
         $symbol = $code1 . (($code2 === 'USD') ? 'USDT' : $code2);
         $url = 'https://api.binance.com/api/v3/ticker/price?symbol=' . $symbol;
-
 
         $response = $this->client->get($url);
         $data = json_decode((string) $response->getBody(), true);

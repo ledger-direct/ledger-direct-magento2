@@ -9,6 +9,9 @@ use Magento\Store\Model\ScopeInterface;
 
 class Data extends AbstractHelper
 {
+    /**
+     * @var LayoutFactory
+     */
     protected LayoutFactory $layoutFactory;
 
     /**
@@ -24,15 +27,14 @@ class Data extends AbstractHelper
         $this->layoutFactory = $layoutFactory;
     }
 
-
     /**
      * Get store config value
      *
-     * @param $field
-     * @param null $storeId
+     * @param string $field
+     * @param int|string|null $storeId
      * @return string
      */
-    public function getConfigValue($field, $storeId = null): string
+    public function getConfigValue(string $field, $storeId = null): string
     {
         return $this->scopeConfig->getValue(
             $field,
@@ -42,7 +44,10 @@ class Data extends AbstractHelper
     }
 
     /**
-     * @return mixed
+     * Render the given icon's template markup
+     *
+     * @param string $icon
+     * @return string
      */
     public function getIconPhtml(string $icon): string
     {
@@ -55,7 +60,8 @@ class Data extends AbstractHelper
 
         $layout = $this->layoutFactory->create();
         $iconTemplate = 'Hardcastle_LedgerDirect::' . $icon . 'phtml';
-        $blockOption = $layout->createBlock("Hardcastle\LedgerDirect\Block\Extension")->setTemplate($iconTemplate);
+        $blockOption = $layout->createBlock(\Hardcastle\LedgerDirect\Block\Extension::class)
+            ->setTemplate($iconTemplate);
 
         return $blockOption->toHtml();
     }

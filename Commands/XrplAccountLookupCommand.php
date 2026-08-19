@@ -14,12 +14,22 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+
 class XrplAccountLookupCommand extends Command
 {
+    /**
+     * @var string
+     */
     protected static $defaultName = 'ledger-direct:xrpl-account:lookup';
 
+    /**
+     * @var XrplTxService
+     */
     protected XrplTxService $txService;
 
+    /**
+     * @param XrplTxService $txService
+     */
     public function __construct(
         XrplTxService $txService
     ) {
@@ -53,7 +63,7 @@ class XrplAccountLookupCommand extends Command
             $this->txService->syncAccountTransactions($accountAddress);
         } else {
             $accountTxResult = $this->txService->fetchAccountTransactions($accountAddress);
-            $output->writeln(print_r($accountTxResult, true));
+            $output->writeln(json_encode($accountTxResult, JSON_PRETTY_PRINT));
         }
 
         return Command::SUCCESS;

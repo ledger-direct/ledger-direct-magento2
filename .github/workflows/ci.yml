@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, 'feat/**']
+  pull_request:
+
+jobs:
+  lint:
+    name: PHP lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: php -l on all module sources
+        run: |
+          set -e
+          find . -path ./.github -prune -o -name '*.php' -print | while read -r file; do
+            php -l "$file"
+          done
+
+  coding-standard:
+    name: Coding standard (magento-coding-standard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: module
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      # magento/magento-coding-standard is public on packagist.org, unlike Magento's
+      # core framework/module packages, so this job needs no repo.magento.com
+      # credentials and runs on external contributors' PRs too.
+      #
+      # dealerdirect/phpcodesniffer-composer-installer (which auto-registers the
+      # Magento2 standard with phpcs) is a Composer plugin, and Composer 2 refuses
+      # to run unknown plugins unless explicitly allowed - hence the `composer
+      # config allow-plugins` step before requiring it.
+      - name: Install magento-coding-standard
+        run: |
+          mkdir -p phpcs-tools
+          composer init --no-interaction --name=ci/phpcs-tools --working-dir=phpcs-tools
+          composer config --no-interaction --working-dir=phpcs-tools \
+            allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer require --no-interaction --working-dir=phpcs-tools magento/magento-coding-standard
+
+      - name: Run phpcs (Magento2 standard)
+        run: >
+          phpcs-tools/vendor/bin/phpcs --standard=Magento2 --extensions=php
+          --ignore=*/tests/*
+          module
+
+  unit-tests:
+    name: Unit tests (Magento ${{ matrix.magento-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Constraints, not exact tags: composer resolves the latest -pN patch of
+          # each release (e.g. 2.4.7-p10) rather than a pinned GA tag, which may be
+          # flagged by Composer's security-advisory audit once a patch has
+          # superseded it. Note the 4-segment form (~2.4.7.0, not ~2.4.7): Magento's
+          # "2.4.7"/"2.4.8"/"2.4.9" are patch-level releases within the same 2.4
+          # minor line, not separate minors - a 3-segment ~2.4.7 tilde constraint
+          # floats the third segment and jumps straight past 2.4.8 to 2.4.9.
+          # Verified locally against real repo.magento.com: ~2.4.7.0 -> 2.4.7-p10,
+          # ~2.4.8.0 -> 2.4.8-p5.
+          - magento-version: '~2.4.7.0'
+            php-version: '8.3'
+          - magento-version: '~2.4.8.0'
+            php-version: '8.3'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: module
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+
+      # Building a real Magento project requires repo.magento.com credentials
+      # (a free Magento Marketplace account's public/private access keys),
+      # configured as the MAGENTO_COMPOSER_AUTH repo secret in the JSON form
+      # composer expects:
+      #   {"http-basic":{"repo.magento.com":{"username":"<public key>","password":"<private key>"}}}
+      # Without it (e.g. on an external contributor's fork PR) this job's
+      # Magento-dependent steps are skipped rather than failing.
+      - name: Check for repo.magento.com credentials
+        id: auth
+        run: |
+          if [ -z "${{ secrets.MAGENTO_COMPOSER_AUTH }}" ]; then
+            echo "has_auth=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_auth=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Magento ${{ matrix.magento-version }} project
+        if: steps.auth.outputs.has_auth == 'true'
+        env:
+          COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
+        run: >
+          composer create-project --repository-url=https://repo.magento.com/
+          --no-install
+          magento/project-community-edition="${{ matrix.magento-version }}" magento
+
+      - name: Place module under app/code
+        if: steps.auth.outputs.has_auth == 'true'
+        run: |
+          mkdir -p magento/app/code/Hardcastle
+          cp -r module magento/app/code/Hardcastle/LedgerDirect
+
+      # --no-blocking: Composer 2.9+ fails install/update by default if any
+      # dependency has a known security advisory. This CI only cares whether our
+      # code still works against the Magento core classes/interfaces, not whether
+      # that Magento build is free of known CVEs - a real deployment would run its
+      # own audit separately. (--no-audit only suppresses the report, not the
+      # blocking itself, and isn't a valid `install` option in this Composer
+      # version anyway.)
+      - name: composer install
+        if: steps.auth.outputs.has_auth == 'true'
+        env:
+          COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
+        working-directory: magento
+        run: composer install --no-interaction --prefer-dist --no-progress --no-blocking
+
+      - name: Run unit tests
+        if: steps.auth.outputs.has_auth == 'true'
+        run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
+
+      - name: Skipped (no repo.magento.com credentials configured)
+        if: steps.auth.outputs.has_auth == 'false'
+        run: |
+          echo "::warning::Skipping Magento ${{ matrix.magento-version }} unit tests: MAGENTO_COMPOSER_AUTH secret is not set."
+          echo "See the workflow file for the required secret format."

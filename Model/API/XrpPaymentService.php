@@ -15,20 +15,38 @@ use Symfony\Component\Intl\Currencies;
 
 class XrpPaymentService implements XrpPaymentServiceInterface
 {
+    /**
+     * @var SystemConfig
+     */
     protected SystemConfig $configHelper;
 
+    /**
+     * @var OrderPaymentService
+     */
     protected OrderPaymentService $orderPaymentService;
 
+    /**
+     * @var XrpPaymentInterfaceFactory
+     */
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
+    /**
+     * @var LoggerInterface
+     */
     protected LoggerInterface $logger;
 
+    /**
+     * @param SystemConfig $configHelper
+     * @param OrderPaymentService $orderPaymentService
+     * @param XrpPaymentInterfaceFactory $xrpPaymentFactory
+     * @param LoggerInterface $logger
+     */
     public function __construct(
         SystemConfig $configHelper,
         OrderPaymentService $orderPaymentService,
         XrpPaymentInterfaceFactory $xrpPaymentFactory,
         LoggerInterface $logger
-    ){
+    ) {
         $this->configHelper = $configHelper;
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
@@ -37,6 +55,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     /**
      * @inheritdoc
+     *
      * @throws Exception
      */
     public function getPaymentDetailsByOrderId(int $orderId): XrpPaymentInterface
@@ -48,6 +67,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     /**
      * @inheritdoc
+     *
      * @throws Exception
      */
     public function getPaymentDetailsByOrderNumber(string $orderNumber): XrpPaymentInterface
@@ -57,7 +77,9 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         return $this->getPaymentDetails($order);
     }
 
-    /**+
+    /**
+     * Build the XRP payment details data object for the given order
+     *
      * @param OrderInterface $order
      * @return XrpPaymentInterface
      * @throws WebapiException
@@ -71,17 +93,18 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         $total = $order->getTotalDue();
         $currencyCode = $order->getOrderCurrencyCode();
         $currencySymbol = Currencies::getSymbol($currencyCode);
+        $type = $xrplPaymentData['type'];
         $exchangeRate = $xrplPaymentData['exchange_rate'];
         $network = $xrplPaymentData['network'];
         $destinationAccount = $this->configHelper->getDestinationAccount();
         $destinationTag = $xrplPaymentData['destination_tag'];
-        $xrpAmount = round($total/$exchangeRate,2);
         $txHash = $xrplPaymentData['hash'] ?? null;
 
-        /** @var XrpPaymentInterface $xrpPayment*/
+        /** @var XrpPaymentInterface $xrpPaymentDetails */
         $xrpPaymentDetails = $this->xrpPaymentFactory->create();
 
         $xrpPaymentDetails
+            ->setType($type)
             ->setOrderId((int) $order->getEntityId())
             ->setOrderNumber($order->getIncrementId())
             ->setCurrencyCode($currencyCode)
@@ -90,9 +113,21 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setNetwork($network)
             ->setDestinationAccount($destinationAccount)
             ->setDestinationTag($destinationTag)
-            ->setXrpAmount($xrpAmount)
             ->setExchangeRate($exchangeRate)
             ->setTxHash($txHash);
+
+        if ($type === 'xrp_payment') {
+            $xrpPaymentDetails->setXrpAmount(round($total / $exchangeRate, 2));
+        } else {
+            // xrpl_rlusd_payment / xrpl_usdc_payment: amount_requested is the full
+            // XRPL issued-currency amount object built by StablecoinRegistry.
+            $amountRequested = $xrplPaymentData['amount_requested'];
+            $xrpPaymentDetails
+                ->setXrpAmount(0.0)
+                ->setTokenAmount((string) $amountRequested['value'])
+                ->setCurrency((string) $amountRequested['currency'])
+                ->setIssuer((string) $amountRequested['issuer']);
+        }
 
         return $xrpPaymentDetails;
     }

@@ -17,8 +17,8 @@ define(
         return Component.extend({
             defaults: {
                 self: this,
-                template: 'Hardcastle_LedgerDirect/payment/xrpl-token',
-                code: 'xrpl_token_payment',
+                template: 'Hardcastle_LedgerDirect/payment/xrpl-stablecoin',
+                code: 'xrpl_rlusd_payment',
                 customRedirect: true,
                 shouldPlaceOrder: true
             },
@@ -26,7 +26,7 @@ define(
             redirectAfterPlaceOrder: false,
 
             getTitle: function() {
-                  return 'Pay with Token | Ledger Direct';
+                  return 'Pay with RLUSD | Ledger Direct';
             },
 
             placeOrder: function()

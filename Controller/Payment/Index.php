@@ -20,16 +20,44 @@ use Magento\Framework\App\RequestInterface;
 
 class Index implements HttpGetActionInterface
 {
+    /**
+     * @var Session
+     */
     private Session $session;
+
+    /**
+     * @var RequestInterface
+     */
     private RequestInterface $request;
 
+    /**
+     * @var PageFactory
+     */
     private PageFactory $pageFactory;
 
+    /**
+     * @var RedirectFactory
+     */
     private RedirectFactory $redirectFactory;
 
+    /**
+     * @var OrderPaymentService
+     */
     protected OrderPaymentService $orderPaymentService;
+
+    /**
+     * @var XrpPaymentServiceInterface
+     */
     private XrpPaymentServiceInterface $xrpPaymentService;
 
+    /**
+     * @param Session $session
+     * @param RequestInterface $request
+     * @param PageFactory $pageFactory
+     * @param RedirectFactory $redirectFactory
+     * @param OrderPaymentService $orderPaymentService
+     * @param XrpPaymentServiceInterface $xrpPaymentService
+     */
     public function __construct(
         Session                    $session,
         RequestInterface           $request,
@@ -37,8 +65,7 @@ class Index implements HttpGetActionInterface
         RedirectFactory            $redirectFactory,
         OrderPaymentService        $orderPaymentService,
         XrpPaymentServiceInterface $xrpPaymentService
-    )
-    {
+    ) {
         $this->session = $session;
         $this->request = $request;
         $this->pageFactory = $pageFactory;
@@ -47,6 +74,11 @@ class Index implements HttpGetActionInterface
         $this->xrpPaymentService = $xrpPaymentService;
     }
 
+    /**
+     * Sync the order's XRPL payment status and render the payment page, or redirect once settled
+     *
+     * @return Page|Redirect
+     */
     public function execute(): Page|Redirect
     {
         if (!$this->session->isLoggedIn()) {
@@ -63,9 +95,9 @@ class Index implements HttpGetActionInterface
         }
 
         $paymentMethod = $order->getPayment()->getMethod();
-        if ($paymentMethod !== 'xrp_payment' && $paymentMethod !== 'xrpl_token_payment') {
+        $supportedMethods = ['xrp_payment', 'xrpl_rlusd_payment', 'xrpl_usdc_payment'];
+        if (!in_array($paymentMethod, $supportedMethods, true)) {
             $redirect = $this->redirectFactory->create();
-            // throw new \Error('Endpoint is designed for XRP only');
             return $redirect->setPath('customer/account/');
         }
 

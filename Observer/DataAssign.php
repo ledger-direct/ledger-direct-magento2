@@ -9,6 +9,8 @@ use Magento\Payment\Observer\AbstractDataAssignObserver;
 class DataAssign extends AbstractDataAssignObserver
 {
     /**
+     * Copy the transaction_result data key into the payment's additional information
+     *
      * @param Observer $observer
      * @return void
      * @throws LocalizedException

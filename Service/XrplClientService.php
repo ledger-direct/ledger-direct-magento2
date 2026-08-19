@@ -2,64 +2,134 @@
 
 namespace Hardcastle\LedgerDirect\Service;
 
-use GuzzleHttp\Exception\GuzzleException;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
-use Hardcastle\XRPL_PHP\Client\JsonRpcClient;
-use Hardcastle\XRPL_PHP\Core\Networks;
-use Hardcastle\XRPL_PHP\Models\Account\AccountTxRequest;
-use Hardcastle\XRPL_PHP\Models\Transaction\TxRequest;
+use Magento\Framework\HTTP\Client\Curl;
 
+/**
+ * Talks to an XRP Ledger node via JSON-RPC using Magento's own HTTP client.
+ *
+ * No third-party XRPL SDK is required — this keeps the module's dependency
+ * footprint small and avoids shipping a second Guzzle into the Magento project.
+ */
 class XrplClientService
 {
+    private const TESTNET_JSON_RPC_URL = 'https://s.altnet.rippletest.net:51234/';
+
+    private const MAINNET_JSON_RPC_URL = 'https://xrplcluster.com/';
+
+    /**
+     * @var SystemConfig
+     */
     private SystemConfig $configHelper;
 
-    private JsonRpcClient $client;
+    /**
+     * @var Curl
+     */
+    private Curl $curl;
 
-    public function __construct(SystemConfig $configHelper) {
-        $this->configHelper = $configHelper ;
-
-        $this->_initClient();
+    /**
+     * @param SystemConfig $configHelper
+     * @param Curl $curl
+     */
+    public function __construct(SystemConfig $configHelper, Curl $curl)
+    {
+        $this->configHelper = $configHelper;
+        $this->curl = $curl;
     }
 
     /**
+     * Fetches a single transaction by its hash.
+     *
      * @param string $txHash
-     * @return array
-     * @throws GuzzleException
+     * @return array The JSON-RPC "result" payload, or an empty array on error.
      */
     public function fetchTransaction(string $txHash): array
     {
-        $req = new TxRequest($txHash);
-        $res = $this->client->syncRequest($req);
-
-        return $res->getResult();
+        return $this->jsonRpc('tx', [[
+            'transaction' => $txHash,
+            'binary' => false,
+            'api_version' => 1,
+        ]]) ?? [];
     }
 
     /**
+     * Fetches recent account transactions (most recent first).
+     *
+     * We deliberately request the newest transactions with a generous limit rather
+     * than relying on a stored "last ledger index": a stale index can fall outside
+     * the node's available range (e.g. after a testnet reset), which makes the whole
+     * query fail. De-duplication happens on storage.
+     *
      * @param string $address
      * @param int|null $lastLedgerIndex
-     * @return array
-     * @throws GuzzleException
+     * @return array The list of transaction envelopes, or an empty array on error.
      */
-    public function fetchAccountTransactions(string $address, ?int $lastLedgerIndex): array
+    public function fetchAccountTransactions(string $address, ?int $lastLedgerIndex = null): array
     {
-        $req = new AccountTxRequest($address, $lastLedgerIndex);
-        $res = $this->client->syncRequest($req);
+        $result = $this->jsonRpc('account_tx', [[
+            'account' => $address,
+            'ledger_index_min' => -1,
+            'ledger_index_max' => -1,
+            'binary' => false,
+            'forward' => false,
+            'limit' => 200,
+            'api_version' => 1,
+        ]]);
 
-        return $res->getResult()['transactions'];
+        return $result['transactions'] ?? [];
     }
 
+    /**
+     * Get the active network name and its JSON-RPC endpoint
+     *
+     * @return array{network: string, jsonRpcUrl: string}
+     */
     public function getNetwork(): array
     {
-        if(!$this->configHelper->isTest()) {
-            return Networks::getNetwork('mainnet');
+        if (!$this->configHelper->isTest()) {
+            return ['network' => 'mainnet', 'jsonRpcUrl' => self::MAINNET_JSON_RPC_URL];
         }
 
-        return Networks::getNetwork('testnet');
+        return ['network' => 'testnet', 'jsonRpcUrl' => self::TESTNET_JSON_RPC_URL];
     }
 
-    private function _initClient(): void
+    /**
+     * Performs a JSON-RPC request against the active network and returns the
+     * "result" payload, or null on any transport / JSON / XRPL error.
+     *
+     * @param string $method
+     * @param array $params
+     * @return array|null
+     */
+    private function jsonRpc(string $method, array $params): ?array
     {
-        $jsonRpcUrl = $this->getNetwork()['jsonRpcUrl'];
-        $this->client = new JsonRpcClient($jsonRpcUrl);
+        $body = json_encode([
+            'method' => $method,
+            'params' => $params,
+        ]);
+
+        try {
+            $this->curl->addHeader('Content-Type', 'application/json');
+            $this->curl->post($this->getNetwork()['jsonRpcUrl'], $body);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $status = $this->curl->getStatus();
+        if ($status < 200 || $status >= 300) {
+            return null;
+        }
+
+        $payload = json_decode((string) $this->curl->getBody(), true);
+        if (!is_array($payload) || !isset($payload['result']) || !is_array($payload['result'])) {
+            return null;
+        }
+
+        $result = $payload['result'];
+        if (($result['status'] ?? null) === 'error') {
+            return null;
+        }
+
+        return $result;
     }
 }

@@ -7,6 +7,9 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class KrakenOracle implements OracleInterface
 {
+    /**
+     * @var Client
+     */
     private Client $client;
 
     /**
@@ -25,9 +28,14 @@ class KrakenOracle implements OracleInterface
         $response = $this->client->get($url);
         $data = json_decode((string) $response->getBody(), true);
 
-        // TODO: Get proper array keys from code1 and code2
-        if (isset($data['result']['XXRPZUSD']['c'])) {
-            return (float) $data['result']['XXRPZUSD']['c'][0];
+        // Kraken's own pair naming is inconsistent (e.g. "XXRPZUSD" but plain "USDCUSD"),
+        // so rather than predict it, read whichever single entry a successful Ticker
+        // response for one pair actually comes back under.
+        $result = $data['result'] ?? [];
+        $ticker = reset($result);
+
+        if ($ticker !== false && isset($ticker['c'][0])) {
+            return (float) $ticker['c'][0];
         }
 
         return 0.0;

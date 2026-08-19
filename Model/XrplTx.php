@@ -7,6 +7,9 @@ use Magento\Framework\Model\AbstractModel;
 
 class XrplTx extends AbstractModel implements XrplTxInterface
 {
+    /**
+     * Initialize resource model
+     */
     protected function _construct()
     {
         $this->_init(ResourceModel\XrplTx::class);

@@ -15,28 +15,50 @@ class XrplTxService
 
     public const DESTINATION_TAG_RANGE_MAX = 2140000000;
 
+    /**
+     * @var Data
+     */
     protected Data $data;
 
+    /**
+     * @var XrplClientService
+     */
     protected XrplClientService $clientService;
 
+    /**
+     * @var XrplTxRepositoryInterface
+     */
     protected XrplTxRepositoryInterface $xrplTxRepository;
 
+    /**
+     * @var ResourceConnection
+     */
     private ResourceConnection $connection;
 
+    /**
+     * @param Data $data
+     * @param XrplClientService $clientService
+     * @param XrplTxRepositoryInterface $xrplTxRepository
+     * @param ResourceConnection $connection
+     */
     public function __construct(
         Data               $data,
         XrplClientService  $clientService,
         XrplTxRepositoryInterface $xrplTxRepository,
         ResourceConnection $connection
-    )
-    {
+    ) {
         $this->data = $data;
         $this->clientService = $clientService;
         $this->xrplTxRepository = $xrplTxRepository;
         $this->connection = $connection;
     }
 
-
+    /**
+     * Generate a destination tag not already reserved for the given account
+     *
+     * @param string $accountAddress
+     * @return int
+     */
     public function generateDestinationTag(string $accountAddress): int
     {
         // https://xrpl.org/source-and-destination-tags.html
@@ -47,20 +69,24 @@ class XrplTxService
 
             $select = $this->connection->getConnection()
                 ->select('destination_tag')
-                ->from('xrpl_destination_tag')
+                ->from('ledger_direct_xrpl_destination_tag')
                 ->where('account = ?', $accountAddress)
                 ->where('destination_tag = ?', $destinationTag);
 
             if (!$this->connection->getConnection()->fetchOne($select)) {
-                $this->connection->getConnection()->insert('xrpl_destination_tag', ['destination_tag' => $destinationTag]);
+                $this->connection->getConnection()->insert(
+                    'ledger_direct_xrpl_destination_tag',
+                    ['destination_tag' => $destinationTag, 'account' => $accountAddress]
+                );
 
                 return $destinationTag;
             }
         }
     }
 
-
     /**
+     * Find a stored transaction matching the destination account and tag
+     *
      * @param string $destination
      * @param int $destinationTag
      * @return array|null
@@ -69,7 +95,7 @@ class XrplTxService
     {
         $select = $this->connection->getConnection()
             ->select('*')
-            ->from('xrpl_tx')
+            ->from('ledger_direct_xrpl_tx')
             ->where('destination = ?', $destination)
             ->where('destination_tag = ?', $destinationTag);
         $matches = $this->connection->getConnection()->fetchAll($select);
@@ -82,6 +108,8 @@ class XrplTxService
     }
 
     /**
+     * Fetch a single transaction from the XRPL node by its hash
+     *
      * @param string $txHash
      * @return array
      * @throws GuzzleException
@@ -92,35 +120,61 @@ class XrplTxService
     }
 
     /**
+     * Fetch recent transactions for an XRPL account
+     *
      * @param string $address
      * @param int|null $lastLedgerIndex
      * @return array
      * @throws GuzzleException
      */
-    public function fetchAccountTransactions(string $address, int $lastLedgerIndex = null): array
+    public function fetchAccountTransactions(string $address, ?int $lastLedgerIndex = null): array
     {
         return $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
     }
 
     /**
+     * Fetch and store validated Payment transactions for an XRPL account, skipping duplicates
+     *
      * @param string $address
+     * @return void
      * @throws GuzzleException|LocalizedException
      */
     public function syncAccountTransactions(string $address): void
     {
-        $lastLedgerIndex = $this->xrplTxRepository->getLastLedgerIndex($address) ?? null;
-
-        if (!$lastLedgerIndex) {
-            $lastLedgerIndex = null;
-        }
+        $lastLedgerIndex = $this->xrplTxRepository->getLastLedgerIndex($address) ?: null;
 
         $transactions = $this->clientService->fetchAccountTransactions($address, $lastLedgerIndex);
 
         foreach ($transactions as $rawTx) {
-            if($rawTx['validated'] && $rawTx['tx']['TransactionType'] === 'Payment') {
-                $xrplTx = $this->xrplTxRepository->createFromArray($rawTx);
-                $this->xrplTxRepository->save($xrplTx);
+            $tx = $rawTx['tx'] ?? null;
+            $validated = $rawTx['validated'] ?? false;
+
+            if (!$validated || !is_array($tx) || ($tx['TransactionType'] ?? null) !== 'Payment') {
+                continue;
             }
+
+            // Skip transactions we already stored.
+            $hash = $tx['hash'] ?? null;
+            if ($hash !== null && $this->transactionExistsByHash($hash)) {
+                continue;
+            }
+
+            $xrplTx = $this->xrplTxRepository->createFromArray($rawTx);
+            $this->xrplTxRepository->save($xrplTx);
         }
+    }
+
+    /**
+     * Check whether a transaction with the given hash is already stored
+     *
+     * @param string $hash
+     * @return bool
+     */
+    private function transactionExistsByHash(string $hash): bool
+    {
+        $connection = $this->connection->getConnection();
+        $select = $connection->select()->from('ledger_direct_xrpl_tx', 'hash')->where('hash = ?', $hash);
+
+        return (bool) $connection->fetchOne($select);
     }
 }

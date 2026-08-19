@@ -1,5 +1,6 @@
 "LedgerDirect.confirm.payment.changeXrpPaymentMethod","XRP Zahlungsart ändern"
 "LedgerDirect.paymentPage.sendXrpMessage","Bitte sende <strong>%1</strong> XRP an die folgende Addresse:"
+"LedgerDirect.paymentPage.sendTokenMessage","Bitte sende <strong>%1</strong> %2 an die folgende Addresse:"
 "LedgerDirect.paymentPage.destinationAccountLabel","Account"
 "LedgerDirect.paymentPage.destinationTagLabel","Destination Tag"
 "LedgerDirect.paymentPage.destinationTagWarning","Der Destination Tag muss für eine Korrekte Zuordnung der Zahlung mit angegeben werden."

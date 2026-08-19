@@ -14,5 +14,12 @@ interface CryptoPriceServiceInterface
      */
     public function getPrice(int $orderId): mixed;
 
+    /**
+     * Get the exchange rate for a token/ISO currency pair
+     *
+     * @param string $token
+     * @param string $iso
+     * @return mixed
+     */
     public function getExchangeRate(string $token, string $iso): mixed;
 }

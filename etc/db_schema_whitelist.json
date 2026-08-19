@@ -1,0 +1,28 @@
+{
+    "ledger_direct_xrpl_tx": {
+        "column": {
+            "id": true,
+            "ledger_index": true,
+            "hash": true,
+            "account": true,
+            "destination": true,
+            "destination_tag": true,
+            "date": true,
+            "meta": true,
+            "tx": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "LEDGER_DIRECT_XRPL_TX_HASH": true
+        }
+    },
+    "ledger_direct_xrpl_destination_tag": {
+        "column": {
+            "destination_tag": true,
+            "account": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
+    }
+}

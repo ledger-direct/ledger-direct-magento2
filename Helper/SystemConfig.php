@@ -3,29 +3,18 @@
 namespace Hardcastle\LedgerDirect\Helper;
 
 use Magento\Framework\App\Helper\AbstractHelper;
-use Magento\Framework\App\Helper\Context;
-use Magento\Framework\View\LayoutFactory;
 use Magento\Store\Model\ScopeInterface;
 
 class SystemConfig extends AbstractHelper
 {
     /**
-     * @param Context $context
-     */
-    public function __construct(Context $context) {
-
-        parent::__construct($context);
-    }
-
-
-    /**
      * Get store config value
      *
-     * @param $field
-     * @param null $storeId
-     * @return string
+     * @param string $field
+     * @param int|string|null $storeId
+     * @return string|null
      */
-    public function getConfigValue($field, $storeId = null): ?string
+    public function getConfigValue(string $field, $storeId = null): ?string
     {
         return $this->scopeConfig->getValue(
             $field,
@@ -34,6 +23,11 @@ class SystemConfig extends AbstractHelper
         );
     }
 
+    /**
+     * Whether payments are configured to settle on the XRPL testnet
+     *
+     * @return bool
+     */
     public function isTest(): bool
     {
         $test = $this->getConfigValue('payment/ledger_direct/use_testnet') ?? true;
@@ -41,6 +35,11 @@ class SystemConfig extends AbstractHelper
         return (bool) $test;
     }
 
+    /**
+     * Get the configured XRPL destination account for the active network
+     *
+     * @return string
+     */
     public function getDestinationAccount(): string
     {
         if (!$this->isTest()) {
@@ -48,23 +47,5 @@ class SystemConfig extends AbstractHelper
         }
 
         return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_account');
-    }
-
-    public function getTokenName(): string
-    {
-        if (!$this->isTest()) {
-            return $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_custom_token_name');
-        }
-
-        return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_custom_token_name');
-    }
-
-    public function getTokenIssuer(): string
-    {
-        if (!$this->isTest()) {
-            return $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_custom_token_issuer');
-        }
-
-        return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_custom_token_issuer');
     }
 }
