@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Hardcastle\LedgerDirect\Tests\Unit\Service;
 
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
-use Hardcastle\LedgerDirect\Model\Settlement\AmountCheck;
+use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
 use Hardcastle\LedgerDirect\Service\OrderSettlementService;
 use Magento\Framework\DB\Transaction;
@@ -52,7 +52,7 @@ class OrderSettlementServiceTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->service = new OrderSettlementService(
-            new AmountCheck(),
+            new SettlementPolicy(),
             $this->invoiceService,
             $transactionFactory,
             $this->orderSender,
@@ -122,6 +122,23 @@ class OrderSettlementServiceTest extends TestCase
 
         $this->assertSame(SettlementResult::UNDERPAID, $result->getStatus());
         $this->assertSame('0.84', $result->getAmountPaid());
+    }
+
+    public function testAPaymentInAnotherTokenIsRecordedAsNotCredited(): void
+    {
+        $order = $this->givenOrder(canInvoice: true);
+        $this->invoiceService->expects($this->never())->method('prepareInvoice');
+        $order->expects($this->once())->method('addCommentToStatusHistory')
+            ->with($this->callback(static fn ($c): bool => str_contains((string) $c, 'not in the requested RLUSD')));
+
+        $rlusd = ['currency' => '524C555344000000000000000000000000000000', 'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV', 'value' => '1.16'];
+        $usdc = ['currency' => '5553444300000000000000000000000000000000', 'issuer' => 'rHuGNhqTG32mfmAvWA8hUyWRLV3tCSwKQt', 'value' => '1.16'];
+        $intent = PaymentIntent::quote('rlusd-payment', 'XRPL', 'testnet', 'RLUSD', 'USD', 'RLUSD/USD', 1.0, $rlusd, 'rMerchant', 7)
+            ->withFulfillment('HASH', $usdc);
+
+        $result = $this->service->settle($order, $intent);
+
+        $this->assertSame(SettlementResult::UNDERPAID, $result->getStatus());
     }
 
     /**

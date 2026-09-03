@@ -130,12 +130,17 @@ $networkName = $paymentInfo->getNetwork();
                         <div role="alert" class="alert alert-warning">
                             <div class="alert-content-container">
                                 <div class="alert-content">
-                                    <?= __(
-                                        'LedgerDirect.paymentPage.underpaidNotice',
-                                        $paymentInfo->getAmountPaid(),
-                                        $type === 'xrp-payment' ? $paymentInfo->getXrpAmount() : $paymentInfo->getTokenAmount(),
-                                        $paymentType
-                                    ) ?>
+                                    <?php if ($paymentInfo->getAmountPaid() === '0') { ?>
+                                        <?= __('LedgerDirect.paymentPage.wrongTokenNotice', $paymentType) ?>
+                                    <?php } else { ?>
+                                        <?= __(
+                                            'LedgerDirect.paymentPage.underpaidNotice',
+                                            $paymentInfo->getAmountPaid(),
+                                            $type === 'xrp-payment' ? $paymentInfo->getXrpAmount() : $paymentInfo->getTokenAmount(),
+                                            $paymentType,
+                                            $paymentInfo->getAmountOutstanding()
+                                        ) ?>
+                                    <?php } ?>
                                 </div>
                             </div>
                         </div>

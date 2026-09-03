@@ -2,8 +2,9 @@
 
 namespace Hardcastle\LedgerDirect\Service;
 
+use Brick\Math\BigDecimal;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
-use Hardcastle\LedgerDirect\Model\Settlement\AmountCheck;
+use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
 use Magento\Framework\DB\TransactionFactory;
 use Magento\Sales\Api\Data\OrderInterface;
@@ -23,15 +24,16 @@ use Psr\Log\LoggerInterface;
  * order confirmation that InitializeCommand held back at placement goes out, and the
  * invoice email with it.
  *
- * The decision whether the delivered amount is enough is {@see AmountCheck}; the core
- * records what was requested and what arrived, this service acts on it.
+ * The decision whether the delivered amount is enough is the core's {@see SettlementPolicy},
+ * so every LedgerDirect plugin calls an order paid under the same conditions; this service
+ * acts on that decision.
  */
 class OrderSettlementService
 {
     /**
-     * @var AmountCheck
+     * @var SettlementPolicy
      */
-    private AmountCheck $amountCheck;
+    private SettlementPolicy $settlementPolicy;
 
     /**
      * @var InvoiceService
@@ -59,7 +61,7 @@ class OrderSettlementService
     private LoggerInterface $logger;
 
     /**
-     * @param AmountCheck $amountCheck
+     * @param SettlementPolicy $settlementPolicy
      * @param InvoiceService $invoiceService
      * @param TransactionFactory $transactionFactory
      * @param OrderSender $orderSender
@@ -67,14 +69,14 @@ class OrderSettlementService
      * @param LoggerInterface $logger
      */
     public function __construct(
-        AmountCheck $amountCheck,
+        SettlementPolicy $settlementPolicy,
         InvoiceService $invoiceService,
         TransactionFactory $transactionFactory,
         OrderSender $orderSender,
         InvoiceSender $invoiceSender,
         LoggerInterface $logger
     ) {
-        $this->amountCheck = $amountCheck;
+        $this->settlementPolicy = $settlementPolicy;
         $this->invoiceService = $invoiceService;
         $this->transactionFactory = $transactionFactory;
         $this->orderSender = $orderSender;
@@ -94,8 +96,8 @@ class OrderSettlementService
      */
     public function settle(OrderInterface $order, PaymentIntent $intent): SettlementResult
     {
-        $paid = (string) $this->amountCheck->paidValue($intent);
-        $requested = $this->amountCheck->requestedValue($intent);
+        $paid = (string) $intent->amountPaidValue();
+        $requested = $intent->amountRequestedValue();
 
         if ((float) $order->getTotalDue() <= 0.0) {
             return new SettlementResult(SettlementResult::SETTLED, $paid, $requested);
@@ -118,14 +120,27 @@ class OrderSettlementService
             return new SettlementResult(SettlementResult::NOT_PAYABLE, $paid, $requested);
         }
 
-        if (!$this->amountCheck->isSettled($intent)) {
-            $order->addCommentToStatusHistory(__(
-                'XRPL payment %1 of %2 %3 received (tx %4); the order stays pending.',
-                $paid,
-                $requested,
-                $intent->baseAsset,
-                $intent->hash
-            ));
+        if (!$this->settlementPolicy->isSettled($intent)) {
+            $shortfall = (string) $this->settlementPolicy->shortfall($intent);
+
+            // Nothing credited although something arrived: a token other than the requested one
+            // (same name, other issuer, or another currency code). The merchant needs to know.
+            if (BigDecimal::of($shortfall)->isEqualTo(BigDecimal::of($requested))) {
+                $order->addCommentToStatusHistory(__(
+                    'XRPL payment of %1 received (tx %2), but not in the requested %3 - it is not credited.',
+                    $paid,
+                    $intent->hash,
+                    $intent->baseAsset
+                ));
+            } else {
+                $order->addCommentToStatusHistory(__(
+                    'XRPL payment %1 of %2 %3 received (tx %4); the order stays pending.',
+                    $paid,
+                    $requested,
+                    $intent->baseAsset,
+                    $intent->hash
+                ));
+            }
             $order->save();
 
             return new SettlementResult(SettlementResult::UNDERPAID, $paid, $requested);
