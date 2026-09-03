@@ -17,6 +17,11 @@
                 <field id="xrpl_mainnet_account" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
                     <label>Account (Mainnet)</label>
                 </field>
+                <field id="quote_expiry" translate="label comment" type="text" sortOrder="5" showInDefault="1" showInWebsite="1" canRestore="1">
+                    <label>Quote validity (seconds)</label>
+                    <comment>How long the exchange rate quoted on the payment page stays valid before it is refreshed.</comment>
+                    <validate>validate-digits validate-digits-range digits-range-60-3600</validate>
+                </field>
             </group>
             <group id="xrpl_rlusd_payment" translate="label" sortOrder="2" showInDefault="1" showInWebsite="1">
                 <label>Ledger Direct - RLUSD (XRPL)</label>
