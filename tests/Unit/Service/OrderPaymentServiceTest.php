@@ -3,151 +3,388 @@ declare(strict_types=1);
 
 namespace Hardcastle\LedgerDirect\Tests\Unit\Service;
 
+use GuzzleHttp\Psr7\HttpFactory;
+use Hardcastle\LedgerDirect\Core\Payment\AssetNotAcceptedException;
+use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
+use Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService;
+use Hardcastle\LedgerDirect\Core\Port\XrplTransactionRepositoryInterface;
+use Hardcastle\LedgerDirect\Core\Price\PriceService;
+use Hardcastle\LedgerDirect\Core\Xrpl\DestinationTagService;
+use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
+use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
+use Hardcastle\LedgerDirect\Core\Xrpl\XrplTransaction;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
-use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
-use Hardcastle\LedgerDirect\Provider\StablecoinRegistry;
+use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
-use Hardcastle\LedgerDirect\Service\XrplTxService;
+use Hardcastle\LedgerDirect\Tests\Mock\Http\StubHttpClient;
+use InvalidArgumentException;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\Helper\Context;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\Data\OrderPaymentInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\OrderFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
+/**
+ * Adapter-level tests: the core services are the real ones, only the edges the platform
+ * owns are stubbed (HTTP, the transaction repository port, Magento's order repository).
+ * What is asserted here is the adapter's job - that an order is quoted in the right asset
+ * and that the resulting PaymentIntent is written to, and read back from, the order
+ * payment's additional_data.
+ */
 class OrderPaymentServiceTest extends TestCase
 {
-    /** @var SystemConfig|MockObject */
-    private $configHelper;
+    private const DESTINATION_ACCOUNT = 'rTestnetMerchant';
+
+    /** Sequence 0 run through the core's fixed permutation. */
+    private const FIRST_DESTINATION_TAG = 114729;
+
+    /** @var XrplTransactionRepositoryInterface|MockObject */
+    private $transactionRepository;
 
     /** @var OrderRepositoryInterface|MockObject */
     private $orderRepository;
 
-    /** @var CryptoPriceProviderInterface|MockObject */
-    private $priceFinder;
+    /** @var LoggerInterface|MockObject */
+    private $logger;
 
-    /** @var XrplTxService|MockObject */
-    private $xrplTxService;
-
-    /** @var OrderFactory|MockObject */
-    private $orderFactory;
-
-    private OrderPaymentService $service;
+    /** @var array<int, array<string, mixed>> every additional_data payload written, decoded */
+    private array $writtenAdditionalData = [];
 
     protected function setUp(): void
     {
-        $this->configHelper = $this->createMock(SystemConfig::class);
+        $this->transactionRepository = $this->createMock(XrplTransactionRepositoryInterface::class);
         $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
-        $this->priceFinder = $this->createMock(CryptoPriceProviderInterface::class);
-        $this->xrplTxService = $this->createMock(XrplTxService::class);
-        $this->orderFactory = $this->createMock(OrderFactory::class);
-
-        $this->service = new OrderPaymentService(
-            $this->configHelper,
-            $this->orderRepository,
-            $this->priceFinder,
-            $this->xrplTxService,
-            $this->orderFactory,
-            new StablecoinRegistry()
-        );
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->writtenAdditionalData = [];
     }
 
-    public function testGetCurrentPriceForOrder()
+    public function testPrepareStoresASchemaV1QuoteOnTheOrderPayment(): void
     {
-        /** @var OrderInterface|MockObject $order */
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getOrderCurrencyCode')->willReturn('USD');
-        $order->method('getTotalDue')->willReturn(100.0);
+        $this->transactionRepository->expects($this->once())->method('nextDestinationTagSequence')->willReturn(0);
+        $this->orderRepository->expects($this->once())->method('save');
 
-        $this->priceFinder->expects($this->once())
-            ->method('getCurrentExchangeRate')
-            ->with('XRP', 'USD')
-            ->willReturn(0.5);
+        $order = $this->givenOrder('xrp_payment');
 
-        $result = $this->service->getCurrentPriceForOrder($order);
+        $returned = $this->createService()->prepareOrderPaymentForXrpl($order);
 
+        $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
+
+        // The stored record went through JSON, where a whole-number float may come back as an
+        // int (serialize_precision) - PaymentIntent::fromArray() accepts both, so compare loosely.
+        $this->assertEquals($returned->toArray(), $intent, 'the stored record is the one returned');
+        $this->assertSame(PaymentIntent::SCHEMA_VERSION, $intent['schema_version']);
+        $this->assertSame('schema_version', array_key_first($intent), 'the record describes itself first');
+        $this->assertSame('xrp-payment', $intent['type']);
+        $this->assertSame('XRPL', $intent['chain']);
+        $this->assertSame('testnet', $intent['network']);
+        $this->assertSame('XRP', $intent['base_asset']);
+        $this->assertSame('EUR', $intent['quote_currency']);
+        $this->assertSame('XRP/EUR', $intent['pairing']);
+        $this->assertSame(2.5, $intent['exchange_rate']);
+        $this->assertEquals(40.0, $intent['amount_requested']); // 100.00 EUR / 2.5
+        $this->assertSame(self::DESTINATION_ACCOUNT, $intent['destination_account']);
+        $this->assertSame(self::FIRST_DESTINATION_TAG, $intent['destination_tag']);
+        $this->assertGreaterThan(time(), $intent['expiry']);
+        $this->assertNull($intent['hash']);
+        $this->assertNull($intent['amount_paid']);
+    }
+
+    /**
+     * Stablecoins carry an XRPL issued-currency amount, not a bare number - the shape the
+     * ledger needs to route the payment to the right issuer. A real (non-1:1) rate proves a
+     * EUR store's amount is actually converted, not passed through as if pegged to EUR too.
+     */
+    public function testPrepareQuotesStablecoinsAsAnIssuedCurrencyAmount(): void
+    {
+        $this->transactionRepository->method('nextDestinationTagSequence')->willReturn(0);
+
+        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrpl_rlusd_payment'));
+
+        $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
+
+        $this->assertSame('rlusd-payment', $intent['type']);
+        $this->assertSame('RLUSD', $intent['base_asset']);
+        $this->assertSame('RLUSD/EUR', $intent['pairing']);
         $this->assertSame([
-            'base_asset' => 'XRP',
-            'quote_currency' => 'USD',
-            'pairing' => 'XRP/USD',
-            'exchange_rate' => 0.5,
-            'amount_requested' => 200.0,
-        ], $result);
+            'currency' => '524C555344000000000000000000000000000000',
+            'value' => '40.00',
+            'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV', // testnet RLUSD issuer, from the core's registry
+        ], $intent['amount_requested']);
     }
 
-    public function testSyncOrderTransactionWithXrplReturnsNullWhenNoAdditionalData()
+    /**
+     * The payment page calls prepare on every view: a quote that is still valid must be handed
+     * back untouched - no new price, no new tag, no write.
+     */
+    public function testPrepareKeepsAValidExistingQuote(): void
     {
-        /** @var OrderPaymentInterface|MockObject $payment */
-        $payment = $this->createMock(OrderPaymentInterface::class);
-        $payment->method('getAdditionalData')->willReturn('');
+        $stored = $this->givenStoredIntent(expiry: time() + 300);
 
-        /** @var OrderInterface|MockObject $order */
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getPayment')->willReturn($payment);
+        $this->transactionRepository->expects($this->never())->method('nextDestinationTagSequence');
+        $this->orderRepository->expects($this->never())->method('save');
 
-        $this->xrplTxService->expects($this->never())->method('syncAccountTransactions');
+        $returned = $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
 
-        $result = $this->service->syncOrderTransactionWithXrpl($order);
+        $this->assertSame($stored->toArray(), $returned->toArray());
+    }
+
+    /**
+     * Once the quote has expired the price is fetched again, but the customer keeps the
+     * destination tag they may already be looking at, or have a payment in flight against.
+     */
+    public function testPrepareRequotesAnExpiredQuoteButKeepsTheDestinationTag(): void
+    {
+        $stored = $this->givenStoredIntent(expiry: time() - 1);
+
+        $this->transactionRepository->expects($this->never())->method('nextDestinationTagSequence');
+        $this->orderRepository->expects($this->once())->method('save');
+
+        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+
+        $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
+
+        $this->assertSame(4294967295, $intent['destination_tag']);
+        $this->assertEquals(40.0, $intent['amount_requested'], 'the price is re-quoted (was 50.0 at 2.0)');
+        $this->assertSame(2.5, $intent['exchange_rate']);
+        $this->assertGreaterThan(time(), $intent['expiry']);
+    }
+
+    public function testPrepareNeverTouchesASettledPayment(): void
+    {
+        $stored = $this->givenStoredIntent(expiry: time() - 1)->withFulfillment('HASH', 50.0, 'CTID');
+
+        $this->orderRepository->expects($this->never())->method('save');
+
+        $returned = $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+
+        $this->assertSame('HASH', $returned->hash);
+    }
+
+    public function testPrepareRejectsAnUnknownPaymentMethod(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unsupported payment method: checkmo');
+
+        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('checkmo'));
+    }
+
+    /**
+     * The port wiring end to end: switching a payment method off in the admin stops the core
+     * from quoting in that asset.
+     */
+    public function testPrepareRefusesAnAssetWhosePaymentMethodIsDisabled(): void
+    {
+        $this->expectException(AssetNotAcceptedException::class);
+
+        $this->createService(['payment/xrpl_usdc_payment/active' => 0])
+            ->prepareOrderPaymentForXrpl($this->givenOrder('xrpl_usdc_payment'));
+    }
+
+    public function testSyncRecordsTheSettlementOnTheStoredQuote(): void
+    {
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->expects($this->once())
+            ->method('findTransaction')
+            ->with(self::DESTINATION_ACCOUNT, 4294967295)
+            ->willReturn($this->givenLedgerTransaction(['delivered_amount' => '40000000']));
+        $this->orderRepository->expects($this->once())->method('save');
+
+        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
+            $this->givenOrder('xrp_payment', $this->givenStoredIntent())
+        );
+
+        $this->assertNotNull($fulfilled);
+        $this->assertSame('HASH', $fulfilled->hash);
+        $this->assertSame('CTID', $fulfilled->ctid);
+        // 40000000 drops is 40 XRP - the adapter no longer converts this itself.
+        $this->assertSame(40.0, $fulfilled->amountPaid);
+
+        $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
+        $this->assertSame('HASH', $intent['hash']);
+        $this->assertSame('CTID', $intent['ctid']);
+        $this->assertEquals(40.0, $intent['amount_paid']);
+        $this->assertSame(4294967295, $intent['destination_tag'], 'the quote part survives fulfillment');
+    }
+
+    /**
+     * Not every transaction carrying this destination tag delivered money - an EscrowCreate
+     * to the same account has no delivered amount, and the order must stay unpaid rather
+     * than settle on a null.
+     */
+    public function testSyncIgnoresATransactionThatDeliveredNothing(): void
+    {
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->method('findTransaction')->willReturn($this->givenLedgerTransaction([]));
+        $this->orderRepository->expects($this->never())->method('save');
+
+        $this->assertNull($this->createService()->syncOrderTransactionWithXrpl(
+            $this->givenOrder('xrp_payment', $this->givenStoredIntent())
+        ));
+    }
+
+    public function testSyncWithoutAStoredQuoteReturnsNull(): void
+    {
+        $this->transactionRepository->expects($this->never())->method('findTransaction');
+        $this->orderRepository->expects($this->never())->method('save');
+
+        $this->assertNull($this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment')));
+    }
+
+    public function testSyncReturnsAnAlreadySettledPaymentWithoutTouchingTheLedger(): void
+    {
+        $stored = $this->givenStoredIntent()->withFulfillment('HASH', 50.0, 'CTID');
+        $httpClient = new StubHttpClient();
+
+        $this->transactionRepository->expects($this->never())->method('findTransaction');
+
+        $fulfilled = $this->createService(httpClient: $httpClient)
+            ->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
+
+        $this->assertSame('HASH', $fulfilled->hash);
+        $this->assertSame([], $httpClient->requestedUris);
+    }
+
+    /**
+     * The node being unreachable must not take the payment page down with it: the order
+     * simply stays pending, and the failure is logged.
+     */
+    public function testSyncKeepsTheOrderPendingWhenTheNodeIsUnreachable(): void
+    {
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->expects($this->never())->method('findTransaction');
+        $this->orderRepository->expects($this->never())->method('save');
+        $this->logger->expects($this->once())->method('warning');
+
+        $result = $this->createService(httpClient: new StubHttpClient(2.5, [], 503))
+            ->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $this->givenStoredIntent()));
 
         $this->assertNull($result);
     }
 
-    public function testSyncOrderTransactionWithXrplMatchesAndUpdatesPayment()
+    /**
+     * A record that is not a readable schema v1 intent is a real problem, not an unpaid order.
+     */
+    public function testReadingAnUnversionedRecordFails(): void
     {
-        $existingData = json_encode([
-            'xrpl' => [
-                'destination_account' => 'rAddr',
-                'destination_tag' => 12345,
-            ],
-        ]);
+        $order = $this->givenOrder('xrp_payment', null, ['destination_account' => 'rAddr', 'destination_tag' => 1]);
 
-        /** @var OrderPaymentInterface|MockObject $payment */
-        $payment = $this->createMock(OrderPaymentInterface::class);
-        $payment->method('getAdditionalData')->willReturn($existingData);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_version');
 
-        /** @var OrderInterface|MockObject $order */
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getPayment')->willReturn($payment);
-
-        $this->xrplTxService->expects($this->once())
-            ->method('syncAccountTransactions')
-            ->with('rAddr');
-
-        $tx = ['hash' => 'ABC123', 'meta' => json_encode(['delivered_amount' => '1500000'])];
-        $this->xrplTxService->expects($this->once())
-            ->method('findTransaction')
-            ->with('rAddr', 12345)
-            ->willReturn($tx);
-
-        $payment->expects($this->once())
-            ->method('setAdditionalData')
-            ->with($this->callback(function (string $json): bool {
-                $decoded = json_decode($json, true);
-
-                return ($decoded['xrpl']['hash'] ?? null) === 'ABC123'
-                    && ($decoded['xrpl']['amount_paid'] ?? null) === '1.500000'
-                    && ($decoded['xrpl']['destination_account'] ?? null) === 'rAddr';
-            }));
-
-        $this->orderRepository->expects($this->once())
-            ->method('save')
-            ->with($order);
-
-        $result = $this->service->syncOrderTransactionWithXrpl($order);
-
-        $this->assertSame($tx, $result);
+        $this->createService()->readPaymentIntent($order);
     }
 
-    public function testPrepareOrderPaymentForXrplSetsRlusdMetadataForNonUsdStore()
+    /**
+     * @param array<string, mixed> $configOverrides config path => value
+     */
+    private function createService(array $configOverrides = [], ?StubHttpClient $httpClient = null): OrderPaymentService
     {
+        $httpClient ??= new StubHttpClient(2.5);
+        $httpFactory = new HttpFactory();
+
+        $config = $configOverrides + [
+            'payment/ledger_direct/use_testnet' => 1,
+            'payment/ledger_direct/xrpl_testnet_account' => self::DESTINATION_ACCOUNT,
+            'payment/ledger_direct/xrpl_mainnet_account' => 'rMainnetMerchant',
+            'payment/ledger_direct/quote_expiry' => 300,
+            'payment/xrp_payment/active' => 1,
+            'payment/xrpl_rlusd_payment/active' => 1,
+            'payment/xrpl_usdc_payment/active' => 1,
+        ];
+
+        $scopeConfig = $this->createMock(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')->willReturnCallback(
+            fn (string $path) => isset($config[$path]) ? (string) $config[$path] : null
+        );
+        $scopeConfig->method('isSetFlag')->willReturnCallback(fn (string $path) => (bool) ($config[$path] ?? false));
+        $context = $this->createMock(Context::class);
+        $context->method('getScopeConfig')->willReturn($scopeConfig);
+        $configProvider = new MagentoConfigProvider(new SystemConfig($context));
+
+        $paymentIntentService = new PaymentIntentService(
+            new PriceService($httpClient, $httpFactory, new NullLogger()),
+            new DestinationTagService($this->transactionRepository),
+            $configProvider
+        );
+
+        $syncService = new SyncService(
+            new XrplClient($httpClient, $httpFactory, $httpFactory),
+            $this->transactionRepository,
+            new NullLogger()
+        );
+
+        return new OrderPaymentService(
+            $this->orderRepository,
+            $this->createMock(OrderFactory::class),
+            $paymentIntentService,
+            $syncService,
+            $this->logger
+        );
+    }
+
+    private function givenStoredIntent(?int $expiry = null): PaymentIntent
+    {
+        return PaymentIntent::quote(
+            type: 'xrp-payment',
+            chain: 'XRPL',
+            network: 'testnet',
+            baseAsset: 'XRP',
+            quoteCurrency: 'EUR',
+            pairing: 'XRP/EUR',
+            exchangeRate: 2.0,
+            amountRequested: 50.0,
+            destinationAccount: self::DESTINATION_ACCOUNT,
+            // Deliberately at the top of XRPL's unsigned 32-bit tag range: the core issues
+            // tags there, so the adapter must round-trip them.
+            destinationTag: 4294967295,
+            expiry: $expiry ?? time() + 300,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $meta
+     */
+    private function givenLedgerTransaction(array $meta): XrplTransaction
+    {
+        return new XrplTransaction(
+            ledgerIndex: '1000',
+            hash: 'HASH',
+            ctid: 'CTID',
+            account: 'rSenderAccount',
+            destination: self::DESTINATION_ACCOUNT,
+            destinationTag: 4294967295,
+            date: 0,
+            meta: $meta,
+            tx: [],
+        );
+    }
+
+    /**
+     * @param array<string, mixed>|null $rawXrplData written verbatim under the storage key, bypassing PaymentIntent
+     */
+    private function givenOrder(string $paymentMethod, ?PaymentIntent $storedIntent = null, ?array $rawXrplData = null): OrderInterface
+    {
+        $additionalData = [];
+        if ($storedIntent !== null) {
+            $additionalData[OrderPaymentService::ADDITIONAL_DATA_KEY] = $storedIntent->toArray();
+        }
+        if ($rawXrplData !== null) {
+            $additionalData[OrderPaymentService::ADDITIONAL_DATA_KEY] = $rawXrplData;
+        }
+
         /** @var OrderPaymentInterface|MockObject $payment */
         $payment = $this->createMock(OrderPaymentInterface::class);
-        $payment->method('getAdditionalData')->willReturn('');
-        $payment->method('getMethod')->willReturn('xrpl_rlusd_payment');
+        $payment->method('getMethod')->willReturn($paymentMethod);
+        $payment->method('getAdditionalData')->willReturn($additionalData === [] ? '' : json_encode($additionalData));
+        $payment->method('setAdditionalData')->willReturnCallback(function (string $json) use ($payment) {
+            $this->writtenAdditionalData[] = json_decode($json, true);
 
-        $capturedPayloads = [];
-        $payment->method('setAdditionalData')->willReturnCallback(function (string $json) use (&$capturedPayloads) {
-            $capturedPayloads[] = json_decode($json, true);
+            return $payment;
         });
 
         /** @var OrderInterface|MockObject $order */
@@ -155,106 +392,8 @@ class OrderPaymentServiceTest extends TestCase
         $order->method('getPayment')->willReturn($payment);
         $order->method('getOrderCurrencyCode')->willReturn('EUR');
         $order->method('getTotalDue')->willReturn(100.0);
+        $order->method('getIncrementId')->willReturn('100000042');
 
-        $this->configHelper->method('isTest')->willReturn(true);
-        $this->configHelper->method('getDestinationAccount')->willReturn('rMerchantDest');
-        $this->xrplTxService->method('generateDestinationTag')->willReturn(999);
-
-        // A real (non-1:1) rate proves a EUR store's amount is actually converted, not
-        // just passed through as if RLUSD were pegged to EUR too.
-        $this->priceFinder->expects($this->once())
-            ->method('getCurrentExchangeRate')
-            ->with('RLUSD', 'EUR')
-            ->willReturn(0.92);
-
-        $this->orderRepository->expects($this->exactly(2))->method('save');
-
-        $this->service->prepareOrderPaymentForXrpl($order);
-
-        $this->assertCount(2, $capturedPayloads);
-        $payload = $capturedPayloads[1]['xrpl'];
-        $this->assertSame('xrpl_rlusd_payment', $payload['type']);
-        $this->assertSame('RLUSD', $payload['base_asset']);
-        $this->assertSame('EUR', $payload['quote_currency']);
-        $this->assertSame('RLUSD/EUR', $payload['pairing']);
-        $this->assertEquals(0.92, $payload['exchange_rate']);
-        // 100 / 0.92 = 108.6956... rounded to 2 decimals = 108.7
-        $this->assertSame([
-            'currency' => '524C555344000000000000000000000000000000',
-            'value' => '108.7',
-            'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV', // testnet RLUSD issuer
-        ], $payload['amount_requested']);
-    }
-
-    public function testPrepareOrderPaymentForXrplSetsUsdcMetadataOnMainnet()
-    {
-        /** @var OrderPaymentInterface|MockObject $payment */
-        $payment = $this->createMock(OrderPaymentInterface::class);
-        $payment->method('getAdditionalData')->willReturn('');
-        $payment->method('getMethod')->willReturn('xrpl_usdc_payment');
-
-        $capturedPayloads = [];
-        $payment->method('setAdditionalData')->willReturnCallback(function (string $json) use (&$capturedPayloads) {
-            $capturedPayloads[] = json_decode($json, true);
-        });
-
-        /** @var OrderInterface|MockObject $order */
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getPayment')->willReturn($payment);
-        $order->method('getOrderCurrencyCode')->willReturn('USD');
-        $order->method('getTotalDue')->willReturn(150.0);
-
-        // false = mainnet, exercising StablecoinRegistry's other branch (vs. the RLUSD/
-        // testnet case above).
-        $this->configHelper->method('isTest')->willReturn(false);
-        $this->configHelper->method('getDestinationAccount')->willReturn('rMerchantDest');
-        $this->xrplTxService->method('generateDestinationTag')->willReturn(999);
-
-        $this->priceFinder->expects($this->once())
-            ->method('getCurrentExchangeRate')
-            ->with('USDC', 'USD')
-            ->willReturn(1.0);
-
-        $this->orderRepository->expects($this->exactly(2))->method('save');
-
-        $this->service->prepareOrderPaymentForXrpl($order);
-
-        $payload = $capturedPayloads[1]['xrpl'];
-        $this->assertSame('xrpl_usdc_payment', $payload['type']);
-        $this->assertSame([
-            'currency' => '5553444300000000000000000000000000000000',
-            'value' => '150',
-            'issuer' => 'rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE', // mainnet USDC issuer
-        ], $payload['amount_requested']);
-    }
-
-    public function testSyncOrderTransactionWithXrplReturnsNullWhenNoMatchFound()
-    {
-        $existingData = json_encode([
-            'xrpl' => [
-                'destination_account' => 'rAddr',
-                'destination_tag' => 12345,
-            ],
-        ]);
-
-        /** @var OrderPaymentInterface|MockObject $payment */
-        $payment = $this->createMock(OrderPaymentInterface::class);
-        $payment->method('getAdditionalData')->willReturn($existingData);
-
-        /** @var OrderInterface|MockObject $order */
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getPayment')->willReturn($payment);
-
-        $this->xrplTxService->expects($this->once())
-            ->method('syncAccountTransactions')
-            ->with('rAddr');
-        $this->xrplTxService->method('findTransaction')->willReturn(null);
-
-        $payment->expects($this->never())->method('setAdditionalData');
-        $this->orderRepository->expects($this->never())->method('save');
-
-        $result = $this->service->syncOrderTransactionWithXrpl($order);
-
-        $this->assertNull($result);
+        return $order;
     }
 }
