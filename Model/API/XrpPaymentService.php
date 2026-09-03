@@ -6,20 +6,12 @@ use Exception;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterfaceFactory;
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
-use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
-use Magento\Framework\Webapi\Exception as WebapiException;
 use Magento\Sales\Api\Data\OrderInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Intl\Currencies;
 
 class XrpPaymentService implements XrpPaymentServiceInterface
 {
-    /**
-     * @var SystemConfig
-     */
-    protected SystemConfig $configHelper;
-
     /**
      * @var OrderPaymentService
      */
@@ -31,26 +23,15 @@ class XrpPaymentService implements XrpPaymentServiceInterface
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
     /**
-     * @var LoggerInterface
-     */
-    protected LoggerInterface $logger;
-
-    /**
-     * @param SystemConfig $configHelper
      * @param OrderPaymentService $orderPaymentService
      * @param XrpPaymentInterfaceFactory $xrpPaymentFactory
-     * @param LoggerInterface $logger
      */
     public function __construct(
-        SystemConfig $configHelper,
         OrderPaymentService $orderPaymentService,
-        XrpPaymentInterfaceFactory $xrpPaymentFactory,
-        LoggerInterface $logger
+        XrpPaymentInterfaceFactory $xrpPaymentFactory
     ) {
-        $this->configHelper = $configHelper;
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
-        $this->logger = $logger;
     }
 
     /**
@@ -78,55 +59,43 @@ class XrpPaymentService implements XrpPaymentServiceInterface
     }
 
     /**
-     * Build the XRP payment details data object for the given order
+     * Build the payment details data object for the given order from its PaymentIntent
      *
      * @param OrderInterface $order
      * @return XrpPaymentInterface
-     * @throws WebapiException
      */
     protected function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
     {
-        $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
-        $customFields = $order->getPayment()->getAdditionalData();
-        $xrplPaymentData = json_decode($customFields, true)['xrpl'];
+        $intent = $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
 
-        $total = $order->getTotalDue();
-        $currencyCode = $order->getOrderCurrencyCode();
-        $currencySymbol = Currencies::getSymbol($currencyCode);
-        $type = $xrplPaymentData['type'];
-        $exchangeRate = $xrplPaymentData['exchange_rate'];
-        $network = $xrplPaymentData['network'];
-        $destinationAccount = $this->configHelper->getDestinationAccount();
-        $destinationTag = $xrplPaymentData['destination_tag'];
-        $txHash = $xrplPaymentData['hash'] ?? null;
+        $total = (float) $order->getTotalDue();
+        $currencyCode = (string) $order->getOrderCurrencyCode();
 
         /** @var XrpPaymentInterface $xrpPaymentDetails */
         $xrpPaymentDetails = $this->xrpPaymentFactory->create();
 
         $xrpPaymentDetails
-            ->setType($type)
+            ->setType($intent->type)
             ->setOrderId((int) $order->getEntityId())
-            ->setOrderNumber($order->getIncrementId())
+            ->setOrderNumber((string) $order->getIncrementId())
             ->setCurrencyCode($currencyCode)
-            ->setCurrencySymbol($currencySymbol)
+            ->setCurrencySymbol(Currencies::getSymbol($currencyCode))
             ->setPrice($total)
-            ->setNetwork($network)
-            ->setDestinationAccount($destinationAccount)
-            ->setDestinationTag($destinationTag)
-            ->setExchangeRate($exchangeRate)
-            ->setTxHash($txHash);
+            ->setNetwork($intent->network)
+            ->setDestinationAccount($intent->destinationAccount)
+            ->setDestinationTag($intent->destinationTag)
+            ->setExchangeRate($intent->exchangeRate)
+            ->setTxHash($intent->hash);
 
-        if ($type === 'xrp_payment') {
-            $xrpPaymentDetails->setXrpAmount(round($total / $exchangeRate, 2));
-        } else {
-            // xrpl_rlusd_payment / xrpl_usdc_payment: amount_requested is the full
-            // XRPL issued-currency amount object built by StablecoinRegistry.
-            $amountRequested = $xrplPaymentData['amount_requested'];
+        if (is_array($intent->amountRequested)) {
+            // Stablecoins carry the full XRPL issued-currency amount object.
             $xrpPaymentDetails
                 ->setXrpAmount(0.0)
-                ->setTokenAmount((string) $amountRequested['value'])
-                ->setCurrency((string) $amountRequested['currency'])
-                ->setIssuer((string) $amountRequested['issuer']);
+                ->setTokenAmount((string) $intent->amountRequested['value'])
+                ->setCurrency((string) $intent->amountRequested['currency'])
+                ->setIssuer((string) $intent->amountRequested['issuer']);
+        } else {
+            $xrpPaymentDetails->setXrpAmount((float) $intent->amountRequested);
         }
 
         return $xrpPaymentDetails;

@@ -9,7 +9,8 @@
 
 namespace Hardcastle\LedgerDirect\Commands;
 
-use Hardcastle\LedgerDirect\Service\XrplTxService;
+use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
+use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -23,17 +24,23 @@ class XrplTransactionLookupCommand extends Command
     protected static $defaultName = 'ledger-direct:xrpl-transaction:lookup';
 
     /**
-     * @var XrplTxService
+     * @var XrplClient
      */
-    protected XrplTxService $txService;
+    private XrplClient $xrplClient;
 
     /**
-     * @param XrplTxService $txService
+     * @var MagentoConfigProvider
      */
-    public function __construct(
-        XrplTxService $txService
-    ) {
-        $this->txService = $txService;
+    private MagentoConfigProvider $configProvider;
+
+    /**
+     * @param XrplClient $xrplClient
+     * @param MagentoConfigProvider $configProvider
+     */
+    public function __construct(XrplClient $xrplClient, MagentoConfigProvider $configProvider)
+    {
+        $this->xrplClient = $xrplClient;
+        $this->configProvider = $configProvider;
 
         parent::__construct(static::$defaultName);
     }
@@ -47,39 +54,41 @@ class XrplTransactionLookupCommand extends Command
         $this->setDescription('XRPL transaction lookup');
         $this->addOption('hash', null, InputOption::VALUE_OPTIONAL, 'Hash identifying a tx');
         $this->addOption('ctid', null, InputOption::VALUE_OPTIONAL, 'CTID identifying a validated tx');
-        $this->addOption('source', null, InputOption::VALUE_OPTIONAL, 'Tx source - XRPL, DB or BOTH');
-        $this->addOption('write', null, InputOption::VALUE_OPTIONAL, 'Write result to file system');
     }
 
     /**
-     * @inheritdoc
+     * Look a single transaction up on the ledger
+     *
+     * Exactly one of --hash or --ctid identifies it; the XRPL `tx` method accepts either.
+     *
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $hash = $input->getOption('hash');
-        $ctid  = $input->getOption('ctid');
+        $ctid = $input->getOption('ctid');
 
-        if ($hash xor $ctid) {
+        if (!($hash xor $ctid)) {
+            $output->writeln('Either a --hash or a --ctid is required as a parameter');
 
-            $source = $input->getOption('source');
-
-            if ($source === 'XRPL') {
-                $txResult = $this->txService->fetchTransaction($hash);
-                $output->writeln(json_encode($txResult, JSON_PRETTY_PRINT));
-
-                return Command::SUCCESS;
-            } elseif ($source === 'DB') {
-
-                return Command::SUCCESS;
-            }
-
-            $output->writeln('The --source parameter has not been specified, i.e. XRPL or DB');
-
-            return Command::SUCCESS;
+            return Command::FAILURE;
         }
 
-        $output->writeln('Either a --hash or a --ctid is required as a parameter');
+        $transaction = $this->xrplClient->tx(
+            (string) ($hash ?: $ctid),
+            $this->configProvider->getNetwork(MagentoConfigProvider::CHAIN)
+        );
 
-        return Command::FAILURE;
+        if ($transaction === null) {
+            $output->writeln('Transaction not found on the ledger.');
+
+            return Command::FAILURE;
+        }
+
+        $output->writeln(json_encode($transaction, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return Command::SUCCESS;
     }
 }

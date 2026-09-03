@@ -9,7 +9,9 @@
 
 namespace Hardcastle\LedgerDirect\Commands;
 
-use Hardcastle\LedgerDirect\Service\XrplTxService;
+use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
+use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
+use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -23,17 +25,33 @@ class XrplAccountLookupCommand extends Command
     protected static $defaultName = 'ledger-direct:xrpl-account:lookup';
 
     /**
-     * @var XrplTxService
+     * @var XrplClient
      */
-    protected XrplTxService $txService;
+    private XrplClient $xrplClient;
 
     /**
-     * @param XrplTxService $txService
+     * @var SyncService
+     */
+    private SyncService $syncService;
+
+    /**
+     * @var MagentoConfigProvider
+     */
+    private MagentoConfigProvider $configProvider;
+
+    /**
+     * @param XrplClient $xrplClient
+     * @param SyncService $syncService
+     * @param MagentoConfigProvider $configProvider
      */
     public function __construct(
-        XrplTxService $txService
+        XrplClient $xrplClient,
+        SyncService $syncService,
+        MagentoConfigProvider $configProvider
     ) {
-        $this->txService = $txService;
+        $this->xrplClient = $xrplClient;
+        $this->syncService = $syncService;
+        $this->configProvider = $configProvider;
 
         parent::__construct(static::$defaultName);
     }
@@ -44,10 +62,14 @@ class XrplAccountLookupCommand extends Command
     public function configure(): void
     {
         $this->setName(static::$defaultName);
-        $this->setDescription('XRPL account lookup');
+        $this->setDescription('XRPL account lookup: list an account\'s transactions, or sync them into the module');
         $this->addOption('account', null, InputOption::VALUE_REQUIRED, 'Account address');
-        $this->addOption('write', null, InputOption::VALUE_OPTIONAL, 'Write result to file system');
-        $this->addOption('sync', null, InputOption::VALUE_OPTIONAL, 'Write result to file system');
+        $this->addOption(
+            'sync',
+            null,
+            InputOption::VALUE_NONE,
+            'Sync incoming transactions into the module instead of printing them'
+        );
     }
 
     /**
@@ -55,16 +77,18 @@ class XrplAccountLookupCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $accountAddress = $input->getOption('account');
-        $write = $input->getOption('write') ?? false;
-        $sync = $input->getOption('sync') ?? false;
+        $accountAddress = (string) $input->getOption('account');
+        $network = $this->configProvider->getNetwork(MagentoConfigProvider::CHAIN);
 
-        if ($sync) {
-            $this->txService->syncAccountTransactions($accountAddress);
-        } else {
-            $accountTxResult = $this->txService->fetchAccountTransactions($accountAddress);
-            $output->writeln(json_encode($accountTxResult, JSON_PRETTY_PRINT));
+        if ($input->getOption('sync')) {
+            $this->syncService->syncTransactions($accountAddress, $network);
+            $output->writeln('Synced incoming transactions for ' . $accountAddress . ' on ' . $network . '.');
+
+            return Command::SUCCESS;
         }
+
+        $page = $this->xrplClient->fetchAccountTransactions($accountAddress, $network);
+        $output->writeln(json_encode($page['transactions'], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         return Command::SUCCESS;
     }

@@ -14,14 +14,48 @@
     </type>
 
     <!-- Interface defaults -->
-    <preference for="Hardcastle\LedgerDirect\Api\Data\XrplTxInterface" type="Hardcastle\LedgerDirect\Model\XrplTx" />
-    <preference for="Hardcastle\LedgerDirect\Api\XrplTxRepositoryInterface" type="Hardcastle\LedgerDirect\Model\XrplTxRepository" />
-
     <preference for="Hardcastle\LedgerDirect\Api\CryptoPriceServiceInterface" type="Hardcastle\LedgerDirect\Model\API\CryptoPriceService" />
-    <preference for="Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface" type="Hardcastle\LedgerDirect\Provider\CryptoPriceProvider" />
 
     <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\Api\XrpPaymentService" />
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface" type="Hardcastle\LedgerDirect\Model\XrpPayment" />
+
+    <!--
+        Ports: the platform side of hardcastle/ledger-direct-core's interfaces. Everything about
+        what is owed (pricing, oracles, destination tags, sync/matching) lives in the core; this
+        module only provides configuration and storage.
+    -->
+    <preference for="Hardcastle\LedgerDirect\Core\Port\ConfigProviderInterface" type="Hardcastle\LedgerDirect\Port\MagentoConfigProvider" />
+    <preference for="Hardcastle\LedgerDirect\Core\Port\XrplTransactionRepositoryInterface" type="Hardcastle\LedgerDirect\Port\MagentoXrplTransactionRepository" />
+
+    <!--
+        Core services. Guzzle 7 already is a PSR-18 client and GuzzleHttp\Psr7\HttpFactory the
+        matching PSR-17 factory, both shipped with Magento, so the core's HTTP dependencies are
+        satisfied without an adapter package. They are wired per class rather than as global
+        preferences for the PSR interfaces, so that no other extension's DI is affected.
+        Rates are cached through a PSR-16 view of Magento's cache, which lets the core serve
+        a slightly stale rate when every oracle is down instead of the payment method
+        vanishing mid-checkout.
+    -->
+    <type name="Hardcastle\LedgerDirect\Core\Price\PriceService">
+        <arguments>
+            <argument name="httpClient" xsi:type="object">GuzzleHttp\Client</argument>
+            <argument name="requestFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="rateCache" xsi:type="object">Hardcastle\LedgerDirect\Model\Cache\RateCache</argument>
+        </arguments>
+    </type>
+    <type name="Hardcastle\LedgerDirect\Core\Xrpl\XrplClient">
+        <arguments>
+            <argument name="httpClient" xsi:type="object">GuzzleHttp\Client</argument>
+            <argument name="requestFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
+            <argument name="streamFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
+        </arguments>
+    </type>
+    <type name="Hardcastle\LedgerDirect\Core\Xrpl\SyncService">
+        <arguments>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+        </arguments>
+    </type>
 
     <!-- Payment method facades (Magento\Payment\Model\Method\Adapter) -->
     <virtualType name="Hardcastle\LedgerDirect\Model\PaymentMethod\XrpFacade" type="Magento\Payment\Model\Method\Adapter">

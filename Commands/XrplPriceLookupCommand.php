@@ -9,8 +9,9 @@
 
 namespace Hardcastle\LedgerDirect\Commands;
 
-use Hardcastle\LedgerDirect\Service\XrplTxService;
-use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
+use Hardcastle\LedgerDirect\Core\Price\PriceService;
+use Hardcastle\LedgerDirect\Core\Price\PriceUnavailableException;
+use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -24,16 +25,23 @@ class XrplPriceLookupCommand extends Command
     protected static $defaultName = 'ledger-direct:xrp-price:lookup';
 
     /**
-     * @var CryptoPriceProviderInterface
+     * @var PriceService
      */
-    protected CryptoPriceProviderInterface $priceFinder;
+    private PriceService $priceService;
 
     /**
-     * @param CryptoPriceProviderInterface $priceFinder
+     * @var MagentoConfigProvider
      */
-    public function __construct(CryptoPriceProviderInterface $priceFinder)
+    private MagentoConfigProvider $configProvider;
+
+    /**
+     * @param PriceService $priceService
+     * @param MagentoConfigProvider $configProvider
+     */
+    public function __construct(PriceService $priceService, MagentoConfigProvider $configProvider)
     {
-        $this->priceFinder = $priceFinder;
+        $this->priceService = $priceService;
+        $this->configProvider = $configProvider;
 
         parent::__construct(static::$defaultName);
     }
@@ -44,11 +52,9 @@ class XrplPriceLookupCommand extends Command
     public function configure(): void
     {
         $this->setName(static::$defaultName);
-        $this->setDescription(
-            'XRP price lookup, when no options are provided, default price providers will be looked up'
-        );
-        $this->addOption('iso', null, InputOption::VALUE_REQUIRED, 'define providers to be queried for price');
-        $this->addOption('provider', null, InputOption::VALUE_OPTIONAL, 'define providers to be queried for price');
+        $this->setDescription('Price lookup against the core price oracles');
+        $this->addOption('iso', null, InputOption::VALUE_REQUIRED, 'Quote currency ISO code, e.g. EUR');
+        $this->addOption('asset', null, InputOption::VALUE_OPTIONAL, 'Base asset: XRP (default), RLUSD or USDC', 'XRP');
     }
 
     /**
@@ -56,15 +62,20 @@ class XrplPriceLookupCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $iso = $input->getOption('iso');
-        $currentPrice = $this->priceFinder->getCurrentExchangeRate('XRP', $iso);
-        if (!$currentPrice) {
-            $output->writeln('Error: XRP price in "' . $iso . '" is not available');
+        $quoteCurrency = (string) $input->getOption('iso');
+        $baseAsset = strtoupper((string) $input->getOption('asset'));
+        $network = $this->configProvider->getNetwork(MagentoConfigProvider::CHAIN);
+
+        try {
+            // A total of 1.0 makes the returned quote's exchange rate the price of one unit.
+            $quote = $this->priceService->getCryptoPriceForOrder(1.0, $quoteCurrency, $baseAsset, $network);
+        } catch (PriceUnavailableException $exception) {
+            $output->writeln('Error: ' . $baseAsset . ' price in "' . $quoteCurrency . '" is not available');
 
             return Command::FAILURE;
         }
 
-        $output->writeln('Current XRP price: ' . $currentPrice);
+        $output->writeln('Current ' . $baseAsset . ' price: ' . $quote->exchangeRate . ' ' . $quoteCurrency);
 
         return Command::SUCCESS;
     }
