@@ -113,6 +113,15 @@ body.ledger-direct {
     margin-bottom: 1rem;
 }
 
+/* The hint box markup uses Bootstrap's alert classes, which Magento's frontend does not style. */
+.ld-warning .alert-warning {
+    padding: 0.75rem 1rem;
+    color: #e89b3c;
+    background-color: #fdf2e2;
+    border-radius: 0.375rem;
+    line-height: 1.5;
+}
+
 .ld-sync {
     text-align: center;
 }
