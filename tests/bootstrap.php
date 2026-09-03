@@ -11,7 +11,13 @@ if (!file_exists($vendorAutoload)) {
     exit(1);
 }
 
-require_once $vendorAutoload;
+$composerLoader = require $vendorAutoload;
+
+// Test doubles under tests/Mock are autoloaded by class name. Magento's own composer autoload
+// only reaches them through its PSR-0 fallback onto app/code, which maps the namespace segment
+// "Tests" to the directory "tests" - that works on a case-insensitive file system (macOS, Docker
+// bind mounts of it) and silently fails on Linux, e.g. in CI. Register the mapping explicitly.
+$composerLoader->addPsr4('Hardcastle\\LedgerDirect\\Tests\\', __DIR__);
 
 // These tests mock some Magento classes (e.g. */Model/*Factory) that Magento normally
 // generates on the fly under generated/code/ during a full app bootstrap. A plain
