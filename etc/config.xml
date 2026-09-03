@@ -6,6 +6,7 @@
             <ledger_direct>
                 <active>1</active>
                 <use_testnet>0</use_testnet>
+                <quote_expiry>300</quote_expiry>
             </ledger_direct>
             <xrp_payment>
                 <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrpFacade</model>

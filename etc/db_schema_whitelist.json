@@ -4,12 +4,16 @@
             "id": true,
             "ledger_index": true,
             "hash": true,
+            "ctid": true,
             "account": true,
             "destination": true,
             "destination_tag": true,
             "date": true,
             "meta": true,
             "tx": true
+        },
+        "index": {
+            "LEDGER_DIRECT_XRPL_TX_DESTINATION_DESTINATION_TAG": true
         },
         "constraint": {
             "PRIMARY": true,
@@ -19,7 +23,9 @@
     "ledger_direct_xrpl_destination_tag": {
         "column": {
             "destination_tag": true,
-            "account": true
+            "account": true,
+            "destination_account": true,
+            "sequence": true
         },
         "constraint": {
             "PRIMARY": true

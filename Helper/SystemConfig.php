@@ -7,6 +7,8 @@ use Magento\Store\Model\ScopeInterface;
 
 class SystemConfig extends AbstractHelper
 {
+    public const DEFAULT_QUOTE_EXPIRY_SECONDS = 300;
+
     /**
      * Get store config value
      *
@@ -36,6 +38,16 @@ class SystemConfig extends AbstractHelper
     }
 
     /**
+     * The XRPL network payments settle on, in the core's vocabulary
+     *
+     * @return string 'mainnet' | 'testnet'
+     */
+    public function getNetwork(): string
+    {
+        return $this->isTest() ? 'testnet' : 'mainnet';
+    }
+
+    /**
      * Get the configured XRPL destination account for the active network
      *
      * @return string
@@ -43,9 +55,35 @@ class SystemConfig extends AbstractHelper
     public function getDestinationAccount(): string
     {
         if (!$this->isTest()) {
-            return $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_account');
+            return (string) $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_account');
         }
 
-        return $this->getConfigValue('payment/ledger_direct/xrpl_testnet_account');
+        return (string) $this->getConfigValue('payment/ledger_direct/xrpl_testnet_account');
+    }
+
+    /**
+     * Whether the given payment method is switched on in the admin configuration
+     *
+     * @param string $paymentMethodCode e.g. xrp_payment
+     * @return bool
+     */
+    public function isPaymentMethodActive(string $paymentMethodCode): bool
+    {
+        return $this->scopeConfig->isSetFlag(
+            'payment/' . $paymentMethodCode . '/active',
+            ScopeInterface::SCOPE_STORE
+        );
+    }
+
+    /**
+     * How long a price quote handed to the customer stays valid, in seconds
+     *
+     * @return int
+     */
+    public function getQuoteExpirySeconds(): int
+    {
+        $value = $this->getConfigValue('payment/ledger_direct/quote_expiry');
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : self::DEFAULT_QUOTE_EXPIRY_SECONDS;
     }
 }

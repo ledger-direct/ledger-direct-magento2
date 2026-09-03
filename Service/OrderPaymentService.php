@@ -1,74 +1,83 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Hardcastle\LedgerDirect\Service;
 
-use Hardcastle\LedgerDirect\Helper\SystemConfig;
-use Hardcastle\LedgerDirect\Provider\CryptoPriceProviderInterface;
-use Hardcastle\LedgerDirect\Provider\StablecoinRegistry;
-use Hardcastle\LedgerDirect\Service\XrplTxService;
-use Magento\Framework\Serialize\SerializerInterface;
-use Magento\Sales\Api\OrderRepositoryInterface;
+use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
+use Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService;
+use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
+use Hardcastle\LedgerDirect\Core\Xrpl\XrplRpcException;
+use InvalidArgumentException;
 use Magento\Sales\Api\Data\OrderInterface;
-use Magento\Sales\Model\Order;
+use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\OrderFactory;
-use Magento\Sales\Model\Order\Payment;
+use Psr\Log\LoggerInterface;
 
+/**
+ * The Magento side of a LedgerDirect payment: loading orders and persisting the payment
+ * record on the order's payment.
+ *
+ * Everything about *what* is owed - exchange rate, requested amount, destination tag,
+ * matching an on-ledger payment - comes from hardcastle/ledger-direct-core and is not
+ * recomputed here.
+ */
 class OrderPaymentService
 {
-    private const XRP_ASSET_CODE = 'XRP';
-
     /**
-     * @var SystemConfig
+     * Storage key inside the order payment's additional_data. Not part of the cross-plugin
+     * contract (the PaymentIntent it holds is), so it stays as it was.
      */
-    protected SystemConfig $configHelper;
+    public const ADDITIONAL_DATA_KEY = 'xrpl';
+
+    private const BASE_ASSET_BY_PAYMENT_METHOD = [
+        'xrp_payment' => 'XRP',
+        'xrpl_rlusd_payment' => 'RLUSD',
+        'xrpl_usdc_payment' => 'USDC',
+    ];
 
     /**
      * @var OrderRepositoryInterface
      */
-    protected OrderRepositoryInterface $orderRepository;
-
-    /**
-     * @var CryptoPriceProviderInterface
-     */
-    protected CryptoPriceProviderInterface $priceFinder;
-
-    /**
-     * @var XrplTxService
-     */
-    protected XrplTxService $xrplTxService;
+    private OrderRepositoryInterface $orderRepository;
 
     /**
      * @var OrderFactory
      */
-    protected OrderFactory $orderFactory;
+    private OrderFactory $orderFactory;
 
     /**
-     * @var StablecoinRegistry
+     * @var PaymentIntentService
      */
-    protected StablecoinRegistry $stablecoinRegistry;
+    private PaymentIntentService $paymentIntentService;
 
     /**
-     * @param SystemConfig $configHelper
+     * @var SyncService
+     */
+    private SyncService $syncService;
+
+    /**
+     * @var LoggerInterface
+     */
+    private LoggerInterface $logger;
+
+    /**
      * @param OrderRepositoryInterface $orderRepository
-     * @param CryptoPriceProviderInterface $priceFinder
-     * @param XrplTxService $xrplTxService
      * @param OrderFactory $orderFactory
-     * @param StablecoinRegistry $stablecoinRegistry
+     * @param PaymentIntentService $paymentIntentService
+     * @param SyncService $syncService
+     * @param LoggerInterface $logger
      */
     public function __construct(
-        SystemConfig                 $configHelper,
-        OrderRepositoryInterface     $orderRepository,
-        CryptoPriceProviderInterface $priceFinder,
-        XrplTxService                $xrplTxService,
-        OrderFactory                 $orderFactory,
-        StablecoinRegistry           $stablecoinRegistry
+        OrderRepositoryInterface $orderRepository,
+        OrderFactory $orderFactory,
+        PaymentIntentService $paymentIntentService,
+        SyncService $syncService,
+        LoggerInterface $logger
     ) {
-        $this->configHelper = $configHelper;
         $this->orderRepository = $orderRepository;
-        $this->priceFinder = $priceFinder;
-        $this->xrplTxService = $xrplTxService;
         $this->orderFactory = $orderFactory;
-        $this->stablecoinRegistry = $stablecoinRegistry;
+        $this->paymentIntentService = $paymentIntentService;
+        $this->syncService = $syncService;
+        $this->logger = $logger;
     }
 
     /**
@@ -94,206 +103,171 @@ class OrderPaymentService
     }
 
     /**
-     * Get the current XRP price and requested amount for the order
+     * Quote the order in the asset its payment method stands for and store the PaymentIntent
+     *
+     * The payment page calls this on every view, so an intent that is still valid is kept
+     * as it is. Once its quote has expired the price is fetched again, but the destination
+     * account and tag are kept: the customer may already be looking at them, or have a
+     * payment in flight. A settled intent is never touched.
      *
      * @param OrderInterface $order
-     * @return array
+     * @return PaymentIntent
      */
-    public function getCurrentPriceForOrder(OrderInterface $order): array
+    public function prepareOrderPaymentForXrpl(OrderInterface $order): PaymentIntent
     {
-        $baseAsset = self::XRP_ASSET_CODE;
-        $quoteCurrency = $order->getOrderCurrencyCode();
-        $xrpUnitPrice = $this->priceFinder->getCurrentExchangeRate($baseAsset, $quoteCurrency);
+        $existing = $this->readReusablePaymentIntent($order);
 
-        return [
-            'base_asset' => $baseAsset,
-            'quote_currency' => $quoteCurrency,
-            'pairing' => $baseAsset . '/' . $quoteCurrency,
-            'exchange_rate' => $xrpUnitPrice,
-            'amount_requested' => $order->getTotalDue() / $xrpUnitPrice
-        ];
-    }
-
-    /**
-     * Assign the destination account/tag and payment-method-specific price data to the order's payment
-     *
-     * @param OrderInterface $order
-     * @return void
-     */
-    public function prepareOrderPaymentForXrpl(OrderInterface $order): void
-    {
-        $payment = $order->getPayment();
-        $paymentMethod = $payment->getMethod();
-        $rawAdditionalData = $payment->getAdditionalData();
-        if (!empty($rawAdditionalData)) {
-            $additionalData = json_decode($rawAdditionalData, true);
-            if (isset($additionalData['xrpl'])) {
-                return;
-            }
+        if ($existing !== null && ($existing->hash !== null || !$this->isExpired($existing))) {
+            return $existing;
         }
 
-        $network = $this->configHelper->isTest() ? 'Testnet' : 'Mainnet'; // TODO: Use NetworkId
-        $destinationAccount = $this->configHelper->getDestinationAccount();
-        $destinationTag = $this->xrplTxService->generateDestinationTag($destinationAccount);
+        $paymentMethod = (string) $order->getPayment()->getMethod();
+        $baseAsset = self::BASE_ASSET_BY_PAYMENT_METHOD[$paymentMethod] ?? null;
 
-        $xrplData = [
-            'xrpl' => [
-            'network' => $network,
-            'destination_account' => $destinationAccount,
-            'destination_tag' => $destinationTag
-            ]
-        ];
+        if ($baseAsset === null) {
+            throw new InvalidArgumentException('Unsupported payment method: ' . $paymentMethod);
+        }
 
-        $this->addAdditionalDataToPayment($order, $xrplData);
+        $intent = $this->paymentIntentService->quoteForOrder(
+            (float) $order->getTotalDue(),
+            (string) $order->getOrderCurrencyCode(),
+            $baseAsset,
+            $existing
+        );
 
-        match ($paymentMethod) {
-            'xrp_payment' => $this->prepareXrpPayment($order),
-            'xrpl_rlusd_payment' => $this->prepareStablecoinPayment(
-                $order,
-                StablecoinRegistry::RLUSD_CODE,
-                $paymentMethod
-            ),
-            'xrpl_usdc_payment' => $this->prepareStablecoinPayment(
-                $order,
-                StablecoinRegistry::USDC_CODE,
-                $paymentMethod
-            ),
-        };
+        $this->persistPaymentIntent($order, $intent);
+
+        return $intent;
     }
 
     /**
-     * Assign XRP price data to the order's payment
+     * Sync the merchant's incoming XRPL transactions and settle the order's intent on a match
      *
      * @param OrderInterface $order
-     * @return void
+     * @return PaymentIntent|null the fulfilled intent, or null while the payment has not
+     *     arrived (or arrived as something that delivered nothing measurable, e.g. an
+     *     EscrowCreate to the same account)
      */
-    private function prepareXrpPayment(OrderInterface $order): void
+    public function syncOrderTransactionWithXrpl(OrderInterface $order): ?PaymentIntent
     {
-        $additionalData = [
-            'xrpl' => $this->getCurrentPriceForOrder($order)
-        ];
-        $additionalData['xrpl']['type'] = 'xrp_payment';
+        $intent = $this->readPaymentIntent($order);
 
-        $this->addAdditionalDataToPayment($order, $additionalData);
-    }
-
-    /**
-     * Assign stablecoin payment data to the order's payment
-     *
-     * Queries the token's actual market price in the order's currency (rather than assuming
-     * a 1:1 peg), so a de-pegged stablecoin or a store/token currency mismatch (e.g. a EUR
-     * store with a USD-pegged token) is still converted correctly - same formula as the XRP
-     * path: amount = order total / exchange rate. (CryptoPriceProvider still short-circuits
-     * to a rate of 1 for a USD quote, since these tokens are USD-pegged by design.)
-     *
-     * @param OrderInterface $order
-     * @param string $baseAsset RLUSD or USDC, see StablecoinRegistry
-     * @param string $paymentMethod
-     * @return void
-     */
-    private function prepareStablecoinPayment(OrderInterface $order, string $baseAsset, string $paymentMethod): void
-    {
-        $quoteCurrency = $order->getOrderCurrencyCode();
-        $exchangeRate = $this->priceFinder->getCurrentExchangeRate($baseAsset, $quoteCurrency);
-        $requestedValue = (string) round($order->getTotalDue() / $exchangeRate, 2);
-
-        $amountRequested = $baseAsset === StablecoinRegistry::RLUSD_CODE
-            ? $this->stablecoinRegistry->getRlusdAmount($this->configHelper->isTest(), $requestedValue)
-            : $this->stablecoinRegistry->getUsdcAmount($this->configHelper->isTest(), $requestedValue);
-
-        $additionalData = [
-            'xrpl' => [
-                'type' => $paymentMethod,
-                'base_asset' => $baseAsset,
-                'quote_currency' => $quoteCurrency,
-                'pairing' => $baseAsset . '/' . $quoteCurrency,
-                'exchange_rate' => $exchangeRate,
-                'amount_requested' => $amountRequested,
-            ]
-        ];
-
-        $this->addAdditionalDataToPayment($order, $additionalData);
-    }
-
-    /**
-     * Sync XRPL account transactions and match the settling transaction to the order, if found
-     *
-     * @param OrderInterface $order
-     * @return array|null
-     */
-    public function syncOrderTransactionWithXrpl(OrderInterface $order): ?array
-    {
-        $customFields = $order->getPayment()->getAdditionalData();
-        if (empty($customFields)) {
+        if ($intent === null) {
             return null;
         }
 
-        $xrplPaymentData = json_decode($customFields, true)['xrpl'] ?? null;
-        if (isset($xrplPaymentData['destination_account']) && isset($xrplPaymentData['destination_tag'])) {
-
-            // TODO: Exception when orderTransaction.customFields are different form xrpl_tx
-
-            $this->xrplTxService->syncAccountTransactions($xrplPaymentData['destination_account']);
-
-            $tx = $this->xrplTxService->findTransaction(
-                $xrplPaymentData['destination_account'],
-                (int)$xrplPaymentData['destination_tag']
-            );
-
-            if ($tx) {
-                $txMeta = json_decode($tx['meta'], true); // war: 'tx'
-                $this->addAdditionalDataToPayment($order, [
-                    'xrpl' => [
-                        'hash' => $tx['hash'],
-                        'ctid' => $tx['hash'], //TODO: Add CTID here
-                        'amount_paid' => $this->formatDeliveredAmount($txMeta['delivered_amount'] ?? null)
-                    ]
-                ]);
-
-                return $tx;
-            }
+        if ($intent->hash !== null) {
+            return $intent;
         }
 
-        return null;
+        try {
+            $this->syncService->syncTransactions($intent->destinationAccount, $intent->network);
+        } catch (XrplRpcException $exception) {
+            // The node being unreachable must not take the payment page down: the order simply
+            // stays pending until the next check succeeds.
+            $this->logger->warning('LedgerDirect: XRPL sync failed, order stays pending', [
+                'order' => $order->getIncrementId(),
+                'exception' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        $transaction = $this->syncService->findTransaction($intent->destinationAccount, $intent->destinationTag);
+
+        if ($transaction === null) {
+            return null;
+        }
+
+        $amountPaid = $transaction->getDeliveredAmount();
+
+        if ($amountPaid === null) {
+            return null;
+        }
+
+        $fulfilledIntent = $intent->withFulfillment($transaction->hash, $amountPaid, $transaction->ctid);
+
+        $this->persistPaymentIntent($order, $fulfilledIntent);
+
+        return $fulfilledIntent;
     }
 
     /**
-     * Merge the given data into the order payment's additional_data under the "xrpl" key
+     * The payment record stored on the order, or null when the order was never prepared for XRPL
+     *
+     * Throws on a record that is not a readable schema v1 PaymentIntent: the module was never
+     * released, so there is no legacy format to keep reading, and quietly ignoring an
+     * unreadable record would hide a real problem behind an "unpaid" order.
      *
      * @param OrderInterface $order
-     * @param array $xrplAdditionalData
+     * @return PaymentIntent|null
+     */
+    public function readPaymentIntent(OrderInterface $order): ?PaymentIntent
+    {
+        $paymentIntentData = $this->readAdditionalData($order)[self::ADDITIONAL_DATA_KEY] ?? null;
+
+        return is_array($paymentIntentData) ? PaymentIntent::fromArray($paymentIntentData) : null;
+    }
+
+    /**
+     * Like readPaymentIntent(), but tolerant: on the quoting path an unreadable record means "quote from scratch"
+     *
+     * @param OrderInterface $order
+     * @return PaymentIntent|null
+     */
+    private function readReusablePaymentIntent(OrderInterface $order): ?PaymentIntent
+    {
+        try {
+            return $this->readPaymentIntent($order);
+        } catch (InvalidArgumentException $exception) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether the intent's quote has passed its expiry
+     *
+     * @param PaymentIntent $intent
+     * @return bool
+     */
+    private function isExpired(PaymentIntent $intent): bool
+    {
+        return $intent->expiry !== null && $intent->expiry < time();
+    }
+
+    /**
+     * Write the intent to the order payment, replacing any previous record wholesale
+     *
+     * @param OrderInterface $order
+     * @param PaymentIntent $intent
      * @return void
      */
-    private function addAdditionalDataToPayment(OrderInterface $order, array $xrplAdditionalData): void
+    private function persistPaymentIntent(OrderInterface $order, PaymentIntent $intent): void
     {
-        $rawAdditionalData = $order->getPayment()->getAdditionalData();
-        if (!empty($rawAdditionalData)) {
-            $additionalData = json_decode($rawAdditionalData, true);
-        } else {
-            $additionalData = [];
-        }
+        $additionalData = $this->readAdditionalData($order);
+        $additionalData[self::ADDITIONAL_DATA_KEY] = $intent->toArray();
 
-        $mergedAdditionalData = array_replace_recursive($additionalData, $xrplAdditionalData);
-        $order->getPayment()->setAdditionalData(json_encode($mergedAdditionalData));
+        $order->getPayment()->setAdditionalData(json_encode($additionalData, JSON_THROW_ON_ERROR));
 
         $this->orderRepository->save($order);
     }
 
     /**
-     * Normalises an XRPL "delivered_amount" to a human-readable decimal string
+     * Decode the order payment's additional_data
      *
-     * Accepts either a drops string (XRP) or an issued currency object (stablecoins).
-     *
-     * @param mixed $deliveredAmount
-     * @return string
+     * @param OrderInterface $order
+     * @return array
      */
-    private function formatDeliveredAmount(mixed $deliveredAmount): string
+    private function readAdditionalData(OrderInterface $order): array
     {
-        if (is_array($deliveredAmount)) {
-            return (string) ($deliveredAmount['value'] ?? '0');
+        $rawAdditionalData = $order->getPayment()->getAdditionalData();
+
+        if (empty($rawAdditionalData)) {
+            return [];
         }
 
-        // XRP is delivered in drops (1 XRP = 1,000,000 drops).
-        return bcdiv((string) $deliveredAmount, '1000000', 6);
+        $additionalData = json_decode((string) $rawAdditionalData, true);
+
+        return is_array($additionalData) ? $additionalData : [];
     }
 }

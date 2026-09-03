@@ -101,8 +101,8 @@ class Index implements HttpGetActionInterface
             return $redirect->setPath('customer/account/');
         }
 
-        $tx = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
-        if ($tx) {
+        $fulfilledIntent = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
+        if ($fulfilledIntent !== null) {
 
             // Check if amount is correct!
 

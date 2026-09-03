@@ -5,7 +5,10 @@ This directory contains starter Unit and lightweight Integration tests for the L
 Structure:
 - tests/phpunit.xml.dist – local PHPUnit configuration for this module
 - tests/bootstrap.php – minimal bootstrap that loads Magento's Composer autoloader from src/vendor
-- tests/Unit/** – pure PHPUnit unit tests using mocks (no Magento framework required)
+- tests/Unit/** – pure PHPUnit unit tests (no Magento application context). The service tests run the
+  real `hardcastle/ledger-direct-core` services and stub only the edges this module owns: HTTP
+  (`tests/Mock/Http/StubHttpClient.php`), the transaction repository port and Magento's repositories.
+- tests/Mock/** – hand-written test doubles shared between tests
 - tests/Integration/** – smoke/integration tests that rely on Magento framework being present; tests will skip if not available
 
 Running tests

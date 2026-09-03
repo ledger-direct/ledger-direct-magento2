@@ -5,7 +5,7 @@ namespace Hardcastle\LedgerDirect\Api\Data;
 interface XrpPaymentInterface
 {
     /**
-     * Get the payment method type: xrp_payment, xrpl_rlusd_payment, or xrpl_usdc_payment
+     * Get the payment type as recorded in the PaymentIntent: xrp-payment, rlusd-payment, or usdc-payment
      *
      * @return string
      */

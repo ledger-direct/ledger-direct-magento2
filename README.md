@@ -17,16 +17,25 @@ GitHub: https://github.com/ledger-direct/ledger-direct-magento2
 ## Compatibility
 - Magento Open Source / Adobe Commerce **2.4.7** and **2.4.8**
 - PHP **8.2**, **8.3**, or **8.4**
+- [`hardcastle/ledger-direct-core`](https://packagist.org/packages/hardcastle/ledger-direct-core) — the
+  platform-agnostic XRPL and pricing logic shared by all LedgerDirect plugins. Composer installs it
+  together with the module.
 
 ## Available currencies:
 - XRP (XRP Ledger)
 - RLUSD (XRP Ledger)
+- USDC (XRP Ledger)
 
 ### Install & setup instructions
 
 ##### 1. Run the below command to install the payment module from Composer
  ```
  composer require hardcastle/ledger-direct-magento2
+ ```
+ This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
+ `app/code` instead, require the core at project level yourself:
+ ```
+ composer require hardcastle/ledger-direct-core:^0.1.0
  ```
 ##### 2. Run the below command to upgrade the payment module
  ```
@@ -47,5 +56,27 @@ GitHub: https://github.com/ledger-direct/ledger-direct-magento2
 - Configure any additional settings as needed (e.g., which network to use (Testnet or Mainnet), which currencies to accept, etc.)
 
 ## Accepting Stablecoin Payments
-- To accept stablecoin payments, ensure you have the corresponding currencies (RLUSD, USDC, EURC etc.) enabled in the plugin settings
+- To accept stablecoin payments, enable the corresponding payment methods (RLUSD, USDC) under "Payment Methods"
 - The merchant wallet address needs to have the corresponding trust lines set up for the stablecoins you want to accept
+
+## External Services
+LedgerDirect uses public APIs from Coingecko, Binance, and Kraken to retrieve current cryptocurrency exchange
+rates. These rates are needed to correctly calculate and display payments. No personal or payment data is sent
+to these services; only requests for current rates are made when a payment is processed or displayed. Rates are
+cached briefly in Magento's cache so that a short outage of a rate source does not interrupt checkout.
+
+- Coingecko API: [Terms of Service](https://www.coingecko.com/en/terms), [Privacy Policy](https://www.coingecko.com/en/privacy)
+- Binance API: [Terms of Use](https://www.binance.com/en/terms), [Privacy Policy](https://www.binance.com/en/privacy)
+- Kraken API: [Terms of Service](https://www.kraken.com/legal), [Privacy Policy](https://www.kraken.com/privacy)
+
+## Development
+
+The core library is developed alongside the plugins. To work against a local core checkout instead of the
+released version, add a path repository to the *Magento project's* `composer.json` and require the branch:
+
+```
+composer config repositories.ledger-direct-core path ../LedgerDirectCorePHP/ledger-direct-core-php
+composer require hardcastle/ledger-direct-core:dev-master
+```
+
+Keep the module's own constraint on the released version; the project-level override is a local concern.

@@ -37,9 +37,9 @@ $ld_get_svg_html = function (string $icon, array $properties = []): string
 };
 
 $tokenLabels = [
-    'xrp_payment' => 'XRP',
-    'xrpl_rlusd_payment' => 'RLUSD',
-    'xrpl_usdc_payment' => 'USDC',
+    'xrp-payment' => 'XRP',
+    'rlusd-payment' => 'RLUSD',
+    'usdc-payment' => 'USDC',
 ];
 $paymentType = $tokenLabels[$type] ?? 'XRP';
 $networkName = $paymentInfo->getNetwork();
@@ -59,7 +59,7 @@ $networkName = $paymentInfo->getNetwork();
         <div class="ld-card">
 
             <div class="ld-card-left">
-                <?php if ($type === 'xrp_payment') { ?>
+                <?php if ($type === 'xrp-payment') { ?>
                     <p><?= __('LedgerDirect.paymentPage.sendXrpMessage', $paymentInfo->getXrpAmount()) ?></p>
                     <input id="xrp-amount"
                            type="text"
@@ -152,7 +152,7 @@ $networkName = $paymentInfo->getNetwork();
             </div>
 
             <div class="ld-card-right">
-                <?php if ($type === 'xrp_payment') { ?>
+                <?php if ($type === 'xrp-payment') { ?>
                     <div class="ld-sum"><?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencySymbol(); ?></div>
                     <span><?php echo __('LedgerDirect.paymentPage.orderNumber'); ?>: <?php echo $paymentInfo->getOrderNumber(); ?></span><br/>
                     <span><?php echo __('LedgerDirect.paymentPage.total'); ?>: <?php echo $paymentInfo->getPrice(); ?> <?php echo $paymentInfo->getCurrencyCode(); ?></span><br/>
