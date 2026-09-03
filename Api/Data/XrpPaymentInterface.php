@@ -230,6 +230,23 @@ interface XrpPaymentInterface
     public function setAmountPaid(?string $amountPaid): self;
 
     /**
+     * Get the amount still outstanding in the requested asset
+     *
+     * Null while nothing has arrived, and again once the payment is complete.
+     *
+     * @return string|null
+     */
+    public function getAmountOutstanding(): ?string;
+
+    /**
+     * Set what is still outstanding
+     *
+     * @param string|null $amountOutstanding
+     * @return self
+     */
+    public function setAmountOutstanding(?string $amountOutstanding): self;
+
+    /**
      * Get the XRPL issuer account of the requested stablecoin (RLUSD/USDC payments only)
      *
      * @return string|null

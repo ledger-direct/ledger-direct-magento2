@@ -126,7 +126,7 @@ jobs:
       - name: Require hardcastle/ledger-direct-core at project level
         if: steps.auth.outputs.has_auth == 'true'
         working-directory: magento
-        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.1.0"
+        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.2.0"
 
       # --no-blocking: Composer 2.9+ fails install/update by default if any
       # dependency has a known security advisory. This CI only cares whether our

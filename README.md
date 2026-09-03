@@ -35,7 +35,7 @@ GitHub: https://github.com/ledger-direct/ledger-direct-magento2
  This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
  `app/code` instead, require the core at project level yourself:
  ```
- composer require hardcastle/ledger-direct-core:^0.1.0
+ composer require hardcastle/ledger-direct-core:^0.2.0
  ```
 ##### 2. Run the below command to upgrade the payment module
  ```

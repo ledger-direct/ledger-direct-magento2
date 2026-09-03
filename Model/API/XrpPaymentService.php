@@ -5,8 +5,10 @@ namespace Hardcastle\LedgerDirect\Model\API;
 use Exception;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterfaceFactory;
+use Brick\Math\BigDecimal;
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
-use Hardcastle\LedgerDirect\Model\Settlement\AmountCheck;
+use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
+use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Magento\Sales\Api\Data\OrderInterface;
 use Symfony\Component\Intl\Currencies;
@@ -24,23 +26,23 @@ class XrpPaymentService implements XrpPaymentServiceInterface
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
     /**
-     * @var AmountCheck
+     * @var SettlementPolicy
      */
-    protected AmountCheck $amountCheck;
+    protected SettlementPolicy $settlementPolicy;
 
     /**
      * @param OrderPaymentService $orderPaymentService
      * @param XrpPaymentInterfaceFactory $xrpPaymentFactory
-     * @param AmountCheck $amountCheck
+     * @param SettlementPolicy $settlementPolicy
      */
     public function __construct(
         OrderPaymentService $orderPaymentService,
         XrpPaymentInterfaceFactory $xrpPaymentFactory,
-        AmountCheck $amountCheck
+        SettlementPolicy $settlementPolicy
     ) {
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
-        $this->amountCheck = $amountCheck;
+        $this->settlementPolicy = $settlementPolicy;
     }
 
     /**
@@ -94,8 +96,13 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setDestinationAccount($intent->destinationAccount)
             ->setDestinationTag($intent->destinationTag)
             ->setExchangeRate($intent->exchangeRate)
-            ->setTxHash($intent->hash)
-            ->setAmountPaid($this->amountCheck->paidValue($intent));
+            ->setTxHash($intent->hash);
+
+        if ($intent->amountPaid !== null) {
+            $xrpPaymentDetails
+                ->setAmountPaid($this->creditedAmount($intent))
+                ->setAmountOutstanding($this->settlementPolicy->shortfall($intent));
+        }
 
         if (is_array($intent->amountRequested)) {
             // Stablecoins carry the full XRPL issued-currency amount object.
@@ -109,5 +116,28 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         }
 
         return $xrpPaymentDetails;
+    }
+
+    /**
+     * What of the delivered amount actually counts towards the request
+     *
+     * Derived from the core's shortfall rather than from amount_paid: a payment in a token other
+     * than the requested one (same name, other issuer) delivers a value but credits nothing, and
+     * the page must not present it as progress.
+     *
+     * @param PaymentIntent $intent a fulfilled intent
+     * @return string
+     */
+    private function creditedAmount(PaymentIntent $intent): string
+    {
+        $shortfall = $this->settlementPolicy->shortfall($intent);
+
+        if ($shortfall === null) {
+            return (string) $intent->amountPaidValue();
+        }
+
+        return PaymentIntent::plainDecimal(
+            BigDecimal::of($intent->amountRequestedValue())->minus(BigDecimal::of($shortfall))
+        );
     }
 }
