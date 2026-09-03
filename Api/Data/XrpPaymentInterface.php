@@ -215,6 +215,21 @@ interface XrpPaymentInterface
     public function setCurrency(?string $currency): self;
 
     /**
+     * Get the amount that has arrived on the ledger so far, in the requested asset, or null if nothing has
+     *
+     * @return string|null
+     */
+    public function getAmountPaid(): ?string;
+
+    /**
+     * Set the amount that has arrived on the ledger so far
+     *
+     * @param string|null $amountPaid
+     * @return self
+     */
+    public function setAmountPaid(?string $amountPaid): self;
+
+    /**
      * Get the XRPL issuer account of the requested stablecoin (RLUSD/USDC payments only)
      *
      * @return string|null

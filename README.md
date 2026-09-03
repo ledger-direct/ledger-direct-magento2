@@ -59,6 +59,16 @@ GitHub: https://github.com/ledger-direct/ledger-direct-magento2
 - To accept stablecoin payments, enable the corresponding payment methods (RLUSD, USDC) under "Payment Methods"
 - The merchant wallet address needs to have the corresponding trust lines set up for the stablecoins you want to accept
 
+## Settlement
+Once the payment is found on the ledger, the module checks the delivered amount against the quote (XRP within
+0.15 %, stablecoins at least the quoted value from the quoted issuer), creates an offline-captured invoice, moves
+the order to the method's *settled status* (`processing` by default) and sends the order and invoice emails —
+the order confirmation is deliberately held back until then. This runs when the customer opens the payment page
+and, for customers who close the tab after sending, from the `ledger_direct_settle_pending_orders` cron job every
+five minutes, so Magento's cron must be running. An underpayment keeps the order pending and shows the outstanding
+amount on the payment page. Note that Magento cancels orders left in `pending_payment` after
+`Stores > Configuration > Sales > Orders Cron Settings > Pending Payment Order Lifetime` (480 minutes by default).
+
 ## External Services
 LedgerDirect uses public APIs from Coingecko, Binance, and Kraken to retrieve current cryptocurrency exchange
 rates. These rates are needed to correctly calculate and display payments. No personal or payment data is sent

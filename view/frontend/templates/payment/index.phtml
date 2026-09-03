@@ -125,6 +125,23 @@ $networkName = $paymentInfo->getNetwork();
                     </div>
                 </div>
 
+                <?php if ($paymentInfo->getAmountPaid() !== null) { ?>
+                    <div class="ld-warning ld-underpaid">
+                        <div role="alert" class="alert alert-warning">
+                            <div class="alert-content-container">
+                                <div class="alert-content">
+                                    <?= __(
+                                        'LedgerDirect.paymentPage.underpaidNotice',
+                                        $paymentInfo->getAmountPaid(),
+                                        $type === 'xrp-payment' ? $paymentInfo->getXrpAmount() : $paymentInfo->getTokenAmount(),
+                                        $paymentType
+                                    ) ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php } ?>
+
                 <div class="ld-warning">
                     <div role="alert" class="alert alert-warning alert-has-icon">
                         <div class="alert-content-container">

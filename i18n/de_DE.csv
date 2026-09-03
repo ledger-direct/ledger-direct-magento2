@@ -5,6 +5,7 @@
 "LedgerDirect.paymentPage.destinationTagLabel","Destination Tag"
 "LedgerDirect.paymentPage.destinationTagWarning","Der Destination Tag muss beim Senden von %1 aus deiner Wallet für eine korrekte Zuordnung der Zahlung mit angegeben werden."
 "LedgerDirect.paymentPage.checkPaymentButton","Zahlungseingang prüfen"
+"LedgerDirect.paymentPage.underpaidNotice","Bisher sind %1 von %2 %3 eingegangen. Bitte sende den Restbetrag an dieselbe Adresse mit demselben Destination Tag."
 "LedgerDirect.paymentPage.orderNumber","Bestellnummer"
 "LedgerDirect.paymentPage.exchangeRate","Wechselkurs"
 "LedgerDirect.paymentPage.total","Preis"

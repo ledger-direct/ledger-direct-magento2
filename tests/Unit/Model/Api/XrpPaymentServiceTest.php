@@ -6,6 +6,7 @@ namespace Hardcastle\LedgerDirect\Tests\Unit\Model\Api;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterfaceFactory;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Model\API\XrpPaymentService;
+use Hardcastle\LedgerDirect\Model\Settlement\AmountCheck;
 use Hardcastle\LedgerDirect\Model\XrpPayment;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Magento\Framework\Model\Context;
@@ -30,7 +31,7 @@ class XrpPaymentServiceTest extends TestCase
             fn () => new XrpPayment($this->createMock(Context::class), $this->createMock(Registry::class))
         );
 
-        $this->service = new XrpPaymentService($this->orderPaymentService, $xrpPaymentFactory);
+        $this->service = new XrpPaymentService($this->orderPaymentService, $xrpPaymentFactory, new AmountCheck());
     }
 
     private function givenOrderQuotedAs(PaymentIntent $intent, float $totalDue, string $currencyCode): void
@@ -75,6 +76,7 @@ class XrpPaymentServiceTest extends TestCase
         $this->assertSame('USD', $details->getCurrencyCode());
         $this->assertSame('$', $details->getCurrencySymbol());
         $this->assertNull($details->getTxHash());
+        $this->assertNull($details->getAmountPaid());
         $this->assertNull($details->getTokenAmount());
         $this->assertNull($details->getCurrency());
         $this->assertNull($details->getIssuer());
@@ -108,5 +110,6 @@ class XrpPaymentServiceTest extends TestCase
         $this->assertSame('5553444300000000000000000000000000000000', $details->getCurrency());
         $this->assertSame('rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE', $details->getIssuer());
         $this->assertSame('HASH', $details->getTxHash());
+        $this->assertSame('150', $details->getAmountPaid());
     }
 }
