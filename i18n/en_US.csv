@@ -3,7 +3,7 @@
 "LedgerDirect.paymentPage.sendTokenMessage","Please send <strong>%1</strong> %2 to the following address:"
 "LedgerDirect.paymentPage.destinationAccountLabel","Account"
 "LedgerDirect.paymentPage.destinationTagLabel","Destination Tag"
-"LedgerDirect.paymentPage.destinationTagWarning","It's important to include the given destination tag when sending XRP from your wallet."
+"LedgerDirect.paymentPage.destinationTagWarning","It's important to include the given destination tag when sending %1 from your wallet."
 "LedgerDirect.paymentPage.checkPaymentButton","Check payment processing"
 "LedgerDirect.paymentPage.orderNumber","Order No."
 "LedgerDirect.paymentPage.total","Total"
