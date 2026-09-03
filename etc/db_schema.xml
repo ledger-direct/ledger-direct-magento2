@@ -1,10 +1,22 @@
 <?xml version="1.0"?>
 <schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <!--
+        Both tables mirror what hardcastle/ledger-direct-core expects of its transaction repository
+        port (see INVARIANTS.md in the core repo):
+        - destination_tag is unsigned: XRPL's DestinationTag is an unsigned 32-bit field and the
+          core issues tags across that whole range. A signed column would truncate everything
+          above 2147483647, and a truncated tag means the customer's payment is never matched.
+        - ledger_index is numeric: it is read via MAX() to resume syncing, and MAX() over a
+          VARCHAR sorts lexicographically ("9" > "10").
+        - the destination-tag table is a per-account counter the core's DestinationTagService
+          derives tags from, not a list of issued tags.
+    -->
     <table name="ledger_direct_xrpl_tx" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="" />
-        <column xsi:type="varchar" name="ledger_index" length="64" nullable="false" comment="" />
+        <column xsi:type="bigint" name="ledger_index" unsigned="true" nullable="false" comment="" />
         <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="" />
+        <column xsi:type="varchar" name="ctid" length="16" nullable="false" comment="XRPL Compact Transaction ID" />
         <column xsi:type="varchar" name="account" length="35" nullable="false" comment="" />
         <column xsi:type="varchar" name="destination" length="35" nullable="false" comment="" />
         <column xsi:type="int" name="destination_tag" unsigned="true" nullable="true" comment="" />
@@ -17,12 +29,16 @@
         <constraint xsi:type="unique" referenceId="LEDGERDIRECT_XRPL_TX_HASH">
             <column name="hash"/>
         </constraint>
-    </table>
-    <table name="ledger_direct_xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Transactions Table">
-        <column xsi:type="int" name="destination_tag" unsigned="true" nullable="false" comment="" />
-        <column xsi:type="varchar" name="account" length="35" nullable="false" comment="" />
-        <constraint xsi:type="primary" referenceId="PRIMARY">
+        <index referenceId="LEDGER_DIRECT_XRPL_TX_DESTINATION_DESTINATION_TAG" indexType="btree">
+            <column name="destination"/>
             <column name="destination_tag"/>
+        </index>
+    </table>
+    <table name="ledger_direct_xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Destination Tag Counter Table">
+        <column xsi:type="varchar" name="destination_account" length="64" nullable="false" comment="" />
+        <column xsi:type="int" name="sequence" unsigned="true" nullable="false" comment="Sequence number issued last" />
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="destination_account"/>
         </constraint>
     </table>
 </schema>
