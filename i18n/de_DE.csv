@@ -3,7 +3,7 @@
 "LedgerDirect.paymentPage.sendTokenMessage","Bitte sende <strong>%1</strong> %2 an die folgende Addresse:"
 "LedgerDirect.paymentPage.destinationAccountLabel","Account"
 "LedgerDirect.paymentPage.destinationTagLabel","Destination Tag"
-"LedgerDirect.paymentPage.destinationTagWarning","Der Destination Tag muss für eine Korrekte Zuordnung der Zahlung mit angegeben werden."
+"LedgerDirect.paymentPage.destinationTagWarning","Der Destination Tag muss beim Senden von %1 aus deiner Wallet für eine korrekte Zuordnung der Zahlung mit angegeben werden."
 "LedgerDirect.paymentPage.checkPaymentButton","Zahlungseingang prüfen"
 "LedgerDirect.paymentPage.orderNumber","Bestellnummer"
 "LedgerDirect.paymentPage.exchangeRate","Wechselkurs"
