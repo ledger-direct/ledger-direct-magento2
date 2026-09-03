@@ -3,7 +3,7 @@ body.ledger-direct {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     outline: 0!important;
-    background-color: #e62355;
+    background-color: #f8f9fa;
 }
 
 .ld-container {
@@ -25,13 +25,13 @@ body.ledger-direct {
 
 .ld-header h2,
 .ld-header h3 {
-    color: white;
+    color: #3a3a3a;
 }
 
 .ld-footer {
     margin-top: 1rem;
     text-align: center;
-    color: white;
+    color: #3a3a3a;
 }
 
 .ld-card {
@@ -54,14 +54,6 @@ body.ledger-direct {
     background-color: #1daae6;
     border-top-right-radius: 0.5rem;
     border-bottom-right-radius: 0.5rem;
-}
-
-img.ld-astronaut {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 128px;
-    height: 128px;
 }
 
 .ld-payment-info {
@@ -159,7 +151,7 @@ img.ld-astronaut {
 }
 
 .ld-back-to-cart {
-    color: #ffffff;
+    color: #3a3a3a;
     text-decoration: underline;
 }
 
@@ -206,11 +198,6 @@ img.ld-astronaut {
         width: 100%;
         padding: 16px;
         border-radius: 0;
-    }
-
-    img.ld-astronaut {
-        width: 128px;
-        height: 128px;
     }
 
     .ld-payment-info-text {
