@@ -14,6 +14,7 @@
                 <active>1</active>
                 <can_use_checkout>1</can_use_checkout>
                 <can_initialize>1</can_initialize>
+                <payment_action>order</payment_action>
                 <is_offline>1</is_offline>
                 <order_status>pending</order_status>
                 <settled_status>processing</settled_status>
@@ -26,6 +27,7 @@
                 <active>0</active>
                 <can_use_checkout>1</can_use_checkout>
                 <can_initialize>1</can_initialize>
+                <payment_action>order</payment_action>
                 <is_offline>1</is_offline>
                 <order_status>pending</order_status>
                 <settled_status>processing</settled_status>
@@ -38,6 +40,7 @@
                 <active>0</active>
                 <can_use_checkout>1</can_use_checkout>
                 <can_initialize>1</can_initialize>
+                <payment_action>order</payment_action>
                 <is_offline>1</is_offline>
                 <order_status>pending</order_status>
                 <settled_status>processing</settled_status>
