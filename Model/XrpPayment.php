@@ -83,6 +83,11 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
     private ?string $txHash;
 
     /**
+     * @var string|null
+     */
+    private ?string $amountPaid = null;
+
+    /**
      * @inheritDoc
      */
     public function getType(): string
@@ -330,6 +335,24 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
     public function setCurrency(?string $currency): self
     {
         $this->currency = $currency;
+
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getAmountPaid(): ?string
+    {
+        return $this->amountPaid;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setAmountPaid(?string $amountPaid): self
+    {
+        $this->amountPaid = $amountPaid;
 
         return $this;
     }

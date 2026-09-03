@@ -6,6 +6,7 @@ use Exception;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterfaceFactory;
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
+use Hardcastle\LedgerDirect\Model\Settlement\AmountCheck;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Magento\Sales\Api\Data\OrderInterface;
 use Symfony\Component\Intl\Currencies;
@@ -23,15 +24,23 @@ class XrpPaymentService implements XrpPaymentServiceInterface
     protected XrpPaymentInterfaceFactory $xrpPaymentFactory;
 
     /**
+     * @var AmountCheck
+     */
+    protected AmountCheck $amountCheck;
+
+    /**
      * @param OrderPaymentService $orderPaymentService
      * @param XrpPaymentInterfaceFactory $xrpPaymentFactory
+     * @param AmountCheck $amountCheck
      */
     public function __construct(
         OrderPaymentService $orderPaymentService,
-        XrpPaymentInterfaceFactory $xrpPaymentFactory
+        XrpPaymentInterfaceFactory $xrpPaymentFactory,
+        AmountCheck $amountCheck
     ) {
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentFactory = $xrpPaymentFactory;
+        $this->amountCheck = $amountCheck;
     }
 
     /**
@@ -85,7 +94,8 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setDestinationAccount($intent->destinationAccount)
             ->setDestinationTag($intent->destinationTag)
             ->setExchangeRate($intent->exchangeRate)
-            ->setTxHash($intent->hash);
+            ->setTxHash($intent->hash)
+            ->setAmountPaid($this->amountCheck->paidValue($intent));
 
         if (is_array($intent->amountRequested)) {
             // Stablecoins carry the full XRPL issued-currency amount object.

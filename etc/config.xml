@@ -18,8 +18,6 @@
                 <is_offline>1</is_offline>
                 <order_status>pending</order_status>
                 <settled_status>processing</settled_status>
-                <processing_status>processing</processing_status>
-                <expired_status>canceled</expired_status>
             </xrp_payment>
             <xrpl_rlusd_payment>
                 <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrplRlusdFacade</model>
@@ -31,8 +29,6 @@
                 <is_offline>1</is_offline>
                 <order_status>pending</order_status>
                 <settled_status>processing</settled_status>
-                <processing_status>processing</processing_status>
-                <expired_status>canceled</expired_status>
             </xrpl_rlusd_payment>
             <xrpl_usdc_payment>
                 <model>Hardcastle\LedgerDirect\Model\PaymentMethod\XrplUsdcFacade</model>
@@ -44,8 +40,6 @@
                 <is_offline>1</is_offline>
                 <order_status>pending</order_status>
                 <settled_status>processing</settled_status>
-                <processing_status>processing</processing_status>
-                <expired_status>canceled</expired_status>
             </xrpl_usdc_payment>
         </payment>
     </default>

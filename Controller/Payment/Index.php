@@ -9,7 +9,10 @@
 namespace Hardcastle\LedgerDirect\Controller\Payment;
 
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
+use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
+use Hardcastle\LedgerDirect\Service\OrderSettlementService;
+use Magento\Framework\Message\ManagerInterface;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\Controller\Result\RedirectFactory;
@@ -51,12 +54,24 @@ class Index implements HttpGetActionInterface
     private XrpPaymentServiceInterface $xrpPaymentService;
 
     /**
+     * @var OrderSettlementService
+     */
+    private OrderSettlementService $settlementService;
+
+    /**
+     * @var ManagerInterface
+     */
+    private ManagerInterface $messageManager;
+
+    /**
      * @param Session $session
      * @param RequestInterface $request
      * @param PageFactory $pageFactory
      * @param RedirectFactory $redirectFactory
      * @param OrderPaymentService $orderPaymentService
      * @param XrpPaymentServiceInterface $xrpPaymentService
+     * @param OrderSettlementService $settlementService
+     * @param ManagerInterface $messageManager
      */
     public function __construct(
         Session                    $session,
@@ -64,7 +79,9 @@ class Index implements HttpGetActionInterface
         PageFactory                $pageFactory,
         RedirectFactory            $redirectFactory,
         OrderPaymentService        $orderPaymentService,
-        XrpPaymentServiceInterface $xrpPaymentService
+        XrpPaymentServiceInterface $xrpPaymentService,
+        OrderSettlementService     $settlementService,
+        ManagerInterface           $messageManager
     ) {
         $this->session = $session;
         $this->request = $request;
@@ -72,6 +89,8 @@ class Index implements HttpGetActionInterface
         $this->redirectFactory = $redirectFactory;
         $this->orderPaymentService = $orderPaymentService;
         $this->xrpPaymentService = $xrpPaymentService;
+        $this->settlementService = $settlementService;
+        $this->messageManager = $messageManager;
     }
 
     /**
@@ -103,13 +122,21 @@ class Index implements HttpGetActionInterface
 
         $fulfilledIntent = $this->orderPaymentService->syncOrderTransactionWithXrpl($order);
         if ($fulfilledIntent !== null) {
+            $settlement = $this->settlementService->settle($order, $fulfilledIntent);
 
-            // Check if amount is correct!
+            if ($settlement->isSettled()) {
+                return $this->redirectFactory->create()->setPath('checkout/onepage/success');
+            }
 
-            $redirect = $this->redirectFactory->create();
+            if ($settlement->getStatus() === SettlementResult::NOT_PAYABLE) {
+                $this->messageManager->addErrorMessage(
+                    __('A payment for this order arrived, but the order can no longer be paid. Please contact us.')
+                );
 
-            // Order status!
-            return $redirect->setPath('checkout/onepage/success');
+                return $this->redirectFactory->create()->setPath('sales/order/history');
+            }
+
+            // Underpaid: fall through and show the page with what arrived so far.
         }
 
         $paymentInfo = $this->xrpPaymentService->getPaymentDetailsByOrderId($orderId);
