@@ -26,3 +26,7 @@ package-lock.json
 # Project specific
 tests/manual
 TODO.md
+
+# Handover documents (working input for Claude Code sessions, not part of the module)
+/LedgerDirect-*.md
+/CLAUDE.md
