@@ -144,9 +144,9 @@ class OrderPaymentService
      * Sync the merchant's incoming XRPL transactions and settle the order's intent on a match
      *
      * @param OrderInterface $order
-     * @return PaymentIntent|null the fulfilled intent, or null while the payment has not
-     *     arrived (or arrived as something that delivered nothing measurable, e.g. an
-     *     EscrowCreate to the same account)
+     * @return PaymentIntent|null the fulfilled intent, or null while no transaction on the
+     *     order's tag pays it (nothing arrived, or only non-payments / payments in another
+     *     asset class, which the core skips)
      */
     public function syncOrderTransactionWithXrpl(OrderInterface $order): ?PaymentIntent
     {
@@ -173,19 +173,19 @@ class OrderPaymentService
             return null;
         }
 
-        $transaction = $this->syncService->findTransaction($intent->destinationAccount, $intent->destinationTag);
+        // Which of the transactions on this tag pays the intent (same asset class, newest
+        // first) is the core's decision; whatever comes back has a decodable delivered amount.
+        $transaction = $this->syncService->findTransactionFor($intent);
 
         if ($transaction === null) {
             return null;
         }
 
-        $amountPaid = $transaction->getDeliveredAmount();
-
-        if ($amountPaid === null) {
-            return null;
-        }
-
-        $fulfilledIntent = $intent->withFulfillment($transaction->hash, $amountPaid, $transaction->ctid);
+        $fulfilledIntent = $intent->withFulfillment(
+            $transaction->hash,
+            $transaction->getDeliveredAmount(),
+            $transaction->ctid
+        );
 
         $this->persistPaymentIntent($order, $fulfilledIntent);
 
