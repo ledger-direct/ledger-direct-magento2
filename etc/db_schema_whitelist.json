@@ -10,10 +10,12 @@
             "destination_tag": true,
             "date": true,
             "meta": true,
-            "tx": true
+            "tx": true,
+            "network": true
         },
         "index": {
-            "LEDGER_DIRECT_XRPL_TX_DESTINATION_DESTINATION_TAG": true
+            "LEDGER_DIRECT_XRPL_TX_DESTINATION_DESTINATION_TAG": true,
+            "LEDGER_DIRECT_XRPL_TX_DESTINATION_NETWORK_LEDGER_INDEX": true
         },
         "constraint": {
             "PRIMARY": true,

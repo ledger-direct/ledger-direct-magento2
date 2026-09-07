@@ -9,11 +9,15 @@
           above 2147483647, and a truncated tag means the customer's payment is never matched.
         - ledger_index is numeric: it is read via MAX() to resume syncing, and MAX() over a
           VARCHAR sorts lexicographically ("9" > "10").
+        - network scopes that sync cursor: a ledger index only means anything within one
+          network, so the cursor is MAX(ledger_index) per (destination, network) - see the
+          index below. Backfilled from the CTID for existing rows by a data patch.
         - the destination-tag table is a per-account counter the core's DestinationTagService
           derives tags from, not a list of issued tags.
     -->
     <table name="ledger_direct_xrpl_tx" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="" />
+        <column xsi:type="varchar" name="network" length="16" nullable="false" default="" comment="mainnet | testnet" />
         <column xsi:type="bigint" name="ledger_index" unsigned="true" nullable="false" comment="" />
         <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="" />
         <column xsi:type="varchar" name="ctid" length="16" nullable="false" comment="XRPL Compact Transaction ID" />
@@ -32,6 +36,11 @@
         <index referenceId="LEDGER_DIRECT_XRPL_TX_DESTINATION_DESTINATION_TAG" indexType="btree">
             <column name="destination"/>
             <column name="destination_tag"/>
+        </index>
+        <index referenceId="LEDGER_DIRECT_XRPL_TX_DESTINATION_NETWORK_LEDGER_INDEX" indexType="btree">
+            <column name="destination"/>
+            <column name="network"/>
+            <column name="ledger_index"/>
         </index>
     </table>
     <table name="ledger_direct_xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Destination Tag Counter Table">
