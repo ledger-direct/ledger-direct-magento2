@@ -35,7 +35,7 @@ GitHub: https://github.com/ledger-direct/ledger-direct-magento2
  This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
  `app/code` instead, require the core at project level yourself:
  ```
- composer require hardcastle/ledger-direct-core:^0.2.0
+ composer require hardcastle/ledger-direct-core:^0.4
  ```
 ##### 2. Run the below command to upgrade the payment module
  ```
@@ -68,6 +68,12 @@ and, for customers who close the tab after sending, from the `ledger_direct_sett
 five minutes, so Magento's cron must be running. An underpayment keeps the order pending and shows the outstanding
 amount on the payment page. Note that Magento cancels orders left in `pending_payment` after
 `Stores > Configuration > Sales > Orders Cron Settings > Pending Payment Order Lifetime` (480 minutes by default).
+
+## Uninstall
+`bin/magento module:uninstall Hardcastle_LedgerDirect` keeps the module's tables. Adding `--remove-data` drops
+them, including `ledger_direct_xrpl_destination_tag` — the only record of which destination tags were already
+issued. A reinstall then starts a fresh counter, and payments for orders that are still waiting can no longer be
+matched. Only remove the data once no LedgerDirect order is open.
 
 ## External Services
 LedgerDirect uses public APIs from Coingecko, Binance, and Kraken to retrieve current cryptocurrency exchange
