@@ -51,14 +51,30 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
         $this->assertSame(7, $this->repository->nextDestinationTagSequence(self::ACCOUNT));
     }
 
-    public function testTheFirstSequenceForAnAccountIsZero(): void
+    /**
+     * The port contract: a fresh counter starts at a random value in [0, 2^31 - 1], never at
+     * a fixed 0 - two installations on one receiving account must not hand out the same tags.
+     */
+    public function testTheFirstSequenceForAnAccountIsARandomStart(): void
     {
+        $inserted = null;
         $this->connection->expects($this->once())->method('update')->willReturn(0);
         $this->connection->expects($this->once())
             ->method('insert')
-            ->with('pfx_ledger_direct_xrpl_destination_tag', ['destination_account' => self::ACCOUNT, 'sequence' => 0]);
+            ->with(
+                'pfx_ledger_direct_xrpl_destination_tag',
+                $this->callback(function (array $row) use (&$inserted): bool {
+                    $inserted = $row;
 
-        $this->assertSame(0, $this->repository->nextDestinationTagSequence(self::ACCOUNT));
+                    return $row['destination_account'] === self::ACCOUNT
+                        && $row['sequence'] >= 0
+                        && $row['sequence'] <= MagentoXrplTransactionRepository::MAX_RANDOM_SEQUENCE_START;
+                })
+            );
+
+        $first = $this->repository->nextDestinationTagSequence(self::ACCOUNT);
+
+        $this->assertSame($inserted['sequence'], $first, 'the value stored is the value issued');
     }
 
     /**
@@ -102,6 +118,7 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
             ->method('insert')
             ->willReturnCallback(function (string $table, array $row): int {
                 $this->assertSame('pfx_ledger_direct_xrpl_tx', $table);
+                $this->assertSame('testnet', $row['network'], 'the network is stored with the row');
                 $this->assertSame('{"delivered_amount":"40000000"}', $row['meta']);
                 if ($row['hash'] === 'DUPLICATE') {
                     throw new DuplicateException('dup');
@@ -116,15 +133,16 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
         ]);
     }
 
-    public function testFindTransactionHydratesTheStoredRow(): void
+    public function testFindTransactionsHydratesTheStoredRowsNewestFirst(): void
     {
         $select = $this->createMock(Select::class);
         $select->method('from')->willReturnSelf();
         $select->method('where')->willReturnSelf();
-        $select->method('limit')->willReturnSelf();
+        $select->expects($this->once())->method('order')->with(['ledger_index DESC', 'id DESC'])->willReturnSelf();
         $this->connection->method('select')->willReturn($select);
-        $this->connection->method('fetchRow')->willReturn([
+        $this->connection->method('fetchAll')->willReturn([[
             'id' => '1',
+            'network' => 'testnet',
             'ledger_index' => '12345',
             'hash' => 'HASH',
             'ctid' => 'C000303900000001',
@@ -134,11 +152,13 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
             'date' => '700000000',
             'meta' => '{"delivered_amount":"40000000"}',
             'tx' => '{"TransactionType":"Payment"}',
-        ]);
+        ]]);
 
-        $transaction = $this->repository->findTransaction(self::ACCOUNT, 4294967295);
+        $transactions = $this->repository->findTransactions(self::ACCOUNT, 4294967295);
 
-        $this->assertNotNull($transaction);
+        $this->assertCount(1, $transactions);
+        $transaction = $transactions[0];
+        $this->assertSame('testnet', $transaction->network);
         $this->assertSame('12345', $transaction->ledgerIndex);
         $this->assertSame(4294967295, $transaction->destinationTag);
         $this->assertSame('C000303900000001', $transaction->ctid);
@@ -146,26 +166,50 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
         $this->assertSame(['TransactionType' => 'Payment'], $transaction->tx);
     }
 
-    public function testFindTransactionReturnsNullWhenNothingIsStored(): void
+    public function testFindTransactionsIsEmptyWhenNothingIsStored(): void
     {
         $select = $this->createMock(Select::class);
         $select->method('from')->willReturnSelf();
         $select->method('where')->willReturnSelf();
-        $select->method('limit')->willReturnSelf();
+        $select->method('order')->willReturnSelf();
         $this->connection->method('select')->willReturn($select);
-        $this->connection->method('fetchRow')->willReturn(false);
+        $this->connection->method('fetchAll')->willReturn([]);
 
-        $this->assertNull($this->repository->findTransaction(self::ACCOUNT, 1));
+        $this->assertSame([], $this->repository->findTransactions(self::ACCOUNT, 1));
+    }
+
+    /**
+     * The cursor is scoped by account and network: a global MAX() would pin the testnet cursor
+     * above every testnet ledger as soon as a single mainnet row exists.
+     */
+    public function testLastSyncedLedgerIndexIsScopedByAccountAndNetwork(): void
+    {
+        $select = $this->createMock(Select::class);
+        $select->method('from')->willReturnSelf();
+        $select->expects($this->exactly(2))->method('where')
+            ->willReturnCallback(function (string $condition, $value) use ($select) {
+                $this->assertContains([$condition, $value], [
+                    ['destination = ?', self::ACCOUNT],
+                    ['network = ?', 'testnet'],
+                ]);
+
+                return $select;
+            });
+        $this->connection->method('select')->willReturn($select);
+        $this->connection->method('fetchOne')->willReturn('20451439');
+
+        $this->assertSame('20451439', $this->repository->getLastSyncedLedgerIndex(self::ACCOUNT, 'testnet'));
     }
 
     public function testLastSyncedLedgerIndexIsNullOnAnEmptyTable(): void
     {
         $select = $this->createMock(Select::class);
         $select->method('from')->willReturnSelf();
+        $select->method('where')->willReturnSelf();
         $this->connection->method('select')->willReturn($select);
         $this->connection->method('fetchOne')->willReturn(null);
 
-        $this->assertNull($this->repository->getLastSyncedLedgerIndex());
+        $this->assertNull($this->repository->getLastSyncedLedgerIndex(self::ACCOUNT, 'testnet'));
     }
 
     public function testTruncateHitsThePrefixedTransactionTable(): void
@@ -189,6 +233,7 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
     private function givenTransaction(string $hash): XrplTransaction
     {
         return new XrplTransaction(
+            network: 'testnet',
             ledgerIndex: '90',
             hash: $hash,
             ctid: 'C000005A00000001',

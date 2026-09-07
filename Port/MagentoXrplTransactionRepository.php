@@ -24,6 +24,12 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     public const TAG_TABLE = 'ledger_direct_xrpl_destination_tag';
 
     /**
+     * Upper bound for a fresh counter's random start (2^31 - 1): leaves at least ~2.1 billion
+     * sequences before DestinationTagsExhaustedException, as the port contract requires.
+     */
+    public const MAX_RANDOM_SEQUENCE_START = 2147483647;
+
+    /**
      * @var ResourceConnection
      */
     private ResourceConnection $resourceConnection;
@@ -45,8 +51,10 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
      * destination tag. LAST_INSERT_ID(expr) both stores the new value and makes it
      * readable per connection, so the value read back afterwards is this caller's own.
      *
-     * The first call for an account inserts the row at 0. If two first calls race, one
-     * insert loses on the primary key and simply falls back to the UPDATE path.
+     * The first call for an account creates the row at a random start - never 0; the port
+     * contract explains why (two installations on one receiving account must not hand out
+     * the same tags). If two first calls race, one insert loses on the primary key and
+     * simply falls back to the UPDATE path.
      */
     public function nextDestinationTagSequence(string $destinationAccount): int
     {
@@ -64,9 +72,10 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
 
         if ($advance() === 0) {
             try {
-                $connection->insert($table, ['destination_account' => $destinationAccount, 'sequence' => 0]);
+                $start = random_int(0, self::MAX_RANDOM_SEQUENCE_START);
+                $connection->insert($table, ['destination_account' => $destinationAccount, 'sequence' => $start]);
 
-                return 0;
+                return $start;
             } catch (DuplicateException $exception) {
                 $advance();
             }
@@ -105,6 +114,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
         foreach ($transactions as $transaction) {
             try {
                 $connection->insert($table, [
+                    'network' => $transaction->network,
                     'ledger_index' => $transaction->ledgerIndex,
                     'hash' => $transaction->hash,
                     'ctid' => $transaction->ctid,
@@ -126,29 +136,36 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
 
     /**
      * @inheritdoc
+     *
+     * Newest first, tie-broken by the auto-increment id, so the order is total and even
+     * chronological. Which of them pays the intent is the core's decision.
      */
-    public function findTransaction(string $destination, int $destinationTag): ?XrplTransaction
+    public function findTransactions(string $destination, int $destinationTag): array
     {
         $connection = $this->getConnection();
         $select = $connection->select()
             ->from($this->getTableName(self::TX_TABLE))
             ->where('destination = ?', $destination)
             ->where('destination_tag = ?', $destinationTag)
-            ->limit(1);
+            ->order(['ledger_index DESC', 'id DESC']);
 
-        $row = $connection->fetchRow($select);
-
-        return is_array($row) && $row !== [] ? $this->hydrate($row) : null;
+        return array_map([$this, 'hydrate'], $connection->fetchAll($select));
     }
 
     /**
      * @inheritdoc
+     *
+     * Scoped by account and network: a ledger index only means anything within one network,
+     * and a global MAX() would pin the testnet cursor above every testnet ledger as soon as a
+     * single mainnet row exists.
      */
-    public function getLastSyncedLedgerIndex(): ?string
+    public function getLastSyncedLedgerIndex(string $destinationAccount, string $network): ?string
     {
         $connection = $this->getConnection();
         $select = $connection->select()
-            ->from($this->getTableName(self::TX_TABLE), ['last' => new Expression('MAX(ledger_index)')]);
+            ->from($this->getTableName(self::TX_TABLE), ['last' => new Expression('MAX(ledger_index)')])
+            ->where('destination = ?', $destinationAccount)
+            ->where('network = ?', $network);
 
         $lastSyncedLedgerIndex = $connection->fetchOne($select);
 
@@ -195,6 +212,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     private function hydrate(array $row): XrplTransaction
     {
         return new XrplTransaction(
+            network: (string) ($row['network'] ?? ''),
             ledgerIndex: (string) $row['ledger_index'],
             hash: (string) $row['hash'],
             ctid: (string) $row['ctid'],

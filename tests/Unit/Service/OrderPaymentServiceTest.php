@@ -7,6 +7,7 @@ use GuzzleHttp\Psr7\HttpFactory;
 use Hardcastle\LedgerDirect\Core\Payment\AssetNotAcceptedException;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService;
+use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Core\Port\XrplTransactionRepositoryInterface;
 use Hardcastle\LedgerDirect\Core\Price\PriceService;
 use Hardcastle\LedgerDirect\Core\Xrpl\DestinationTagService;
@@ -187,11 +188,12 @@ class OrderPaymentServiceTest extends TestCase
 
     public function testSyncRecordsTheSettlementOnTheStoredQuote(): void
     {
-        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')
+            ->with(self::DESTINATION_ACCOUNT, 'testnet')->willReturn(null);
         $this->transactionRepository->expects($this->once())
-            ->method('findTransaction')
+            ->method('findTransactions')
             ->with(self::DESTINATION_ACCOUNT, 4294967295)
-            ->willReturn($this->givenLedgerTransaction(['delivered_amount' => '40000000']));
+            ->willReturn([$this->givenLedgerTransaction(['delivered_amount' => '40000000'])]);
         $this->orderRepository->expects($this->once())->method('save');
 
         $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
@@ -213,13 +215,13 @@ class OrderPaymentServiceTest extends TestCase
 
     /**
      * Not every transaction carrying this destination tag delivered money - an EscrowCreate
-     * to the same account has no delivered amount, and the order must stay unpaid rather
-     * than settle on a null.
+     * to the same account has no delivered amount. The core skips it (since 0.3 that is its
+     * decision, not the adapter's), and the order stays unpaid rather than settling on a null.
      */
     public function testSyncIgnoresATransactionThatDeliveredNothing(): void
     {
         $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
-        $this->transactionRepository->method('findTransaction')->willReturn($this->givenLedgerTransaction([]));
+        $this->transactionRepository->method('findTransactions')->willReturn([$this->givenLedgerTransaction([])]);
         $this->orderRepository->expects($this->never())->method('save');
 
         $this->assertNull($this->createService()->syncOrderTransactionWithXrpl(
@@ -227,9 +229,60 @@ class OrderPaymentServiceTest extends TestCase
         ));
     }
 
+    /**
+     * A destination tag can carry a stray payment in another asset class next to the real
+     * one. Before core 0.3 whichever row surfaced first was handed to withFulfillment(),
+     * which rejects the wrong shape and aborted the sync - the order stayed open forever with
+     * its real payment unexamined. Now the core picks the newest candidate of the quoted
+     * asset class, regardless of which one is newer overall.
+     */
+    public function testAStrayPaymentInAnotherAssetClassIsSkippedInFavourOfTheRealOne(): void
+    {
+        $rlusd = ['currency' => '524C555344000000000000000000000000000000', 'value' => '1.16', 'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV'];
+        $xrpTx = $this->givenLedgerTransaction(['delivered_amount' => '40000000'], hash: 'XRP_HASH', ledgerIndex: '1000');
+        $rlusdTx = $this->givenLedgerTransaction(['delivered_amount' => $rlusd], hash: 'RLUSD_HASH', ledgerIndex: '2000');
+
+        foreach ([[$rlusdTx, $xrpTx], [$xrpTx, $rlusdTx]] as $newestFirst) {
+            $this->setUp();
+            $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+            $this->transactionRepository->method('findTransactions')->willReturn($newestFirst);
+
+            $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
+                $this->givenOrder('xrp_payment', $this->givenStoredIntent())
+            );
+
+            $this->assertSame('XRP_HASH', $fulfilled?->hash);
+            $this->assertSame(40.0, $fulfilled?->amountPaid);
+        }
+    }
+
+    /**
+     * A token with the right name from another issuer is a real payment attempt: the core hands
+     * it back (right asset class), SettlementPolicy declares it non-settling with the whole
+     * amount still due, and XrpPaymentService turns that into the wrong-token notice - rather
+     * than skipping it and showing the customer nothing.
+     */
+    public function testAPaymentFromTheWrongIssuerIsReturnedButNeverSettles(): void
+    {
+        $requested = ['currency' => '524C555344000000000000000000000000000000', 'value' => '1.16', 'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV'];
+        $wrongIssuer = ['currency' => '524C555344000000000000000000000000000000', 'value' => '1.16', 'issuer' => 'rSomebodyElse'];
+        $intent = PaymentIntent::quote('rlusd-payment', 'XRPL', 'testnet', 'RLUSD', 'USD', 'RLUSD/USD', 1.0, $requested, self::DESTINATION_ACCOUNT, 4294967295, time() + 300);
+
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->method('findTransactions')
+            ->willReturn([$this->givenLedgerTransaction(['delivered_amount' => $wrongIssuer])]);
+
+        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrpl_rlusd_payment', $intent));
+
+        $this->assertNotNull($fulfilled, 'a genuine payment attempt reaches the order');
+        $policy = new SettlementPolicy();
+        $this->assertFalse($policy->isSettled($fulfilled));
+        $this->assertSame('1.16', $policy->shortfall($fulfilled), 'nothing is credited');
+    }
+
     public function testSyncWithoutAStoredQuoteReturnsNull(): void
     {
-        $this->transactionRepository->expects($this->never())->method('findTransaction');
+        $this->transactionRepository->expects($this->never())->method('findTransactions');
         $this->orderRepository->expects($this->never())->method('save');
 
         $this->assertNull($this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment')));
@@ -240,7 +293,7 @@ class OrderPaymentServiceTest extends TestCase
         $stored = $this->givenStoredIntent()->withFulfillment('HASH', 50.0, 'CTID');
         $httpClient = new StubHttpClient();
 
-        $this->transactionRepository->expects($this->never())->method('findTransaction');
+        $this->transactionRepository->expects($this->never())->method('findTransactions');
 
         $fulfilled = $this->createService(httpClient: $httpClient)
             ->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
@@ -256,7 +309,7 @@ class OrderPaymentServiceTest extends TestCase
     public function testSyncKeepsTheOrderPendingWhenTheNodeIsUnreachable(): void
     {
         $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
-        $this->transactionRepository->expects($this->never())->method('findTransaction');
+        $this->transactionRepository->expects($this->never())->method('findTransactions');
         $this->orderRepository->expects($this->never())->method('save');
         $this->logger->expects($this->once())->method('warning');
 
@@ -349,11 +402,12 @@ class OrderPaymentServiceTest extends TestCase
     /**
      * @param array<string, mixed> $meta
      */
-    private function givenLedgerTransaction(array $meta): XrplTransaction
+    private function givenLedgerTransaction(array $meta, string $hash = 'HASH', string $ledgerIndex = '1000'): XrplTransaction
     {
         return new XrplTransaction(
-            ledgerIndex: '1000',
-            hash: 'HASH',
+            network: 'testnet',
+            ledgerIndex: $ledgerIndex,
+            hash: $hash,
             ctid: 'CTID',
             account: 'rSenderAccount',
             destination: self::DESTINATION_ACCOUNT,
