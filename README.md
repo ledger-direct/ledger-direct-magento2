@@ -59,15 +59,42 @@ GitHub: https://github.com/ledger-direct/ledger-direct-magento2
 - To accept stablecoin payments, enable the corresponding payment methods (RLUSD, USDC) under "Payment Methods"
 - The merchant wallet address needs to have the corresponding trust lines set up for the stablecoins you want to accept
 
+## Payment page
+After the checkout the customer is sent to the LedgerDirect payment page, which shows the amount, the receiving
+account and the destination tag. The page is reachable by the order's key (Magento's own `protect_code`, the secret
+behind the guest order view), so guest orders work and the URL keeps working without a login — the address bar
+carries it right after the checkout.
+
+The page shows one of five states and polls the shop every eight seconds:
+
+| State | Meaning |
+|---|---|
+| waiting | Nothing has arrived and the quoted amount is still valid — a countdown shows for how long |
+| expired | Nothing has arrived and the quote has passed — a button fetches an updated amount, account and tag stay the same |
+| partial | Something arrived in the quoted asset, but not enough — the page says what arrived and what is still due; a second payment adds up |
+| wrong_asset | Something arrived, but in another token or from another issuer — nothing is credited, the full amount is still due |
+| settled | Paid — the customer is sent on to the order confirmation, or to the order view when the checkout session is gone |
+
+The status endpoint (`/ledger-direct/payment/status?id=<order entity id>&key=<protect_code>`) returns the same payload
+as every other LedgerDirect plugin, plus a `redirect` URL once the order no longer waits for payment — whether it was
+paid on the ledger or canceled by the merchant. A wrong key or id is refused with 403 without saying whether the
+order exists. The ledger is synced at most once every five seconds per receiving account, however many pages poll.
+
 ## Settlement
 Once the payment is found on the ledger, the module checks the delivered amount against the quote (XRP within
-0.15 %, stablecoins at least the quoted value from the quoted issuer), creates an offline-captured invoice, moves
-the order to the method's *settled status* (`processing` by default) and sends the order and invoice emails —
-the order confirmation is deliberately held back until then. This runs when the customer opens the payment page
-and, for customers who close the tab after sending, from the `ledger_direct_settle_pending_orders` cron job every
-five minutes, so Magento's cron must be running. An underpayment keeps the order pending and shows the outstanding
-amount on the payment page. Note that Magento cancels orders left in `pending_payment` after
-`Stores > Configuration > Sales > Orders Cron Settings > Pending Payment Order Lifetime` (480 minutes by default).
+0.15 %, stablecoins at least the quoted value from the quoted issuer — the core's `SettlementPolicy`), creates an
+offline-captured invoice, moves the order to the method's *settled status* (`processing` by default) and sends the
+order and invoice emails — the order confirmation is deliberately held back until then. This runs from the payment
+page and its status poll and, for customers who close the tab after sending, from the
+`ledger_direct_settle_pending_orders` cron job every five minutes, so Magento's cron must be running. The cron makes
+one node request per receiving account and network, then matches every open order against the stored transactions.
+
+A payment that does not settle the order — a shortfall, or a token other than the quoted one — moves the order to
+the status **XRPL payment incomplete** (state `pending_payment`) with the amounts and the transaction hash in the
+status history; partial payments add up, and a top-up of the shortfall settles. Magento cancels orders left in the
+status `pending_payment` after `Stores > Configuration > Sales > Orders Cron Settings > Pending Payment Order
+Lifetime` (480 minutes by default); an order with the *XRPL payment incomplete* status is not cancelled by that job,
+because there is real money on the ledger for it.
 
 ## Uninstall
 `bin/magento module:uninstall Hardcastle_LedgerDirect` keeps the module's tables. Adding `--remove-data` drops
