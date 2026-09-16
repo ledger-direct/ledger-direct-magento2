@@ -3,26 +3,15 @@
 namespace Hardcastle\LedgerDirect\Api;
 
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
+use Magento\Sales\Api\Data\OrderInterface;
 
 interface XrpPaymentServiceInterface
 {
     /**
-     * Get crypto price for Order
+     * The payment details the payment page renders for an order, from its stored PaymentIntent
      *
-     * @api
-     * @param int $orderId
-     *
+     * @param OrderInterface $order
      * @return XrpPaymentInterface
      */
-    public function getPaymentDetailsByOrderId(int $orderId): XrpPaymentInterface;
-
-    /**
-     * Get crypto price for Order
-     *
-     * @api
-     * @param string $orderNumber
-     *
-     * @return XrpPaymentInterface
-     */
-    public function getPaymentDetailsByOrderNumber(string  $orderNumber): XrpPaymentInterface;
+    public function getPaymentDetails(OrderInterface $order): XrpPaymentInterface;
 }
