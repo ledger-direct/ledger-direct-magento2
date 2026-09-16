@@ -113,6 +113,11 @@ body.ledger-direct {
     margin-bottom: 1rem;
 }
 
+/* The page removes Magento's stylesheets, so the hidden attribute needs its default back. */
+[hidden] {
+    display: none !important;
+}
+
 /* The hint box markup uses Bootstrap's alert classes, which Magento's frontend does not style. */
 .ld-warning .alert-warning {
     padding: 0.75rem 1rem;
@@ -120,6 +125,36 @@ body.ledger-direct {
     background-color: #fdf2e2;
     border-radius: 0.375rem;
     line-height: 1.5;
+}
+
+.ld-warning .alert-info {
+    padding: 0.75rem 1rem;
+    color: #1b6d8c;
+    background-color: #e3f4fb;
+    border-radius: 0.375rem;
+    line-height: 1.5;
+}
+
+.ld-warning .alert p {
+    margin: 0 0 0.5rem;
+}
+
+.ld-quote-validity {
+    margin: 1rem 0;
+}
+
+.ld-refresh-quote {
+    padding: 0.4rem 0.75rem;
+    font-weight: bold;
+    color: white;
+    background-color: #1daae6;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.ld-refresh-quote:hover {
+    background-color: #59c2ef;
 }
 
 .ld-sync {
