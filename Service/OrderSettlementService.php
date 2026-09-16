@@ -2,7 +2,6 @@
 
 namespace Hardcastle\LedgerDirect\Service;
 
-use Brick\Math\BigDecimal;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
@@ -30,6 +29,16 @@ use Psr\Log\LoggerInterface;
  */
 class OrderSettlementService
 {
+    /**
+     * The order status a partial payment, or one in the wrong asset, moves the order to
+     *
+     * Magento has no partially-paid state, so this is a status under pending_payment (see
+     * Setup\Patch\Data\AddPaymentIncompleteStatus): the merchant sees and filters it in the
+     * order grid, and Magento's CleanExpiredOrders cron - which filters on the status
+     * pending_payment - leaves an order with money on the ledger alone.
+     */
+    public const PAYMENT_INCOMPLETE_STATUS = 'ledger_direct_payment_incomplete';
+
     /**
      * @var SettlementPolicy
      */
@@ -104,11 +113,16 @@ class OrderSettlementService
         }
 
         if (!$order->canInvoice()) {
+            if ($this->alreadyRecorded($order, $intent)) {
+                return new SettlementResult(SettlementResult::NOT_PAYABLE, $paid, $requested);
+            }
+
             $this->logger->warning('LedgerDirect: ledger payment received for an order that can no longer be paid', [
                 'order' => $order->getIncrementId(),
                 'state' => $order->getState(),
                 'hash' => $intent->hash,
             ]);
+            $order->getPayment()->setLastTransId($intent->hash);
             $order->addCommentToStatusHistory(__(
                 'XRPL payment %1 %2 received (tx %3), but the order can no longer be paid.',
                 $paid,
@@ -121,27 +135,7 @@ class OrderSettlementService
         }
 
         if (!$this->settlementPolicy->isSettled($intent)) {
-            $shortfall = (string) $this->settlementPolicy->shortfall($intent);
-
-            // Nothing credited although something arrived: a token other than the requested one
-            // (same name, other issuer, or another currency code). The merchant needs to know.
-            if (BigDecimal::of($shortfall)->isEqualTo(BigDecimal::of($requested))) {
-                $order->addCommentToStatusHistory(__(
-                    'XRPL payment of %1 received (tx %2), but not in the requested %3 - it is not credited.',
-                    $paid,
-                    $intent->hash,
-                    $intent->baseAsset
-                ));
-            } else {
-                $order->addCommentToStatusHistory(__(
-                    'XRPL payment %1 of %2 %3 received (tx %4); the order stays pending.',
-                    $paid,
-                    $requested,
-                    $intent->baseAsset,
-                    $intent->hash
-                ));
-            }
-            $order->save();
+            $this->recordIncompletePayment($order, $intent, $paid, $requested);
 
             return new SettlementResult(SettlementResult::UNDERPAID, $paid, $requested);
         }
@@ -149,6 +143,64 @@ class OrderSettlementService
         $this->invoice($order, $intent, $paid);
 
         return new SettlementResult(SettlementResult::SETTLED, $paid, $requested);
+    }
+
+    /**
+     * Record a payment that arrived but does not settle the order
+     *
+     * The order moves to the payment-incomplete status (the state stays pending_payment) and
+     * the history says what arrived: a shortfall in the quoted asset, or - decided by the
+     * core's SettlementPolicy, never re-derived here - a payment in another token, which
+     * credits nothing. The status endpoint settles again on every poll with the same intent,
+     * so a hit that was already recorded is not written twice; the newest contributing
+     * transaction's hash on the payment is what tells them apart, and a second partial
+     * payment gets its own line.
+     *
+     * @param Order $order
+     * @param PaymentIntent $intent
+     * @param string $paid
+     * @param string $requested
+     * @return void
+     */
+    private function recordIncompletePayment(Order $order, PaymentIntent $intent, string $paid, string $requested): void
+    {
+        if ($this->alreadyRecorded($order, $intent)) {
+            return;
+        }
+
+        if ($this->settlementPolicy->isWrongAsset($intent)) {
+            $comment = __(
+                'XRPL payment of %1 received (tx %2), but not in the requested %3 - it is not credited.',
+                $paid,
+                $intent->hash,
+                $intent->baseAsset
+            );
+        } else {
+            $comment = __(
+                'XRPL payment %1 of %2 %3 received (tx %4); the order stays pending.',
+                $paid,
+                $requested,
+                $intent->baseAsset,
+                $intent->hash
+            );
+        }
+
+        $order->getPayment()->setLastTransId($intent->hash);
+        $order->setStatus(self::PAYMENT_INCOMPLETE_STATUS);
+        $order->addCommentToStatusHistory($comment, self::PAYMENT_INCOMPLETE_STATUS);
+        $order->save();
+    }
+
+    /**
+     * Whether this fulfillment has already been written to the order's history
+     *
+     * @param Order $order
+     * @param PaymentIntent $intent
+     * @return bool
+     */
+    private function alreadyRecorded(Order $order, PaymentIntent $intent): bool
+    {
+        return $intent->hash !== null && (string) $order->getPayment()->getLastTransId() === $intent->hash;
     }
 
     /**
