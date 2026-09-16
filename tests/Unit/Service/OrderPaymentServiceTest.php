@@ -11,7 +11,9 @@ use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Core\Port\XrplTransactionRepositoryInterface;
 use Hardcastle\LedgerDirect\Core\Price\PriceService;
 use Hardcastle\LedgerDirect\Core\Xrpl\DestinationTagService;
+use Hardcastle\LedgerDirect\Core\Testing\InMemoryCache;
 use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
+use Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle;
 use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
 use Hardcastle\LedgerDirect\Core\Xrpl\XrplTransaction;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
@@ -145,7 +147,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->expects($this->never())->method('nextDestinationTagSequence');
         $this->orderRepository->expects($this->once())->method('save');
 
-        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored), true);
 
         $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
 
@@ -153,6 +155,22 @@ class OrderPaymentServiceTest extends TestCase
         $this->assertEquals(40.0, $intent['amount_requested'], 'the price is re-quoted (was 50.0 at 2.0)');
         $this->assertSame(2.5, $intent['exchange_rate']);
         $this->assertGreaterThan(time(), $intent['expiry']);
+    }
+
+    /**
+     * Rendering the page must not re-quote by itself: the customer has to see that the quote
+     * ran out and ask for a new amount, or the page would never show `expired` and the
+     * amount would change under them on every reload.
+     */
+    public function testPrepareHandsBackAnExpiredQuoteUnlessAskedToRequote(): void
+    {
+        $stored = $this->givenStoredIntent(expiry: time() - 1);
+
+        $this->orderRepository->expects($this->never())->method('save');
+
+        $returned = $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+
+        $this->assertSame($stored->toArray(), $returned->toArray());
     }
 
     public function testPrepareNeverTouchesASettledPayment(): void
@@ -303,13 +321,13 @@ class OrderPaymentServiceTest extends TestCase
     }
 
     /**
-     * The node being unreachable must not take the payment page down with it: the order
-     * simply stays pending, and the failure is logged.
+     * The node being unreachable must not take the payment page down with it: the failure is
+     * logged, and the order is still matched against what the cron synced earlier.
      */
     public function testSyncKeepsTheOrderPendingWhenTheNodeIsUnreachable(): void
     {
         $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
-        $this->transactionRepository->expects($this->never())->method('findTransactions');
+        $this->transactionRepository->expects($this->once())->method('findTransactions')->willReturn([]);
         $this->orderRepository->expects($this->never())->method('save');
         $this->logger->expects($this->once())->method('warning');
 
@@ -317,6 +335,123 @@ class OrderPaymentServiceTest extends TestCase
             ->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $this->givenStoredIntent()));
 
         $this->assertNull($result);
+    }
+
+    /**
+     * Two partial payments on the tag pay the order together: amount_paid is their sum and
+     * the intent records the newest contributing transaction.
+     */
+    public function testTwoPartialPaymentsAddUp(): void
+    {
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->method('findTransactions')->willReturn([
+            $this->givenLedgerTransaction(['delivered_amount' => '30000000'], hash: 'SECOND', ledgerIndex: '2000'),
+            $this->givenLedgerTransaction(['delivered_amount' => '20000000'], hash: 'FIRST', ledgerIndex: '1000'),
+        ]);
+
+        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
+            $this->givenOrder('xrp_payment', $this->givenStoredIntent())
+        );
+
+        $this->assertSame('SECOND', $fulfilled?->hash);
+        $this->assertSame(50.0, $fulfilled?->amountPaid);
+    }
+
+    /**
+     * The regression test for the guard that locked a partial payment in: once the first,
+     * short payment was stored, every later sync handed back the same intent and the customer
+     * who sent the rest was never settled.
+     */
+    public function testATopUpAfterAStoredPartialPaymentSettles(): void
+    {
+        $stored = $this->givenStoredIntent()->withFulfillment('FIRST', 20.0, 'CTID');
+
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->expects($this->once())->method('findTransactions')->willReturn([
+            $this->givenLedgerTransaction(['delivered_amount' => '30000000'], hash: 'SECOND', ledgerIndex: '2000'),
+            $this->givenLedgerTransaction(['delivered_amount' => '20000000'], hash: 'FIRST', ledgerIndex: '1000'),
+        ]);
+        $this->orderRepository->expects($this->once())->method('save');
+
+        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
+
+        $this->assertSame('SECOND', $fulfilled?->hash);
+        $this->assertSame(50.0, $fulfilled?->amountPaid);
+        $this->assertTrue((new SettlementPolicy())->isSettled($fulfilled));
+    }
+
+    /**
+     * The same for a payment in the wrong token: the right one, sent afterwards, must win.
+     */
+    public function testTheRightIssuerDisplacesAStoredWrongIssuerPayment(): void
+    {
+        $requested = ['currency' => '524C555344000000000000000000000000000000', 'value' => '1.16', 'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV'];
+        $wrongIssuer = ['currency' => '524C555344000000000000000000000000000000', 'value' => '1.16', 'issuer' => 'rSomebodyElse'];
+        $stored = PaymentIntent::quote('rlusd-payment', 'XRPL', 'testnet', 'RLUSD', 'USD', 'RLUSD/USD', 1.0, $requested, self::DESTINATION_ACCOUNT, 4294967295, time() + 300)
+            ->withFulfillment('WRONG', $wrongIssuer, 'CTID');
+
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->method('findTransactions')->willReturn([
+            $this->givenLedgerTransaction(['delivered_amount' => $requested], hash: 'RIGHT', ledgerIndex: '2000'),
+            $this->givenLedgerTransaction(['delivered_amount' => $wrongIssuer], hash: 'WRONG', ledgerIndex: '1000'),
+        ]);
+
+        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrpl_rlusd_payment', $stored));
+
+        $this->assertSame('RIGHT', $fulfilled?->hash);
+        $this->assertTrue((new SettlementPolicy())->isSettled($fulfilled));
+    }
+
+    /**
+     * The status endpoint asks every few seconds; a hit that is already stored is not written again.
+     */
+    public function testAnUnchangedHitIsNotWrittenAgain(): void
+    {
+        $stored = $this->givenStoredIntent()->withFulfillment('FIRST', 20.0, 'CTID');
+
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->method('findTransactions')->willReturn([
+            $this->givenLedgerTransaction(['delivered_amount' => '20000000'], hash: 'FIRST', ledgerIndex: '1000'),
+        ]);
+        $this->orderRepository->expects($this->never())->method('save');
+
+        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
+
+        $this->assertSame('FIRST', $fulfilled?->hash);
+        $this->assertSame(20.0, $fulfilled?->amountPaid);
+    }
+
+    /**
+     * Throttled, the receiving account is synced once per interval however many orders or
+     * polls ask; unthrottled (the cron) always syncs. Matching runs either way.
+     */
+    public function testAThrottledSyncHitsTheNodeOncePerInterval(): void
+    {
+        $httpClient = new StubHttpClient();
+        $throttle = new SyncThrottle(new InMemoryCache(), new NullLogger());
+        $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
+        $this->transactionRepository->expects($this->exactly(3))->method('findTransactions')->willReturn([]);
+
+        $service = $this->createService(httpClient: $httpClient, throttle: $throttle);
+        $order = $this->givenOrder('xrp_payment', $this->givenStoredIntent());
+
+        $service->syncOrderTransactionWithXrpl($order, true);
+        $service->syncOrderTransactionWithXrpl($order, true);
+        $this->assertCount(1, $this->nodeRequests($httpClient), 'the second poll inside the window makes no node request');
+
+        $service->syncOrderTransactionWithXrpl($order, false);
+        $this->assertCount(2, $this->nodeRequests($httpClient), 'the cron is never throttled');
+    }
+
+    /**
+     * @return string[]
+     */
+    private function nodeRequests(StubHttpClient $httpClient): array
+    {
+        return array_values(array_filter(
+            $httpClient->requestedUris,
+            static fn (string $uri): bool => !preg_match('/kraken|coingecko|binance/', $uri)
+        ));
     }
 
     /**
@@ -335,8 +470,11 @@ class OrderPaymentServiceTest extends TestCase
     /**
      * @param array<string, mixed> $configOverrides config path => value
      */
-    private function createService(array $configOverrides = [], ?StubHttpClient $httpClient = null): OrderPaymentService
-    {
+    private function createService(
+        array $configOverrides = [],
+        ?StubHttpClient $httpClient = null,
+        ?SyncThrottle $throttle = null
+    ): OrderPaymentService {
         $httpClient ??= new StubHttpClient(2.5);
         $httpFactory = new HttpFactory();
 
@@ -376,6 +514,8 @@ class OrderPaymentServiceTest extends TestCase
             $this->createMock(OrderFactory::class),
             $paymentIntentService,
             $syncService,
+            $throttle ?? new SyncThrottle(new InMemoryCache(), new NullLogger()),
+            new SettlementPolicy(),
             $this->logger
         );
     }

@@ -14,8 +14,6 @@
     </type>
 
     <!-- Interface defaults -->
-    <preference for="Hardcastle\LedgerDirect\Api\CryptoPriceServiceInterface" type="Hardcastle\LedgerDirect\Model\API\CryptoPriceService" />
-
     <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\Api\XrpPaymentService" />
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface" type="Hardcastle\LedgerDirect\Model\XrpPayment" />
 
@@ -53,6 +51,17 @@
     </type>
     <type name="Hardcastle\LedgerDirect\Core\Xrpl\SyncService">
         <arguments>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+        </arguments>
+    </type>
+    <!--
+        The status endpoint and the payment page sync the ledger at most once per interval and
+        receiving account (INVARIANTS.md, "Payment status"); the last-sync mark lives in the same
+        PSR-16 view of Magento's cache as the exchange rates.
+    -->
+    <type name="Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle">
+        <arguments>
+            <argument name="cache" xsi:type="object">Hardcastle\LedgerDirect\Model\Cache\RateCache</argument>
             <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
         </arguments>
     </type>
