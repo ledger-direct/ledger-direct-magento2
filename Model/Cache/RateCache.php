@@ -129,12 +129,19 @@ class RateCache implements CacheInterface
     /**
      * Map a PSR-16 key onto a Magento cache identifier
      *
+     * The readable part keeps the key recognisable in the cache backend; the hash keeps two
+     * keys apart that differ only in characters the mapping folds - punctuation, or letter
+     * case, which Magento's cache frontend upper-cases anyway while XRPL addresses in the
+     * sync-throttle keys are case-sensitive.
+     *
      * @param string $key
      * @return string
      */
     public function identifier(string $key): string
     {
-        return self::KEY_PREFIX . strtoupper((string) preg_replace('/[^A-Za-z0-9_]/', '_', $key));
+        return self::KEY_PREFIX
+            . strtoupper((string) preg_replace('/[^A-Za-z0-9_]/', '_', $key))
+            . '_' . substr(hash('sha256', $key), 0, 8);
     }
 
     /**

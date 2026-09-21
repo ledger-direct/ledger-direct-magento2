@@ -2,6 +2,7 @@
     "name": "hardcastle/ledger-direct-magento2",
     "type": "magento2-module",
     "description": "Component for accepting online payments in Magento2 using the XRP Ledger",
+    "version": "1.0.0",
     "keywords": [
         "magento2",
         "payment",
@@ -19,7 +20,7 @@
     },
     "require": {
         "php": "~8.2.0 || ~8.3.0 || ~8.4.0",
-        "hardcastle/ledger-direct-core": "^0.4",
+        "hardcastle/ledger-direct-core": "^0.7",
         "magento/framework": ">=103.0.7",
         "magento/module-catalog": ">=104.0.7",
         "magento/module-checkout": ">=100.4.7",

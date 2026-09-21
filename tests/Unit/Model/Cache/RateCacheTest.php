@@ -32,9 +32,14 @@ class RateCacheTest extends TestCase
     {
         $identifier = $this->cache->identifier(self::CORE_KEY);
 
-        $this->assertSame('LEDGER_DIRECT_LEDGER_DIRECT_RATE_V1_TESTNET_XRP_EUR', $identifier);
+        $this->assertStringStartsWith('LEDGER_DIRECT_LEDGER_DIRECT_RATE_V1_TESTNET_XRP_EUR_', $identifier);
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_]+$/', $identifier);
         $this->assertNotSame($identifier, $this->cache->identifier('ledger-direct.rate.v1.mainnet.XRP.EUR'));
+        // XRPL addresses are case-sensitive; the sync-throttle keys carry them and must not fold.
+        $this->assertNotSame(
+            $this->cache->identifier('ledger-direct.sync.v1.testnet.rAbC'),
+            $this->cache->identifier('ledger-direct.sync.v1.testnet.rabc')
+        );
     }
 
     public function testAnEntryRoundTripsThroughJson(): void

@@ -34,6 +34,9 @@ class XrpPaymentServiceTest extends TestCase
         $this->service = new XrpPaymentService($this->orderPaymentService, $xrpPaymentFactory, new SettlementPolicy());
     }
 
+    /** @var OrderInterface|MockObject */
+    private $order;
+
     private function givenOrderQuotedAs(PaymentIntent $intent, float $totalDue, string $currencyCode): void
     {
         /** @var OrderInterface|MockObject $order */
@@ -43,7 +46,7 @@ class XrpPaymentServiceTest extends TestCase
         $order->method('getTotalDue')->willReturn($totalDue);
         $order->method('getOrderCurrencyCode')->willReturn($currencyCode);
 
-        $this->orderPaymentService->method('getOrderById')->willReturn($order);
+        $this->order = $order;
         $this->orderPaymentService->method('prepareOrderPaymentForXrpl')->with($order)->willReturn($intent);
     }
 
@@ -62,7 +65,7 @@ class XrpPaymentServiceTest extends TestCase
             destinationTag: 12345,
         ), 100.0, 'USD');
 
-        $details = $this->service->getPaymentDetailsByOrderId(42);
+        $details = $this->service->getPaymentDetails($this->order);
 
         $this->assertSame('xrp-payment', $details->getType());
         $this->assertSame(42, $details->getOrderId());
@@ -72,6 +75,8 @@ class XrpPaymentServiceTest extends TestCase
         $this->assertSame(12345, $details->getDestinationTag());
         $this->assertSame(0.5, $details->getExchangeRate());
         $this->assertSame(200.0, $details->getXrpAmount());
+        $this->assertSame('200', $details->getAmountRequested(), 'the plain decimal the page shows');
+        $this->assertFalse($details->isWrongAsset());
         $this->assertSame(100.0, $details->getPrice());
         $this->assertSame('USD', $details->getCurrencyCode());
         $this->assertSame('$', $details->getCurrencySymbol());
@@ -84,8 +89,8 @@ class XrpPaymentServiceTest extends TestCase
     }
 
     /**
-     * A same-named token from another issuer delivers a value but credits nothing; the page must
-     * not present it as progress.
+     * A same-named token from another issuer delivers a value but credits nothing: the page
+     * names what arrived, says it is the wrong asset, and still asks for the whole amount.
      */
     public function testAPaymentInTheWrongTokenCreditsNothing(): void
     {
@@ -102,10 +107,11 @@ class XrpPaymentServiceTest extends TestCase
             destinationTag: 7,
         )->withFulfillment('HASH', ['currency' => '5553444300000000000000000000000000000000', 'value' => '1.16', 'issuer' => 'rHuGNhqTG32mfmAvWA8hUyWRLV3tCSwKQt']), 1.16, 'USD');
 
-        $details = $this->service->getPaymentDetailsByOrderId(42);
+        $details = $this->service->getPaymentDetails($this->order);
 
-        $this->assertSame('0', $details->getAmountPaid());
-        $this->assertSame('1.16', $details->getAmountOutstanding());
+        $this->assertSame('1.16', $details->getAmountPaid(), 'the delivered value, so the page can name it');
+        $this->assertTrue($details->isWrongAsset());
+        $this->assertSame('1.16', $details->getAmountOutstanding(), 'nothing is credited');
     }
 
     public function testAnUnderpaymentExposesWhatIsCreditedAndWhatIsOutstanding(): void
@@ -123,7 +129,7 @@ class XrpPaymentServiceTest extends TestCase
             destinationTag: 7,
         )->withFulfillment('HASH', 0.84), 39.0, 'USD');
 
-        $details = $this->service->getPaymentDetailsByOrderId(42);
+        $details = $this->service->getPaymentDetails($this->order);
 
         $this->assertSame('0.84', $details->getAmountPaid());
         $this->assertSame('25.88673', $details->getAmountOutstanding());
@@ -148,12 +154,13 @@ class XrpPaymentServiceTest extends TestCase
             destinationTag: 999,
         )->withFulfillment('HASH', ['currency' => '5553444300000000000000000000000000000000', 'value' => '150', 'issuer' => 'rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE'], 'CTID'), 150.0, 'USD');
 
-        $details = $this->service->getPaymentDetailsByOrderId(42);
+        $details = $this->service->getPaymentDetails($this->order);
 
         $this->assertSame('usdc-payment', $details->getType());
         $this->assertSame('mainnet', $details->getNetwork());
         $this->assertSame(0.0, $details->getXrpAmount());
         $this->assertSame('150.00', $details->getTokenAmount());
+        $this->assertSame('150.00', $details->getAmountRequested());
         $this->assertSame('5553444300000000000000000000000000000000', $details->getCurrency());
         $this->assertSame('rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE', $details->getIssuer());
         $this->assertSame('HASH', $details->getTxHash());

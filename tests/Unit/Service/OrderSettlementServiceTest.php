@@ -109,13 +109,23 @@ class OrderSettlementServiceTest extends TestCase
         $this->service->settle($order, $this->xrpIntent(100.0)->withFulfillment('HASH', 100.0));
     }
 
-    public function testAnUnderpaymentKeepsTheOrderPendingWithoutAnInvoice(): void
+    /**
+     * A shortfall moves the order to the payment-incomplete status - visible in the grid,
+     * spared by Magento's pending-payment cron - and says in the history what arrived.
+     */
+    public function testAnUnderpaymentMovesTheOrderToThePaymentIncompleteStatusWithoutAnInvoice(): void
     {
         $order = $this->givenOrder(canInvoice: true);
         $this->invoiceService->expects($this->never())->method('prepareInvoice');
         $this->orderSender->expects($this->never())->method('send');
+        $order->expects($this->once())->method('setStatus')
+            ->with(OrderSettlementService::PAYMENT_INCOMPLETE_STATUS)->willReturnSelf();
         $order->expects($this->once())->method('addCommentToStatusHistory')
-            ->with($this->callback(static fn ($c): bool => str_contains((string) $c, '0.84 of 26.75411 XRP')));
+            ->with(
+                $this->callback(static fn ($c): bool => str_contains((string) $c, '0.84 of 26.75411 XRP')),
+                OrderSettlementService::PAYMENT_INCOMPLETE_STATUS
+            );
+        $order->getPayment()->expects($this->once())->method('setLastTransId')->with('HASH');
         $order->expects($this->once())->method('save');
 
         $result = $this->service->settle($order, $this->xrpIntent(26.75411)->withFulfillment('HASH', 0.84));
@@ -124,12 +134,46 @@ class OrderSettlementServiceTest extends TestCase
         $this->assertSame('0.84', $result->getAmountPaid());
     }
 
+    /**
+     * The status endpoint settles again on every poll with the same intent; the history
+     * must not fill up with the same line.
+     */
+    public function testARecordedUnderpaymentIsNotWrittenTwice(): void
+    {
+        $order = $this->givenOrder(canInvoice: true, lastTransId: 'HASH');
+        $order->expects($this->never())->method('setStatus');
+        $order->expects($this->never())->method('addCommentToStatusHistory');
+        $order->expects($this->never())->method('save');
+
+        $result = $this->service->settle($order, $this->xrpIntent(26.75411)->withFulfillment('HASH', 0.84));
+
+        $this->assertSame(SettlementResult::UNDERPAID, $result->getStatus());
+    }
+
+    /**
+     * A second partial payment is a new transaction, and gets its own line.
+     */
+    public function testASecondPartialPaymentIsRecordedAgain(): void
+    {
+        $order = $this->givenOrder(canInvoice: true, lastTransId: 'FIRST');
+        $order->expects($this->once())->method('addCommentToStatusHistory')
+            ->with($this->callback(static fn ($c): bool => str_contains((string) $c, '10 of 26.75411 XRP')), $this->anything());
+        $order->getPayment()->expects($this->once())->method('setLastTransId')->with('SECOND');
+
+        $this->service->settle($order, $this->xrpIntent(26.75411)->withFulfillment('SECOND', 10.0));
+    }
+
     public function testAPaymentInAnotherTokenIsRecordedAsNotCredited(): void
     {
         $order = $this->givenOrder(canInvoice: true);
         $this->invoiceService->expects($this->never())->method('prepareInvoice');
+        $order->expects($this->once())->method('setStatus')
+            ->with(OrderSettlementService::PAYMENT_INCOMPLETE_STATUS)->willReturnSelf();
         $order->expects($this->once())->method('addCommentToStatusHistory')
-            ->with($this->callback(static fn ($c): bool => str_contains((string) $c, 'not in the requested RLUSD')));
+            ->with(
+                $this->callback(static fn ($c): bool => str_contains((string) $c, 'not in the requested RLUSD')),
+                OrderSettlementService::PAYMENT_INCOMPLETE_STATUS
+            );
 
         $rlusd = ['currency' => '524C555344000000000000000000000000000000', 'issuer' => 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV', 'value' => '1.16'];
         $usdc = ['currency' => '5553444300000000000000000000000000000000', 'issuer' => 'rHuGNhqTG32mfmAvWA8hUyWRLV3tCSwKQt', 'value' => '1.16'];
@@ -159,6 +203,17 @@ class OrderSettlementServiceTest extends TestCase
         $this->assertSame(SettlementResult::NOT_PAYABLE, $result->getStatus());
     }
 
+    public function testAPaymentForAnUnpayableOrderIsRecordedOnlyOnce(): void
+    {
+        $order = $this->givenOrder(canInvoice: false, lastTransId: 'HASH');
+        $this->logger->expects($this->never())->method('warning');
+        $order->expects($this->never())->method('addCommentToStatusHistory');
+
+        $result = $this->service->settle($order, $this->xrpIntent(100.0)->withFulfillment('HASH', 100.0));
+
+        $this->assertSame(SettlementResult::NOT_PAYABLE, $result->getStatus());
+    }
+
     /**
      * The payment page and the cron may both settle the same order; the second call must not
      * create a second invoice.
@@ -177,12 +232,17 @@ class OrderSettlementServiceTest extends TestCase
     /**
      * @return Order|MockObject
      */
-    private function givenOrder(bool $canInvoice, string $settledStatus = 'processing', float $totalDue = 39.0)
-    {
+    private function givenOrder(
+        bool $canInvoice,
+        string $settledStatus = 'processing',
+        float $totalDue = 39.0,
+        ?string $lastTransId = null
+    ) {
         $method = $this->createMock(MethodInterface::class);
         $method->method('getConfigData')->with('settled_status')->willReturn($settledStatus);
         $payment = $this->createMock(Payment::class);
         $payment->method('getMethodInstance')->willReturn($method);
+        $payment->method('getLastTransId')->willReturn($lastTransId);
 
         $config = $this->createMock(Config::class);
         $config->method('getStateStatuses')->with(Order::STATE_PROCESSING)->willReturn(['processing' => 'Processing']);

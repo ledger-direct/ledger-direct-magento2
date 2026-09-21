@@ -2,17 +2,21 @@
 
 namespace Hardcastle\LedgerDirect\Model\API;
 
-use Exception;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterfaceFactory;
-use Brick\Math\BigDecimal;
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
-use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Magento\Sales\Api\Data\OrderInterface;
 use Symfony\Component\Intl\Currencies;
 
+/**
+ * Turns an order's PaymentIntent into the data object the payment page renders.
+ *
+ * Every amount here is the core's plain decimal; nothing is rounded or formatted a second
+ * time in the view. Whether a delivered payment counts, and why not, is the core's
+ * SettlementPolicy - the page only shows the answer.
+ */
 class XrpPaymentService implements XrpPaymentServiceInterface
 {
     /**
@@ -47,36 +51,11 @@ class XrpPaymentService implements XrpPaymentServiceInterface
 
     /**
      * @inheritdoc
-     *
-     * @throws Exception
      */
-    public function getPaymentDetailsByOrderId(int $orderId): XrpPaymentInterface
+    public function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
     {
-        $order = $this->orderPaymentService->getOrderById($orderId);
-
-        return $this->getPaymentDetails($order);
-    }
-
-    /**
-     * @inheritdoc
-     *
-     * @throws Exception
-     */
-    public function getPaymentDetailsByOrderNumber(string $orderNumber): XrpPaymentInterface
-    {
-        $order = $this->orderPaymentService->getOrderByOrderNumber($orderNumber);
-
-        return $this->getPaymentDetails($order);
-    }
-
-    /**
-     * Build the payment details data object for the given order from its PaymentIntent
-     *
-     * @param OrderInterface $order
-     * @return XrpPaymentInterface
-     */
-    protected function getPaymentDetails(OrderInterface $order): XrpPaymentInterface
-    {
+        // Quotes an order that has no intent yet; a stored one is handed back as it is, even
+        // expired - the page shows that, and only the refresh action re-quotes.
         $intent = $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
 
         $total = (float) $order->getTotalDue();
@@ -96,11 +75,15 @@ class XrpPaymentService implements XrpPaymentServiceInterface
             ->setDestinationAccount($intent->destinationAccount)
             ->setDestinationTag($intent->destinationTag)
             ->setExchangeRate($intent->exchangeRate)
-            ->setTxHash($intent->hash);
+            ->setAmountRequested($intent->amountRequestedValue())
+            ->setTxHash($intent->hash)
+            ->setWrongAsset($this->settlementPolicy->isWrongAsset($intent));
 
         if ($intent->amountPaid !== null) {
+            // The delivered value, so the page can name what actually arrived - in the
+            // wrong-asset case that is the other token, and wrongAsset says it counts for nothing.
             $xrpPaymentDetails
-                ->setAmountPaid($this->creditedAmount($intent))
+                ->setAmountPaid($intent->amountPaidValue())
                 ->setAmountOutstanding($this->settlementPolicy->shortfall($intent));
         }
 
@@ -116,28 +99,5 @@ class XrpPaymentService implements XrpPaymentServiceInterface
         }
 
         return $xrpPaymentDetails;
-    }
-
-    /**
-     * What of the delivered amount actually counts towards the request
-     *
-     * Derived from the core's shortfall rather than from amount_paid: a payment in a token other
-     * than the requested one (same name, other issuer) delivers a value but credits nothing, and
-     * the page must not present it as progress.
-     *
-     * @param PaymentIntent $intent a fulfilled intent
-     * @return string
-     */
-    private function creditedAmount(PaymentIntent $intent): string
-    {
-        $shortfall = $this->settlementPolicy->shortfall($intent);
-
-        if ($shortfall === null) {
-            return (string) $intent->amountPaidValue();
-        }
-
-        return PaymentIntent::plainDecimal(
-            BigDecimal::of($intent->amountRequestedValue())->minus(BigDecimal::of($shortfall))
-        );
     }
 }

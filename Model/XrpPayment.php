@@ -83,9 +83,19 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
     private ?string $txHash;
 
     /**
+     * @var string
+     */
+    private string $amountRequested = '0';
+
+    /**
      * @var string|null
      */
     private ?string $amountPaid = null;
+
+    /**
+     * @var bool
+     */
+    private bool $wrongAsset = false;
 
     /**
      * @var string|null
@@ -394,6 +404,42 @@ class XrpPayment extends AbstractModel implements XrpPaymentInterface
     public function setIssuer(?string $issuer): self
     {
         $this->issuer = $issuer;
+
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getAmountRequested(): string
+    {
+        return $this->amountRequested;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setAmountRequested(string $amountRequested): self
+    {
+        $this->amountRequested = $amountRequested;
+
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isWrongAsset(): bool
+    {
+        return $this->wrongAsset;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setWrongAsset(bool $wrongAsset): self
+    {
+        $this->wrongAsset = $wrongAsset;
 
         return $this;
     }

@@ -215,7 +215,24 @@ interface XrpPaymentInterface
     public function setCurrency(?string $currency): self;
 
     /**
-     * Get the amount that has arrived on the ledger so far, in the requested asset, or null if nothing has
+     * The amount the customer has to send, as the core states it: a plain decimal string
+     *
+     * @return string
+     */
+    public function getAmountRequested(): string;
+
+    /**
+     * Set the requested amount as a plain decimal string
+     *
+     * @param string $amountRequested
+     * @return self
+     */
+    public function setAmountRequested(string $amountRequested): self;
+
+    /**
+     * Get what has arrived on the ledger so far, or null if nothing has
+     *
+     * Delivered and undiminished: in the wrong-asset case this is the other token's value.
      *
      * @return string|null
      */
@@ -260,4 +277,19 @@ interface XrpPaymentInterface
      * @return self
      */
     public function setIssuer(?string $issuer): self;
+
+    /**
+     * Whether what arrived is another token than the quoted one and credits nothing
+     *
+     * @return bool
+     */
+    public function isWrongAsset(): bool;
+
+    /**
+     * Set whether the delivered payment is in the wrong asset
+     *
+     * @param bool $wrongAsset
+     * @return self
+     */
+    public function setWrongAsset(bool $wrongAsset): self;
 }
