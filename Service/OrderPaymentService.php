@@ -10,6 +10,7 @@ use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
 use Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle;
 use InvalidArgumentException;
 use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Sales\Api\Data\OrderPaymentInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\OrderFactory;
@@ -313,7 +314,20 @@ class OrderPaymentService
      */
     public function readPaymentIntent(OrderInterface $order): ?PaymentIntent
     {
-        $paymentIntentData = $this->readAdditionalData($order)[self::ADDITIONAL_DATA_KEY] ?? null;
+        $payment = $order->getPayment();
+
+        return $payment === null ? null : $this->readPaymentIntentOf($payment);
+    }
+
+    /**
+     * The same, from the order payment itself - for places that hold the payment, not the order
+     *
+     * @param OrderPaymentInterface $payment
+     * @return PaymentIntent|null
+     */
+    public function readPaymentIntentOf(OrderPaymentInterface $payment): ?PaymentIntent
+    {
+        $paymentIntentData = $this->decodeAdditionalData($payment)[self::ADDITIONAL_DATA_KEY] ?? null;
 
         return is_array($paymentIntentData) ? PaymentIntent::fromArray($paymentIntentData) : null;
     }
@@ -394,7 +408,18 @@ class OrderPaymentService
      */
     private function readAdditionalData(OrderInterface $order): array
     {
-        $rawAdditionalData = $order->getPayment()->getAdditionalData();
+        return $this->decodeAdditionalData($order->getPayment());
+    }
+
+    /**
+     * Decode a payment's additional_data
+     *
+     * @param OrderPaymentInterface $payment
+     * @return array
+     */
+    private function decodeAdditionalData(OrderPaymentInterface $payment): array
+    {
+        $rawAdditionalData = $payment->getAdditionalData();
 
         if (empty($rawAdditionalData)) {
             return [];

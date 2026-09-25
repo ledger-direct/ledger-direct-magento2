@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Payment information block for LedgerDirect orders (admin order view, customer order view, order emails): quote,
+  payment status, received and outstanding amounts, transaction hash with explorer link.
+
 ## 1.0.0
 
 - Payment status contract: the payment page shows one of five states (waiting, expired, partial, wrong_asset,
