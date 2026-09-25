@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Payment instructions email right after the order is placed, with the key link to the payment page (configurable:
+  enabled, sender identity, template). The order confirmation is still held back until the payment has arrived.
+
 ## 1.0.0
 
 - Payment status contract: the payment page shows one of five states (waiting, expired, partial, wrong_asset,
