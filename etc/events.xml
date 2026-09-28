@@ -8,5 +8,8 @@
     <event name="payment_method_assign_data">
         <observer name="ledger_direct_data_assign" instance="Hardcastle\LedgerDirect\Observer\DataAssign" />
     </event>
+    <event name="checkout_submit_all_after">
+        <observer name="ledger_direct_send_pending_payment_email" instance="Hardcastle\LedgerDirect\Observer\SendPendingPaymentEmail" />
+    </event>
 
 </config>

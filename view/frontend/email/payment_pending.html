@@ -1,0 +1,44 @@
+<!--@subject {{trans "Complete the payment for your %store_name order" store_name=$store.frontend_name}} @-->
+<!--@vars {
+"var order.increment_id":"Order Id",
+"var order_data.customer_name":"Customer Name",
+"var payment_url":"Payment Page URL",
+"var payment_method_title":"Payment Method Title",
+"var store.frontend_name":"Store Frontend Name",
+"var store_phone":"Store Phone",
+"var store_email":"Store Email",
+"var store_hours":"Store Hours",
+"var order":"Order"
+} @-->
+{{template config_path="design/email/header_template"}}
+
+<table>
+    <tr class="email-intro">
+        <td>
+            <p class="greeting">{{trans "%name," name=$order_data.customer_name}}</p>
+            <p>
+                {{trans "Thank you for your order from %store_name." store_name=$store.frontend_name}}
+                {{trans "Your order <span class=\"no-link\">#%increment_id</span> is waiting for its payment in %method." increment_id=$order.increment_id method=$payment_method_title |raw}}
+                {{trans "The payment page shows the amount, the receiving account and the destination tag, and confirms the payment once it has arrived on the ledger:"}}
+            </p>
+            <p>
+                <a href="{{var payment_url}}" class="button">{{trans "Open the payment page"}}</a>
+            </p>
+            <p>
+                {{trans "You can come back to this page at any time with the link above; it does not require a login."}}
+                {{trans "The quoted amount is valid for a limited time - the page tells you when it needs to be refreshed."}}
+            </p>
+            <p>
+                {{trans "If you have already sent the payment, there is nothing more to do: this message is sent once, right after the order, and the payment page confirms your payment as soon as it has arrived."}}
+            </p>
+            <p>
+                {{trans 'If you have questions about your order, you can email us at <a href="mailto:%store_email">%store_email</a>' store_email=$store_email |raw}}{{depend store_phone}} {{trans 'or call us at <a href="tel:%store_phone">%store_phone</a>' store_phone=$store_phone |raw}}{{/depend}}.
+                {{depend store_hours}}
+                    {{trans 'Our hours are <span class="no-link">%store_hours</span>.' store_hours=$store_hours |raw}}
+                {{/depend}}
+            </p>
+        </td>
+    </tr>
+</table>
+
+{{template config_path="design/email/footer_template"}}

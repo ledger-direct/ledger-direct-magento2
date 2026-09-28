@@ -65,6 +65,10 @@ account and the destination tag. The page is reachable by the order's key (Magen
 behind the guest order view), so guest orders work and the URL keeps working without a login — the address bar
 carries it right after the checkout.
 
+Right after the order is placed the customer receives an email with that link (*Send payment instructions
+email* under the LedgerDirect configuration, on by default; sender and template are configurable there), so a
+closed tab is not the end of the payment. The order confirmation itself is only sent once the payment has arrived.
+
 The page shows one of five states and polls the shop every eight seconds:
 
 | State | Meaning |

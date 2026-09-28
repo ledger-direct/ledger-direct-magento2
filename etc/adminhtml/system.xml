@@ -22,6 +22,21 @@
                     <comment>How long the exchange rate quoted on the payment page stays valid before it is refreshed.</comment>
                     <validate>validate-digits validate-digits-range digits-range-60-3600</validate>
                 </field>
+                <field id="pending_email_enabled" translate="label comment" type="select" sortOrder="6" showInDefault="1" showInWebsite="1" canRestore="1">
+                    <label>Send payment instructions email</label>
+                    <comment>Emails the customer a link to the payment page right after the order is placed. The order confirmation itself is sent once the payment has arrived.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="pending_email_identity" translate="label" type="select" sortOrder="7" showInDefault="1" showInWebsite="1" canRestore="1">
+                    <label>Payment instructions email sender</label>
+                    <source_model>Magento\Config\Model\Config\Source\Email\Identity</source_model>
+                    <depends><field id="pending_email_enabled">1</field></depends>
+                </field>
+                <field id="pending_email_template" translate="label" type="select" sortOrder="8" showInDefault="1" showInWebsite="1" canRestore="1">
+                    <label>Payment instructions email template</label>
+                    <source_model>Magento\Config\Model\Config\Source\Email\Template</source_model>
+                    <depends><field id="pending_email_enabled">1</field></depends>
+                </field>
             </group>
             <group id="xrpl_rlusd_payment" translate="label" sortOrder="2" showInDefault="1" showInWebsite="1">
                 <label>Ledger Direct - RLUSD (XRPL)</label>
