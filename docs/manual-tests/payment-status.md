@@ -42,6 +42,45 @@ merge gate one day, it keeps its ID.
   which calls the job directly. Its summary is an info line in `var/log/system.log`
   (`bin/cli tail -n 20 var/log/system.log`).
 
+## Automated with ld-e2e
+
+The `ledger-direct-e2e` harness runs PS-01 to PS-09 and PS-11 against this shop unattended (PS-10 waits
+35 minutes and belongs to a nightly run). It pays real testnet transactions from its treasury to a receiving
+account it creates for the run, and writes the checklist lines into the pull request:
+
+```
+ld-e2e run --target magento --base-url https://localhost:8444 \
+  --compose-dir /path/to/docker-magento --cases automated
+ld-e2e report pr --repo ledger-direct/ledger-direct-magento2 --pr <n>
+```
+
+What it does, in this shop's terms — the same steps as above, without a browser:
+
+- **Orders** go through the REST API as a headless storefront places them: `POST /rest/V1/guest-carts`, the
+  1.00 test article `LD-E2E-001` (created through the admin REST API on first use, then
+  `indexer:reindex` — the dev stack indexes by schedule and has no cron, so a new article is "not
+  available" until then), addresses and the cheapest shipping method, `payment-information` with
+  `xrp_payment`, `xrpl_rlusd_payment` or `xrpl_usdc_payment`. The `protect_code` comes from
+  `GET /rest/V1/orders/<id>` with an admin token.
+- **Configuration**, the **cron job** and the **throttle mark** have no REST face: a PHP script on stdin in the
+  `phpfpm` container (`bin/docker-compose exec -T phpfpm php --`) writes the `payment/ledger_direct/*` and
+  `payment/*/active` paths and cleans the config cache, runs `Cron\SettlePendingOrders::execute()`, and
+  reads the mark from `Model\Cache\RateCache`.
+- **The customer's side** is HTTP: the page (state, displayed amount, account, tag), the status endpoint, and
+  the refresh as a POST to `ledger-direct/payment/refresh` with the `form_key` the page rendered (and the
+  page's cookies, if it set any).
+- **Small orders:** the driver picks the cheapest shipping method, so enable free shipping in the dev shop
+  (`bin/magento config:set carriers/freeshipping/active 1`); with Flat Rate alone every order is 6.00 instead
+  of 1.00, and the wrong-asset case (PS-04) pays that twice in stablecoins.
+- **What counts as the payment record:** the settling hash is the invoice's `transaction_id`; a partial or
+  wrong-asset hit is noted in `last_trans_id` and the status history. The harness reads the invoices.
+- **PS-08** reads the core's throttle mark (`ledger-direct.sync.v1.testnet.<account>` in Magento's cache, the
+  time of the last sync): one status call inside the window must not change it.
+- **PS-09** checks the summary line the cron logs (`accounts_synced`, `checked`, `settled`) in
+  `var/log/system.log` after the run.
+- **PS-11** cancels the order with `POST /rest/V1/orders/<id>/cancel`.
+- The dev stack's certificate is self-signed; the driver accepts it for `localhost`.
+
 ## PS-01 — Waiting
 
 Place an order with *XRP*, send nothing, open the payment page.
