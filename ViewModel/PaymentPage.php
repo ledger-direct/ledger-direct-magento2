@@ -158,7 +158,7 @@ class PaymentPage implements ArgumentInterface
             'payment_uri' => $paymentUri,
             'qr_data_uri' => $this->qrDataUri($paymentUri),
             'paid_share' => $this->paidShare($amountPaid, $amountRequested, $state),
-            'rate_display' => self::rate($info->getExchangeRate()),
+            'rate_display' => $this->rate($info->getExchangeRate()),
             'currency_code' => $info->getCurrencyCode(),
             'fiat_display' => (string) $this->priceCurrency->format(
                 $info->getPrice(),
@@ -191,7 +191,7 @@ class PaymentPage implements ArgumentInterface
      * @param float $rate
      * @return string
      */
-    public static function rate(float $rate): string
+    public function rate(float $rate): string
     {
         $decimal = number_format($rate, self::RATE_DECIMALS, '.', '');
 
@@ -216,8 +216,7 @@ class PaymentPage implements ArgumentInterface
     }
 
     /**
-     * The QR code the page shows without JavaScript: the same payment request the
-     * script renders, as an inline SVG; the script redraws it.
+     * The QR code the page shows without JavaScript - the script redraws the same request
      *
      * @param string $paymentUri
      * @return string
@@ -247,9 +246,8 @@ class PaymentPage implements ArgumentInterface
             $url = $this->storeLogoUrl();
         } elseif ($mode === LogoMode::CUSTOM) {
             $file = $this->config->getPaymentPageLogoFile();
-            $url = $file !== '' && preg_match('#^[A-Za-z0-9._/-]+$#', $file) === 1 && !str_contains($file, '..')
-                ? $this->mediaUrl('ledger_direct/logo/' . $file)
-                : null;
+            $isSafe = $file !== '' && preg_match('#^[A-Za-z0-9._/-]+$#', $file) === 1 && !str_contains($file, '..');
+            $url = $isSafe ? $this->mediaUrl('ledger_direct/logo/' . $file) : null;
         }
 
         if ($url === null && $mode !== LogoMode::NONE) {
@@ -259,7 +257,7 @@ class PaymentPage implements ArgumentInterface
         return [
             'mode' => $mode,
             'url' => $url,
-            'monogram' => self::monogram($storeName),
+            'monogram' => $this->monogram($storeName),
         ];
     }
 
@@ -270,7 +268,10 @@ class PaymentPage implements ArgumentInterface
      */
     private function storeLogoUrl(): ?string
     {
-        $configured = (string) $this->scopeConfig->getValue('design/header/logo_src', ScopeInterface::SCOPE_STORE);
+        $configured = (string) $this->scopeConfig->getValue(
+            'design/header/logo_src',
+            ScopeInterface::SCOPE_STORE
+        );
 
         if ($configured !== '') {
             return $this->mediaUrl('logo/' . $configured);
@@ -301,7 +302,10 @@ class PaymentPage implements ArgumentInterface
      */
     private function storeName(): string
     {
-        $configured = trim((string) $this->scopeConfig->getValue('general/store_information/name', ScopeInterface::SCOPE_STORE));
+        $configured = trim((string) $this->scopeConfig->getValue(
+            'general/store_information/name',
+            ScopeInterface::SCOPE_STORE
+        ));
 
         if ($configured !== '') {
             return $configured;
@@ -320,7 +324,7 @@ class PaymentPage implements ArgumentInterface
      * @param string $storeName
      * @return string
      */
-    public static function monogram(string $storeName): string
+    public function monogram(string $storeName): string
     {
         $trimmed = trim($storeName);
 

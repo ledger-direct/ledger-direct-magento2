@@ -127,9 +127,9 @@ class PaymentPageTest extends TestCase
 
     public function testTheRateIsAPlainDecimalAndTheOnlyFormattedNumber(): void
     {
-        self::assertSame('1.201763', PaymentPage::rate(1.2017633333333));
-        self::assertSame('0.00001', PaymentPage::rate(0.00001));
-        self::assertSame('2', PaymentPage::rate(2.0));
+        self::assertSame('1.201763', $this->viewModel->rate(1.2017633333333));
+        self::assertSame('0.00001', $this->viewModel->rate(0.00001));
+        self::assertSame('2', $this->viewModel->rate(2.0));
     }
 
     public function testTheStoreLogoFallsBackToTheThemesAndTheMonogramIsTheFirstLetter(): void
@@ -140,7 +140,7 @@ class PaymentPageTest extends TestCase
         self::assertSame('shop', $view['logo']['mode']);
         self::assertSame('https://shop.test/static/images/logo.svg', $view['logo']['url']);
         self::assertSame('Ö', $view['logo']['monogram']);
-        self::assertSame('·', PaymentPage::monogram('  '));
+        self::assertSame('·', $this->viewModel->monogram('  '));
     }
 
     private function xrpIntent(float $amount, ?int $expiry): PaymentIntent
