@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0
+
+- The payment page is redesigned on `@ledger-direct/payment-ui` (0.1.1), the package every LedgerDirect plugin
+  shares: the amount to send is the largest thing on the page with a copy button, the receiving account, the
+  destination tag (marked as required) and, for tokens, the issuer are numbered fields with copy buttons, a
+  countdown with a bar, one column on phones, dark mode follows the system.
+- One QR code with the receiving account, the destination tag and the amount (for tokens also currency and
+  issuer), the payment request the core specifies (`PaymentUri`, core 0.8); a server-rendered code stays for
+  browsers without JavaScript.
+- Browser wallets over XRPL Connect: Crossmark, GemWallet, MetaMask Snap, Ledger, Otsu and Xyra when detected;
+  Xaman and WalletConnect when the merchant enters their public identifier in the configuration. The wallet
+  library is loaded only when the wallet list is opened.
+- New configuration: the logo of the payment page (store logo, an uploaded picture, or a monogram), an accent
+  colour (refused when too light for white text), the Xaman API key and the WalletConnect project id.
+- The "Check payment now" button is a form that reloads the page, which syncs — it works without JavaScript now.
+- Icons for XRP, RLUSD and USDC next to the payment methods in the checkout.
+- Requires `hardcastle/ledger-direct-core` ^0.8 and `bacon/bacon-qr-code`.
+
 ## Unreleased
 
 - Payment instructions email right after the order is placed, with the key link to the payment page (configurable:
