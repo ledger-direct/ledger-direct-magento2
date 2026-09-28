@@ -71,7 +71,7 @@
         <arguments>
             <argument name="code" xsi:type="string">xrp_payment</argument>
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
-            <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
+            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Info</argument>
             <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrpValueHandlerPool</argument>
             <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
         </arguments>
@@ -81,7 +81,7 @@
         <arguments>
             <argument name="code" xsi:type="string">xrpl_rlusd_payment</argument>
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
-            <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
+            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Info</argument>
             <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdValueHandlerPool</argument>
             <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
         </arguments>
@@ -91,7 +91,7 @@
         <arguments>
             <argument name="code" xsi:type="string">xrpl_usdc_payment</argument>
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
-            <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
+            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Info</argument>
             <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcValueHandlerPool</argument>
             <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
         </arguments>

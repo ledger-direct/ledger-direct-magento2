@@ -93,6 +93,10 @@ page and its status poll and, for customers who close the tab after sending, fro
 `ledger_direct_settle_pending_orders` cron job every five minutes, so Magento's cron must be running. The cron makes
 one node request per receiving account and network, then matches every open order against the stored transactions.
 
+The order's *Payment Information* — on the admin order view, in the customer's order view and in the order emails —
+lists what was quoted (asset, amount, rate, receiving account, destination tag, issuer for a stablecoin), the payment
+status, what arrived and what is still due, and the transaction hash as a link to the XRPL explorer.
+
 A payment that does not settle the order — a shortfall, or a token other than the quoted one — moves the order to
 the status **XRPL payment incomplete** (state `pending_payment`) with the amounts and the transaction hash in the
 status history; partial payments add up, and a top-up of the shortfall settles. Magento cancels orders left in the

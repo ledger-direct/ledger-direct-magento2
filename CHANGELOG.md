@@ -4,6 +4,8 @@
 
 - Payment instructions email right after the order is placed, with the key link to the payment page (configurable:
   enabled, sender identity, template). The order confirmation is still held back until the payment has arrived.
+- Payment information block for LedgerDirect orders (admin order view, customer order view, order emails): quote,
+  payment status, received and outstanding amounts, transaction hash with explorer link.
 
 ## 1.0.0
 

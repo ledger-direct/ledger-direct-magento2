@@ -1,0 +1,32 @@
+<?php
+/**
+ * @var \Hardcastle\LedgerDirect\Block\Info $block
+ */
+$specificInfo = $block->getSpecificInformation();
+$title = $block->escapeHtml($block->getMethod()->getTitle());
+$explorerUrl = $block->getExplorerUrl();
+$transactionLabel = (string) __('Transaction');
+?>
+<dl class="payment-method">
+    <dt class="title"><?= /* @noEscape */ $title ?></dt>
+<?php if ($specificInfo): ?>
+    <dd class="content">
+        <table class="data table">
+            <caption class="table-caption"><?= /* @noEscape */ $title ?></caption>
+            <?php foreach ($specificInfo as $label => $value): ?>
+                <tr>
+                    <th scope="row"><?= $block->escapeHtml($label) ?></th>
+                    <td>
+                        <?php if ($label === $transactionLabel && $explorerUrl !== null): ?>
+                            <a href="<?= $block->escapeUrl($explorerUrl) ?>" target="_blank" rel="noopener"><?= $block->escapeHtml((string) $value) ?></a>
+                        <?php else: ?>
+                            <?= /* @noEscape */ nl2br($block->escapeHtml(implode("\n", $block->getValueAsArray($value, true)))) ?>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    </dd>
+<?php endif; ?>
+</dl>
+<?= $block->getChildHtml() ?>
