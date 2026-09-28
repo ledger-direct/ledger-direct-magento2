@@ -7,6 +7,8 @@
                 <active>1</active>
                 <use_testnet>0</use_testnet>
                 <quote_expiry>300</quote_expiry>
+                <page_logo_mode>shop</page_logo_mode>
+                <page_accent>#1f5eff</page_accent>
                 <pending_email_enabled>1</pending_email_enabled>
                 <pending_email_identity>sales</pending_email_identity>
                 <pending_email_template>payment_ledger_direct_pending_email_template</pending_email_template>

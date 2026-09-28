@@ -37,6 +37,32 @@
                     <source_model>Magento\Config\Model\Config\Source\Email\Template</source_model>
                     <depends><field id="pending_email_enabled">1</field></depends>
                 </field>
+                <field id="page_logo_mode" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" canRestore="1">
+                    <label>Payment page: logo</label>
+                    <comment>Shown in the header of the payment page, at most 160 by 32 pixels.</comment>
+                    <source_model>Hardcastle\LedgerDirect\Model\Config\Source\LogoMode</source_model>
+                </field>
+                <field id="page_logo" translate="label comment" type="image" sortOrder="21" showInDefault="1" showInWebsite="1">
+                    <label>Payment page: uploaded logo</label>
+                    <comment>PNG, JPG, SVG or WebP. Only used with "An uploaded picture".</comment>
+                    <backend_model>Magento\Config\Model\Config\Backend\Image</backend_model>
+                    <upload_dir config="system/filesystem/media" scope_info="1">ledger_direct/logo</upload_dir>
+                    <base_url type="media" scope_info="1">ledger_direct/logo</base_url>
+                    <depends><field id="page_logo_mode">custom</field></depends>
+                </field>
+                <field id="page_accent" translate="label comment" type="text" sortOrder="22" showInDefault="1" showInWebsite="1" canRestore="1">
+                    <label>Payment page: accent colour</label>
+                    <comment>Buttons, the countdown bar and the destination tag are drawn in this colour with white text on it, so it has to be dark enough (contrast 4.5:1). Hex, default #1f5eff.</comment>
+                    <backend_model>Hardcastle\LedgerDirect\Model\Config\Backend\AccentColor</backend_model>
+                </field>
+                <field id="xaman_api_key" translate="label comment" type="text" sortOrder="23" showInDefault="1" showInWebsite="1">
+                    <label>Payment page: Xaman API key</label>
+                    <comment>The public API key of your Xaman developer app (apps.xaman.dev). With it, customers on a phone get an "Open in wallet app" button. Never the API secret.</comment>
+                </field>
+                <field id="walletconnect_project_id" translate="label comment" type="text" sortOrder="24" showInDefault="1" showInWebsite="1">
+                    <label>Payment page: WalletConnect project id</label>
+                    <comment>The project id from cloud.walletconnect.com, if you want to offer WalletConnect wallets. Public, like the Xaman key.</comment>
+                </field>
             </group>
             <group id="xrpl_rlusd_payment" translate="label" sortOrder="2" showInDefault="1" showInWebsite="1">
                 <label>Ledger Direct - RLUSD (XRPL)</label>
