@@ -1,33 +1,34 @@
 <?xml version="1.0"?>
-
+<!--
+    The payment page stands on its own: the empty layout, the theme's wrapper and
+    stylesheets removed. Behaviour and design are @ledger-direct/payment-ui, shipped
+    as built files under web/ (VERSION names the package tag). The files carry ".min."
+    in their name so Magento's own minifier leaves them alone; the wallet library
+    (wallets.min.js) is deliberately not on this page - the script fetches it by a
+    native import() only when a customer opens the wallet list.
+-->
 <page layout="empty" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
 <head>
     <meta name="robots" content="NOINDEX,NOFOLLOW"/>
     <remove src="mage/calendar.css"/>
-
     <remove src="css/styles-l.css"/>
     <remove src="css/styles-m.css"/>
     <remove src="css/styles-s.css"/>
-
     <remove src="css/print.css"/>
-    <!--
-    <remove src="requirejs/require.js"/>
-    <remove src="requirejs/require.js"/>
-    <remove src="mage/requirejs/mixins.js"/>
-    <remove src="requirejs-config.js"/>
-    <remove src="mage/polyfill.js"/>
-    -->
-    <css src="Hardcastle_LedgerDirect::css/base.css" rel="stylesheet" type="text/css"  />
-    <css src="Hardcastle_LedgerDirect::css/qr-bundle.min.css" rel="stylesheet" type="text/css"/>
+    <css src="Hardcastle_LedgerDirect::css/payment-page.min.css" rel="stylesheet" type="text/css"/>
+    <script src="Hardcastle_LedgerDirect::js/ledger-direct-payment-ui/payment-page.min.js"/>
 </head>
 <body>
-    <attribute name="class" value="ledger-direct"/>
+    <attribute name="class" value="ld-body"/>
     <referenceContainer name="page.wrapper" remove="true"/>
     <referenceBlock name="translate" remove="true"/>
-    <!-- <referenceBlock name="requirejs-config" remove="true"/> -->
     <referenceContainer name="root">
-        <block name="ledger-direct.payment.index" template="Hardcastle_LedgerDirect::payment/index.phtml" cacheable="false"/>
+        <block name="ledger-direct.payment.index" template="Hardcastle_LedgerDirect::payment/index.phtml" cacheable="false">
+            <arguments>
+                <argument name="view_model" xsi:type="object">Hardcastle\LedgerDirect\ViewModel\PaymentPage</argument>
+            </arguments>
+        </block>
     </referenceContainer>
 </body>
 </page>

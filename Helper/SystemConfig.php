@@ -86,4 +86,56 @@ class SystemConfig extends AbstractHelper
 
         return is_numeric($value) && (int) $value > 0 ? (int) $value : self::DEFAULT_QUOTE_EXPIRY_SECONDS;
     }
+
+    /**
+     * Which logo the payment page shows: shop, custom or none
+     *
+     * @return string
+     */
+    public function getPaymentPageLogoMode(): string
+    {
+        $mode = (string) $this->getConfigValue('payment/ledger_direct/page_logo_mode');
+
+        return in_array($mode, \Hardcastle\LedgerDirect\Model\Config\Source\LogoMode::MODES, true) ? $mode : 'shop';
+    }
+
+    /**
+     * The uploaded logo's file name below media/ledger_direct/logo, or an empty string
+     *
+     * @return string
+     */
+    public function getPaymentPageLogoFile(): string
+    {
+        return trim((string) $this->getConfigValue('payment/ledger_direct/page_logo'));
+    }
+
+    /**
+     * The accent colour as stored; the core's AccentColor decides whether the page uses it
+     *
+     * @return string
+     */
+    public function getPaymentPageAccentColor(): string
+    {
+        return trim((string) $this->getConfigValue('payment/ledger_direct/page_accent'));
+    }
+
+    /**
+     * Xaman's public API key; empty means the "open in wallet app" button is not offered
+     *
+     * @return string
+     */
+    public function getXamanApiKey(): string
+    {
+        return trim((string) $this->getConfigValue('payment/ledger_direct/xaman_api_key'));
+    }
+
+    /**
+     * The WalletConnect project id; empty means it is not offered
+     *
+     * @return string
+     */
+    public function getWalletConnectProjectId(): string
+    {
+        return trim((string) $this->getConfigValue('payment/ledger_direct/walletconnect_project_id'));
+    }
 }

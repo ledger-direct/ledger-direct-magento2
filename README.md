@@ -69,6 +69,21 @@ Right after the order is placed the customer receives an email with that link (*
 email* under the LedgerDirect configuration, on by default; sender and template are configurable there), so a
 closed tab is not the end of the payment. The order confirmation itself is only sent once the payment has arrived.
 
+The page's behaviour and design are [`@ledger-direct/payment-ui`](https://github.com/ledger-direct/ledger-direct-payment-ui),
+the package every LedgerDirect plugin shares, shipped as built files under `view/frontend/web/`
+(`js/ledger-direct-payment-ui/VERSION` names the package tag). The files carry `.min.` in their name so Magento's
+own minifier leaves them alone; the wallet library (`wallets.min.js`, 1.6 MB) is not on the page but fetched by a
+native `import()` only when a customer opens the wallet list. To move to a new package version: copy
+`dist/payment-page.js`, `dist/wallets.js` and `dist/payment-page.css` from the package at the new tag to those
+names, write the tag into `VERSION`. The template renders the package's markup contract (`src/README.md` there);
+every sentence a customer reads is in `view/frontend/templates/payment/index.phtml` and `i18n/*.csv`; nothing is
+rounded or reformatted in the browser.
+
+Under *Stores → Configuration → Sales → Payment Methods → Ledger Direct / XRPL* the merchant sets the page's
+logo (the store logo, an uploaded picture, or the first letter of the store name), its accent colour (a hex colour
+dark enough for white text; a lighter one is refused on save), and — optionally — the public Xaman API key and
+WalletConnect project id that give customers on a phone an "Open in wallet app" button.
+
 The page shows one of five states and polls the shop every eight seconds:
 
 | State | Meaning |

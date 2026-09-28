@@ -25,6 +25,13 @@ define(
 
             redirectAfterPlaceOrder: false,
 
+            /**
+             * The asset's icon, from the module's static files
+             */
+            getIconUrl: function () {
+                return require.toUrl('Hardcastle_LedgerDirect/images/usdc_payment.svg');
+            },
+
             getTitle: function() {
                   return 'Pay with USDC | Ledger Direct';
             },

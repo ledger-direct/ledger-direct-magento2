@@ -190,8 +190,10 @@ class Index implements HttpGetActionInterface
         $status = PaymentStatus::fromIntent($intent, $this->settlementPolicy);
 
         $page = $this->pageFactory->create();
+        $page->getConfig()->getTitle()->set(__('LedgerDirect.paymentPage.pageTitle'));
         $block = $page->getLayout()->getBlock('ledger-direct.payment.index');
         $block->setData('payment_info', $paymentInfo);
+        $block->setData('payment_intent', $intent);
         $block->setData('payment_status', $status);
         $block->setData('has_expiry', $intent->expiry !== null);
         $block->setData('access_key', $key);
@@ -200,7 +202,14 @@ class Index implements HttpGetActionInterface
             OrderAccess::ORDER_ID_PARAMETER => $orderId,
             OrderAccess::KEY_PARAMETER => $key,
         ]));
+        // The page's own URL with the key: the check form posts nothing, it reloads - a render is a sync.
+        $block->setData('page_url', $this->urlBuilder->getUrl('ledger-direct/payment/index', [
+            OrderAccess::ORDER_ID_PARAMETER => $orderId,
+            OrderAccess::KEY_PARAMETER => $key,
+        ]));
         $block->setData('refresh_url', $this->urlBuilder->getUrl('ledger-direct/payment/refresh'));
+        // Where the success view sends the customer, the same target the status endpoint's redirect names.
+        $block->setData('redirect_url', $this->paymentRedirect->target($order));
 
         return $page;
     }

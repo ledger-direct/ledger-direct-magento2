@@ -1,280 +1,266 @@
 <?php
+/**
+ * Copyright (c) Alexander Busse | Hardcastle Technologies.
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 
-use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
-use Hardcastle\LedgerDirect\Core\Payment\PaymentStatus;
+use Hardcastle\LedgerDirect\ViewModel\PaymentPage;
+use Magento\Framework\Escaper;
 use Magento\Framework\View\Element\Template;
 
 /** @var Template $block */
-/** @var XrpPaymentInterface $paymentInfo */
-/** @var PaymentStatus $status */
-
-$paymentInfo = $block->getData('payment_info');
-$status = $block->getData('payment_status');
-$type = $paymentInfo->getType();
-
-$ld_get_svg_html = function (string $icon, array $properties = []): string
-{
-    if (!ctype_alnum($icon)) {
-        die('Forbidden!');
-    }
-
-    $defaultProperties = [
-        'class' => '',
-        'width' => '24',
-        'height' => '24',
-        'viewBox' => '0 0 24 24',
-    ];
-
-    $block = $this->getLayout()->createBlock("Magento\Framework\View\Element\Template");
-    $template = $block->setTemplate("Hardcastle_LedgerDirect::icons/{$icon}-svg.phtml");
-
-    foreach ($defaultProperties as $key => $value) {
-        if (isset($properties[$key])) {
-            $template->setData($key, $properties[$key]);
-        } else {
-            $template->setData($key, $value);
-        }
-    }
-
-    return $template->toHtml();
-};
-
-$tokenLabels = [
-    'xrp-payment' => 'XRP',
-    'rlusd-payment' => 'RLUSD',
-    'usdc-payment' => 'USDC',
-];
-$assetLabel = $tokenLabels[$type] ?? 'XRP';
-$networkName = $paymentInfo->getNetwork();
+/** @var Escaper $escaper */
+/** @var PaymentPage $viewModel */
 
 /*
- * The five-state payment status (INVARIANTS.md, "Payment status"), rendered server-side:
- * one block per state, the server decides which starts visible, the script only switches
- * them and fills in two numbers from the poll. Every amount comes out of the core as a plain
- * decimal; nothing is rounded here. A settled order never renders this page - the
+ * The LedgerDirect payment page. Every sentence a customer reads is here and in
+ * i18n/*.csv; one block per payment state, all rendered, the server decides which
+ * starts visible. The script (@ledger-direct/payment-ui) only switches blocks,
+ * inserts numbers and polls. A settled order never renders this page - the
  * controller redirects it.
+ *
+ * Markup contract: src/README.md of @ledger-direct/payment-ui. No arithmetic on
+ * amounts here: every value comes out of the view model.
  */
-$state = $status->state();
-$secondsLeft = $status->secondsLeft;
-$hasExpiry = (bool) $block->getData('has_expiry');
-$amountRequested = $block->escapeHtml($paymentInfo->getAmountRequested());
-$amountPaid = $block->escapeHtml((string) $paymentInfo->getAmountPaid());
-$shortfall = $block->escapeHtml((string) $paymentInfo->getAmountOutstanding());
-$countdown = $secondsLeft === null ? '' : sprintf('%d:%02d', intdiv($secondsLeft, 60), $secondsLeft % 60);
-
+$viewModel = $block->getData('view_model');
+$v = $viewModel->forBlock($block);
+$state = (string) $v['state'];
+$asset = $escaper->escapeHtml($v['asset']);
+$hasWalletApp = $v['xaman_key'] !== '' || $v['wc_project'] !== '';
+$copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+$infoIcon = '<svg class="ld-notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
+$copyLabels = '<span data-ld-copy-label="idle">' . $escaper->escapeHtml(__('LedgerDirect.paymentPage.copy')) . '</span>'
+    . '<span data-ld-copy-label="done" hidden>' . $escaper->escapeHtml(__('LedgerDirect.paymentPage.copied')) . '</span>';
+$walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-payment-ui/wallets.min.js');
 ?>
+<div class="ld-page"
+     data-ld-page="true"
+     data-ld-state="<?= $escaper->escapeHtmlAttr($state) ?>"
+     data-ld-poll-url="<?= $escaper->escapeUrl($v['poll_url']) ?>"
+     data-ld-asset="<?= $asset ?>"
+     data-ld-network="<?= $escaper->escapeHtmlAttr($v['network']) ?>"
+     data-ld-explorer-base="<?= $escaper->escapeUrl($v['explorer_base']) ?>"
+     data-ld-quote-seconds="<?= (int) $v['quote_seconds'] ?>"
+     data-ld-amount-requested="<?= $escaper->escapeHtmlAttr($v['amount']) ?>"
+     data-ld-payment-uri="<?= $escaper->escapeHtmlAttr($v['payment_uri']) ?>"
+     data-ld-wallets-src="<?= $escaper->escapeUrl($walletsSrc) ?>"
+     <?php if ($v['seconds_left'] !== null): ?>data-ld-seconds-left="<?= (int) $v['seconds_left'] ?>"<?php endif; ?>
+     <?php if ($v['amount_drops'] !== null): ?>data-ld-amount-drops="<?= $escaper->escapeHtmlAttr($v['amount_drops']) ?>"<?php endif; ?>
+     <?php if ($v['currency'] !== null): ?>data-ld-currency="<?= $escaper->escapeHtmlAttr($v['currency']) ?>" data-ld-issuer="<?= $escaper->escapeHtmlAttr((string) $v['issuer']) ?>"<?php endif; ?>
+     <?php if ($v['xaman_key'] !== ''): ?>data-ld-xaman-key="<?= $escaper->escapeHtmlAttr($v['xaman_key']) ?>"<?php endif; ?>
+     <?php if ($v['wc_project'] !== ''): ?>data-ld-wc-project="<?= $escaper->escapeHtmlAttr($v['wc_project']) ?>"<?php endif; ?>
+     style="--ld-accent: <?= $escaper->escapeHtmlAttr($v['accent']) ?>">
 
-<div class="ld-header">
-    <h3>
-        <?php $page_title = 'LedgerDirect - pay with ' . $assetLabel . ' directly on XRPL ' . $networkName; ?>
-        <?= $block->escapeHtml($page_title) ?>
-    </h3>
-</div>
+    <header class="ld-top">
+        <a class="ld-shop" href="<?= $escaper->escapeUrl($v['home_url']) ?>">
+            <?php if ($v['logo']['url'] !== null): ?>
+                <span class="ld-shop-logo ld-shop-logo--image"><img src="<?= $escaper->escapeUrl($v['logo']['url']) ?>" alt="<?= $escaper->escapeHtmlAttr($v['store_name']) ?>" width="160" height="32"></span>
+            <?php else: ?>
+                <span class="ld-shop-logo" aria-hidden="true"><?= $escaper->escapeHtml($v['logo']['monogram']) ?></span>
+            <?php endif; ?>
+            <span><?= $escaper->escapeHtml($v['store_name']) ?></span>
+        </a>
+        <div class="ld-top-meta">
+            <?php if ($v['is_testnet']): ?>
+                <span class="ld-badge ld-badge--testnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.testnetBadge')) ?></span><br>
+            <?php endif; ?>
+            <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.orderLabel')) ?> <strong><?= $escaper->escapeHtml($v['order_number']) ?></strong>
+        </div>
+    </header>
 
-<div class="ld-container"
-     data-xrp-payment-page="true"
-     data-ld-state="<?= $block->escapeHtmlAttr($state) ?>"
-     data-ld-poll-url="<?= $block->escapeUrl($block->getData('poll_url')) ?>"
-     <?php if ($secondsLeft !== null): ?>data-ld-seconds-left="<?= (int) $secondsLeft ?>"<?php endif; ?>>
-    <div class="ld-content">
-
+    <main class="ld-main">
         <div class="ld-card">
 
-            <div class="ld-card-left">
-                <?php if ($type === 'xrp-payment') { ?>
-                    <p><?= /* @noEscape */ __('LedgerDirect.paymentPage.sendXrpMessage', $amountRequested) ?></p>
-                    <?php /* Read by the wallet integrations; the same string the customer is shown. */ ?>
-                    <input id="xrp-amount"
-                           type="text"
-                           name="xrp-amount"
-                           value="<?= $amountRequested ?>"
-                           readonly
-                           style="display: none;"
-                    />
-                <?php } else { ?>
-                    <p><?= /* @noEscape */ __('LedgerDirect.paymentPage.sendTokenMessage', $amountRequested, $assetLabel) ?></p>
-                    <input id="token-amount"
-                           type="text"
-                           name="token-amount"
-                           value="<?= $amountRequested ?>"
-                           readonly
-                           style="display: none;"
-                    />
-                    <input id="issuer"
-                           type="text"
-                           name="issuer"
-                           value="<?= $block->escapeHtmlAttr($paymentInfo->getIssuer()) ?>"
-                           readonly
-                           style="display: none;"
-                    />
-                    <input id="currency"
-                           type="text"
-                           name="currency"
-                           value="<?= $block->escapeHtmlAttr($paymentInfo->getCurrency()) ?>"
-                           readonly
-                           style="display: none;"
-                    />
-                <?php } ?>
+            <div data-ld-open>
+                <div class="ld-grid">
+                    <section class="ld-col" aria-labelledby="ld-heading">
+                        <h1 id="ld-heading" class="ld-sr"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.pageTitle')) ?></h1>
 
-                <div class="ld-payment-info">
-                    <span>
-                        <?= $block->escapeHtml(__('LedgerDirect.paymentPage.destinationAccountLabel')) ?>
-                        <?= /* @noEscape */ $ld_get_svg_html('wallet', ['class' => 'inline-svg', 'height' => '16', 'width' => '16', 'viewBox' => '0 0 24 24']) ?>
-                    </span>
-                    <div class="ld-payment-info-text">
-                        <div id="destination-account" class="" data-value="<?= $block->escapeHtmlAttr($paymentInfo->getDestinationAccount()) ?>">
-                            <?= $block->escapeHtml($paymentInfo->getDestinationAccount()) ?>
-                        </div>
-                        <div class="ld-payment-info-functions">
-                            <?= /* @noEscape */ $ld_get_svg_html('copy', ['class' => 'action-svg']) ?>
-                            <?= /* @noEscape */ $ld_get_svg_html('qr', ['class' => 'action-svg']) ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="ld-payment-info">
-                    <span>
-                        <?= $block->escapeHtml(__('LedgerDirect.paymentPage.destinationTagLabel')) ?>
-                        <?= /* @noEscape */ $ld_get_svg_html('tag', ['class' => 'inline-svg', 'height' => '16', 'width' => '16', 'viewBox' => '0 0 24 24']) ?>
-                    </span>
-                    <div class="ld-payment-info-text">
-                        <div id="destination-tag" class="" data-value="<?= (int) $paymentInfo->getDestinationTag() ?>">
-                            <?= (int) $paymentInfo->getDestinationTag() ?>
-                        </div>
-                        <div class="ld-payment-info-functions">
-                            <?= /* @noEscape */ $ld_get_svg_html('copy', ['class' => 'action-svg']) ?>
-                            <?= /* @noEscape */ $ld_get_svg_html('qr', ['class' => 'action-svg']) ?>
-                        </div>
-                    </div>
-                </div>
-
-                <?php
-                /*
-                 * Something arrived but the order is not paid. Neutral tone on purpose: the
-                 * customer did what their wallet told them; the page explains, it does not
-                 * alarm. The markup enclosing the numbers is passed in here, so the
-                 * translations carry none of it and the script can find the numbers to update.
-                 */
-                ?>
-                <div class="ld-warning" data-ld-partial <?= $state !== PaymentStatus::PARTIAL ? 'hidden' : '' ?>>
-                    <div role="alert" class="alert alert-info">
-                        <div class="alert-content-container">
-                            <div class="alert-content">
-                                <?= /* @noEscape */ __(
-                                    'LedgerDirect.paymentPage.partialPaymentNotice',
-                                    '<strong data-ld-paid>' . $amountPaid . '</strong> ' . $assetLabel,
-                                    '<strong data-ld-shortfall>' . $shortfall . '</strong> ' . $assetLabel
-                                ) ?>
+                        <?php /* Something arrived but the order is not paid. Neutral tone on purpose. */ ?>
+                        <div class="ld-notice ld-notice--info" data-ld-block="partial" role="status" <?= $state !== 'partial' ? 'hidden' : '' ?>>
+                            <?= /* @noEscape */ $infoIcon ?>
+                            <div>
+                                <p><?= /* @noEscape */ __(
+                                    'LedgerDirect.paymentPage.partialArrived',
+                                    '<strong><span data-ld-paid>' . $escaper->escapeHtml((string) $v['amount_paid']) . '</span> ' . $asset . '</strong>',
+                                    '<strong><span data-ld-shortfall>' . $escaper->escapeHtml((string) $v['shortfall']) . '</span> ' . $asset . '</strong>'
+                                ) ?></p>
+                                <div class="ld-progress" aria-hidden="true"><span data-ld-progress style="width: <?= (int) $v['paid_share'] ?>%"></span></div>
+                                <p><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.partialSendRest')) ?></p>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="ld-warning" data-ld-wrong-asset <?= $state !== PaymentStatus::WRONG_ASSET ? 'hidden' : '' ?>>
-                    <div role="alert" class="alert alert-info">
-                        <div class="alert-content-container">
-                            <div class="alert-content">
-                                <?= /* @noEscape */ __(
-                                    'LedgerDirect.paymentPage.wrongTokenNotice',
-                                    '<strong data-ld-paid>' . $amountPaid . '</strong>',
-                                    '<strong data-ld-shortfall>' . $shortfall . '</strong>',
-                                    $assetLabel
-                                ) ?>
+                        <div class="ld-notice ld-notice--info" data-ld-block="wrong_asset" role="status" <?= $state !== 'wrong_asset' ? 'hidden' : '' ?>>
+                            <?= /* @noEscape */ $infoIcon ?>
+                            <div>
+                                <p><?= /* @noEscape */ __(
+                                    'LedgerDirect.paymentPage.wrongAssetArrived',
+                                    '<strong data-ld-paid>' . $escaper->escapeHtml((string) $v['amount_paid']) . '</strong>',
+                                    '<strong>' . $asset . '</strong>'
+                                ) ?></p>
+                                <p><?= /* @noEscape */ __(
+                                    'LedgerDirect.paymentPage.wrongAssetSend',
+                                    '<strong><span data-ld-shortfall>' . $escaper->escapeHtml((string) $v['shortfall']) . '</span> ' . $asset . '</strong>'
+                                ) ?></p>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="ld-warning">
-                    <div role="alert" class="alert alert-warning alert-has-icon">
-                        <div class="alert-content-container">
-                            <div class="alert-content">
-                                <?= $block->escapeHtml(__('LedgerDirect.paymentPage.destinationTagWarning', $assetLabel)) ?>
+                        <div class="ld-notice ld-notice--warn" data-ld-block="expired" role="status" <?= $state !== 'expired' ? 'hidden' : '' ?>>
+                            <svg class="ld-notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                            <div>
+                                <p><strong><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.expiredTitle')) ?></strong> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.expiredRate')) ?></p>
+                                <p><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.expiredAlreadySent')) ?></p>
+                                <form method="post" action="<?= $escaper->escapeUrl($v['refresh_url']) ?>">
+                                    <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($v['form_key']) ?>">
+                                    <input type="hidden" name="id" value="<?= (int) $v['order_id'] ?>">
+                                    <input type="hidden" name="key" value="<?= $escaper->escapeHtmlAttr($v['access_key']) ?>">
+                                    <button type="submit" class="ld-btn ld-btn--primary"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.refreshQuoteButton')) ?></button>
+                                </form>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <?php if ($hasExpiry): ?>
-                    <?php
-                    /*
-                     * Both blocks are always rendered so the countdown can swap them without a
-                     * reload; the server decides which one starts visible. Neither shows while a
-                     * payment has arrived: the state blocks above take over, and a refresh would
-                     * re-quote an order that is already partly paid.
-                     */
-                    ?>
-                    <p class="ld-quote-validity" data-ld-live <?= $state !== PaymentStatus::WAITING ? 'hidden' : '' ?>>
-                        <?= $block->escapeHtml(__('LedgerDirect.paymentPage.quoteValidFor')) ?>
-                        <strong data-ld-countdown><?= $block->escapeHtml($countdown) ?></strong>
-                    </p>
+                        <p class="ld-eyebrow" data-ld-amount-label>
+                            <span data-ld-label="due" <?= $state === 'partial' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.amountLabel')) ?></span>
+                            <span data-ld-label="remaining" <?= $state !== 'partial' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.amountLabelRemaining')) ?></span>
+                        </p>
+                        <div class="ld-amount">
+                            <span class="ld-amount-value" data-ld-amount><?= $escaper->escapeHtml($v['amount_due']) ?></span>
+                            <span class="ld-amount-asset"><?= $asset ?></span>
+                            <button type="button" class="ld-copy" data-copy="amount" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyAmount')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
+                        </div>
+                        <p class="ld-fiat" data-ld-fiat>
+                            <span data-ld-fiat-for="full" <?= $state === 'partial' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.fiatEquivalent', $v['fiat_display'])) ?></span>
+                            <span data-ld-fiat-for="partial" <?= $state !== 'partial' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.fiatOfTotal', $v['amount'], $v['asset'], $v['fiat_display'])) ?></span>
+                        </p>
 
-                    <div class="ld-warning" data-ld-expired <?= $state !== PaymentStatus::EXPIRED ? 'hidden' : '' ?>>
-                        <div role="alert" class="alert alert-warning">
-                            <div class="alert-content-container">
-                                <div class="alert-content">
-                                    <p><?= $block->escapeHtml(__('LedgerDirect.paymentPage.quoteExpired')) ?></p>
-                                    <p><?= $block->escapeHtml(__('LedgerDirect.paymentPage.quoteExpiredDoNotResend')) ?></p>
-                                    <form method="post" action="<?= $block->escapeUrl($block->getData('refresh_url')) ?>">
-                                        <input type="hidden" name="form_key" value="<?= $block->escapeHtmlAttr($block->getData('form_key')) ?>">
-                                        <input type="hidden" name="id" value="<?= (int) $paymentInfo->getOrderId() ?>">
-                                        <input type="hidden" name="key" value="<?= $block->escapeHtmlAttr($block->getData('access_key')) ?>">
-                                        <button type="submit" class="ld-refresh-quote">
-                                            <?= $block->escapeHtml(__('LedgerDirect.paymentPage.refreshQuoteButton')) ?>
-                                        </button>
-                                    </form>
+                        <?php if ($v['has_expiry']): ?>
+                            <div class="ld-timer" data-ld-timer data-ld-block="waiting" aria-live="off" <?= $state !== 'waiting' ? 'hidden' : '' ?>>
+                                <?= /* @noEscape */ __('LedgerDirect.paymentPage.quoteValidFor', '<strong data-ld-countdown>' . (int) ($v['seconds_left'] ?? 0) . '</strong>') ?>
+                                <div class="ld-timer-bar" aria-hidden="true"><span data-ld-timer-bar style="width: 100%"></span></div>
+                            </div>
+                        <?php endif; ?>
+
+                        <ol class="ld-steps">
+                            <li>
+                                <div class="ld-field-label"><span class="ld-step-no">1</span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepAccount')) ?></div>
+                                <div class="ld-field">
+                                    <span class="ld-field-value" data-ld-account data-value="<?= $escaper->escapeHtmlAttr($v['destination_account']) ?>"><?= $escaper->escapeHtml($v['destination_account']) ?></span>
+                                    <button type="button" class="ld-copy" data-copy="account" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyAccount')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="ld-field-label"><span class="ld-step-no">2</span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepTag')) ?> <span class="ld-badge ld-badge--required"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.requiredBadge')) ?></span></div>
+                                <div class="ld-field ld-field--key">
+                                    <span class="ld-field-value" data-ld-tag data-value="<?= (int) $v['destination_tag'] ?>"><?= (int) $v['destination_tag'] ?></span>
+                                    <button type="button" class="ld-copy" data-copy="tag" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyTag')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
+                                </div>
+                                <p class="ld-hint"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.tagHint')) ?></p>
+                            </li>
+                            <?php if ($v['issuer'] !== null && $v['issuer'] !== ''): ?>
+                                <li>
+                                    <div class="ld-field-label"><span class="ld-step-no">3</span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepIssuer')) ?></div>
+                                    <div class="ld-field">
+                                        <span class="ld-field-value"><?= $asset ?> · <span data-ld-issuer data-value="<?= $escaper->escapeHtmlAttr($v['issuer']) ?>"><?= $escaper->escapeHtml($v['issuer']) ?></span></span>
+                                        <button type="button" class="ld-copy" data-copy="issuer" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyIssuer')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
+                                    </div>
+                                    <p class="ld-hint"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.issuerHint', $v['asset'])) ?></p>
+                                </li>
+                            <?php endif; ?>
+                        </ol>
+
+                        <details class="ld-exchange">
+                            <summary><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.exchangeSummary')) ?></summary>
+                            <p><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.exchangeHint')) ?></p>
+                        </details>
+                    </section>
+
+                    <aside class="ld-col ld-col--side" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.asideLabel')) ?>">
+                        <details class="ld-qr" data-ld-qr-details open>
+                            <summary><span class="ld-qr-sum-open"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.qrOpen')) ?></span><span class="ld-qr-sum-closed"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.qrClosed')) ?></span></summary>
+                            <div class="ld-qr-box<?= $state === 'expired' ? ' is-void' : '' ?>" data-ld-qr-box>
+                                <?php /* Server-rendered code of the same payment request, for a browser without scripts; the script redraws it. */ ?>
+                                <div data-ld-qr data-ld-qr-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.qrLabel')) ?>"><img src="<?= $escaper->escapeHtmlAttr($v['qr_data_uri']) ?>" alt="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.qrLabel')) ?>" width="220" height="220"></div>
+                                <div class="ld-qr-void" data-ld-qr-void <?= $state !== 'expired' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.qrVoid')) ?></div>
+                            </div>
+                            <p class="ld-qr-caption"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.qrCaption')) ?></p>
+                        </details>
+
+                        <?php /* Browser wallets, loaded only on click. Every sentence the module can show is rendered here. */ ?>
+                        <div data-ld-wallet-section <?= $hasWalletApp ? 'data-ld-wallet-mobile' : '' ?> <?= $state === 'expired' ? 'hidden' : '' ?>>
+                            <div class="ld-or"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletOr')) ?></div>
+                            <div data-ld-wallet-desktop>
+                                <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-wallet-toggle aria-expanded="false" aria-controls="ld-wallets">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 13h2M2 10h20"/></svg>
+                                    <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletButton')) ?>
+                                </button>
+                                <div class="ld-wallets" id="ld-wallets" data-ld-wallets hidden>
+                                    <p class="ld-hint" data-ld-wallet-status="loading" hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletLoading')) ?></p>
+                                    <div data-ld-wallet-list></div>
+                                    <p class="ld-hint" data-ld-wallet-status="none" hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletNone')) ?></p>
+                                    <p class="ld-hint" data-ld-wallet-status="hint" hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletHint')) ?></p>
                                 </div>
                             </div>
+                            <?php if ($hasWalletApp): ?>
+                                <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-wallet-app data-ld-wallet-id="<?= $v['xaman_key'] !== '' ? 'xaman' : 'walletconnect' ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletAppButton')) ?></button>
+                            <?php endif; ?>
+                            <p class="ld-hint" data-ld-wallet-message aria-live="polite" hidden></p>
+                            <span hidden data-ld-wallet-text="found"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletFound')) ?></span>
+                            <span hidden data-ld-wallet-text="confirm"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletConfirm')) ?></span>
+                            <span hidden data-ld-wallet-text="submitted"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletSubmitted')) ?></span>
+                            <span hidden data-ld-wallet-text="error-unavailable"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorUnavailable')) ?></span>
+                            <span hidden data-ld-wallet-text="error-network"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorNetwork')) ?></span>
+                            <span hidden data-ld-wallet-text="error-mismatch"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorMismatch')) ?></span>
+                            <span hidden data-ld-wallet-text="error-other"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorOther')) ?></span>
+                            <span hidden data-ld-wallet-text="network-mainnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.mainnet')) ?></span>
+                            <span hidden data-ld-wallet-text="network-testnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.testnet')) ?></span>
                         </div>
-                    </div>
-                <?php endif; ?>
 
-                <div class="ld-sync">
-                    <!-- Wallet buttons -->
-                    <!--
-                    <button id="gem-wallet-button" class="wallet-disabled">G</button>
-                    <button id="crossmark-wallet-button" class="wallet-disabled">C</button>
-                    <button id="xumm-wallet-button" class="wallet-disabled">X</button>
-                    -->
-                    <?php /* The manual path, and the only one a browser without JavaScript has. */ ?>
-                    <button id="check-payment-button" data-order-id="<?= $block->escapeHtmlAttr($paymentInfo->getOrderNumber()) ?>">
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
-                              style="display:none"></span>
-                        <?= $block->escapeHtml(__('LedgerDirect.paymentPage.checkPaymentButton')) ?>
-                    </button>
+                        <dl class="ld-details">
+                            <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailTotal')) ?></dt><dd><?= $escaper->escapeHtml($v['fiat_display']) ?></dd>
+                            <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailRate')) ?></dt><dd><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.rateSentence', $v['asset'], $v['rate_display'], $v['currency_code'])) ?></dd>
+                            <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailNetwork')) ?></dt><dd><?= $escaper->escapeHtml(__($v['is_testnet'] ? 'LedgerDirect.paymentPage.network.testnet' : 'LedgerDirect.paymentPage.network.mainnet')) ?></dd>
+                        </dl>
+                    </aside>
                 </div>
 
+                <div class="ld-status">
+                    <div class="ld-status-text" aria-live="polite">
+                        <span class="ld-pulse" aria-hidden="true"></span>
+                        <span data-ld-status-for="waiting" <?= $state !== 'waiting' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.statusWaiting')) ?></span>
+                        <span data-ld-status-for="partial" <?= $state !== 'partial' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.statusPartial')) ?></span>
+                        <span data-ld-status-for="wrong_asset" <?= $state !== 'wrong_asset' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.statusWrongAsset')) ?></span>
+                        <span data-ld-status-for="expired" <?= $state !== 'expired' ? 'hidden' : '' ?>><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.statusExpired')) ?></span>
+                    </div>
+                    <?php /* The manual path, and the only one a browser without JavaScript has: a reload of this page, which syncs. The script turns it into a poll. */ ?>
+                    <form method="get" action="<?= $escaper->escapeUrl($v['page_url']) ?>" data-ld-check-form>
+                        <input type="hidden" name="id" value="<?= (int) $v['order_id'] ?>">
+                        <input type="hidden" name="key" value="<?= $escaper->escapeHtmlAttr($v['access_key']) ?>">
+                        <button type="submit" class="ld-btn ld-btn--secondary" data-ld-check>
+                            <span data-ld-check-label="idle"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.checkPaymentButton')) ?></span>
+                            <span data-ld-check-label="busy" hidden><span class="ld-spinner" aria-hidden="true"></span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.checking')) ?></span>
+                        </button>
+                    </form>
+                    <p class="ld-toast" data-ld-toast hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.checkNothingFound')) ?></p>
+                </div>
             </div>
 
-            <div class="ld-card-right">
-                <div class="ld-sum"><?= $block->escapeHtml((string) $paymentInfo->getPrice()) ?> <?= $block->escapeHtml($paymentInfo->getCurrencySymbol()) ?></div>
-                <span><?= $block->escapeHtml(__('LedgerDirect.paymentPage.orderNumber')) ?>: <?= $block->escapeHtml($paymentInfo->getOrderNumber()) ?></span><br/>
-                <span><?= $block->escapeHtml(__('LedgerDirect.paymentPage.total')) ?>: <?= $block->escapeHtml((string) $paymentInfo->getPrice()) ?> <?= $block->escapeHtml($paymentInfo->getCurrencyCode()) ?></span><br/>
-                <span><?= $block->escapeHtml(__('LedgerDirect.paymentPage.total')) ?>: <?= $amountRequested ?> <?= $block->escapeHtml($assetLabel) ?></span><br/>
-                <span><?= $block->escapeHtml(__('LedgerDirect.paymentPage.exchangeRate')) ?>: <?= $block->escapeHtml((string) $paymentInfo->getExchangeRate()) ?> <?= $block->escapeHtml($assetLabel) ?> / <?= $block->escapeHtml($paymentInfo->getCurrencyCode()) ?></span><br/>
-                <span><?= $block->escapeHtml(__('LedgerDirect.paymentPage.network')) ?>: <?= $block->escapeHtml($networkName) ?></span><br/>
+            <?php /* Shown by the script when the poll reports settled; a page loaded for a paid order is redirected by the controller. */ ?>
+            <div class="ld-success" data-ld-success hidden>
+                <div class="ld-success-icon" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg></div>
+                <h2><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.successTitle')) ?></h2>
+                <p><?= /* @noEscape */ __('LedgerDirect.paymentPage.successAmount', '<strong><span data-ld-settled-amount></span> ' . $asset . '</strong>') ?></p>
+                <p data-ld-hash-row hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.successHash')) ?> <a data-ld-hash href="#" target="_blank" rel="noopener"><code></code></a></p>
+                <p><?= /* @noEscape */ __('LedgerDirect.paymentPage.successRedirect', '<span data-ld-redirect-count>5</span>') ?></p>
+                <a class="ld-btn ld-btn--primary" data-ld-redirect-link href="<?= $escaper->escapeUrl($v['redirect_url']) ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.successButton')) ?></a>
             </div>
 
         </div>
+    </main>
 
-        <div class="ld-footer">
-            <a href="<?= $block->escapeUrl($block->getUrl('checkout')) ?>" class="ld-back-to-cart">
-                <?= $block->escapeHtml(__('LedgerDirect.paymentPage.backButton')) ?>
-            </a>
-        </div>
-
-    </div>
+    <footer class="ld-foot">
+        <a href="<?= $escaper->escapeUrl($v['cart_url']) ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.backToCart')) ?></a>
+        <span><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.poweredBy')) ?></span>
+    </footer>
 </div>
-
-<script type="text/x-magento-init">
-    {
-        "*": {
-            "Hardcastle_LedgerDirect/js/main": {
-            "deps": [
-                "jquery",
-                "Hardcastle_LedgerDirect/js/jquery-qrcode.min"
-            ]
-        }
-        }
-    }
-</script>
