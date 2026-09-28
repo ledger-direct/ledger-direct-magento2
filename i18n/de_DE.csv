@@ -23,6 +23,7 @@
 "Open the payment page","Zur Zahlungsseite"
 "You can come back to this page at any time with the link above; it does not require a login.","Über den Link oben erreichen Sie die Seite jederzeit wieder, ohne Anmeldung."
 "The quoted amount is valid for a limited time - the page tells you when it needs to be refreshed.","Der angegebene Betrag gilt nur begrenzte Zeit – die Seite sagt Ihnen, wann er aktualisiert werden muss."
+"If you have already sent the payment, there is nothing more to do: this message is sent once, right after the order, and the payment page confirms your payment as soon as it has arrived.","Haben Sie die Zahlung bereits gesendet, ist nichts weiter zu tun: Diese Nachricht wird einmalig direkt nach der Bestellung verschickt, und die Zahlungsseite bestätigt Ihre Zahlung, sobald sie eingegangen ist."
 "Payment instructions with the link to the payment page sent to %1.","Zahlungshinweise mit dem Link zur Zahlungsseite an %1 gesendet."
 "Send payment instructions email","E-Mail mit Zahlungshinweisen senden"
 "Payment instructions email sender","Absender der E-Mail mit Zahlungshinweisen"
