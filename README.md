@@ -137,6 +137,8 @@ cached briefly in Magento's cache so that a short outage of a rate source does n
 
 ## Development
 
+How the whole of LedgerDirect is tested across the core, the shared page package and the four plugins — the layers, what each catches, the nightly end-to-end runs and the manual cases — is in [`docs/testing.md` of the core](https://github.com/ledger-direct/ledger-direct-core-php/blob/master/docs/testing.md).
+
 The core library is developed alongside the plugins. To work against a local core checkout instead of the
 released version, add a path repository to the *Magento project's* `composer.json` and require the branch:
 
