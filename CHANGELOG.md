@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The module is on Packagist as `hardcastle/ledger-direct-magento2`; `composer.json` no longer carries a
+  `version` field, the git tag is the version. No change for shops.
+
 ## 1.1.0
 
 - The payment page is redesigned on `@ledger-direct/payment-ui` (0.1.1), the package every LedgerDirect plugin

@@ -74,12 +74,12 @@ from what is already stored. A guest order can poll too — the link carries the
 
 ## Installation
 
-The module is installed with Composer. It is not on Packagist yet, so point Composer at this
-repository first; the git tags are the Composer versions:
+The module is installed with Composer from
+[Packagist](https://packagist.org/packages/hardcastle/ledger-direct-magento2); the git tags are
+the versions:
 
 ```
-composer config repositories.ledger-direct-magento2 vcs https://github.com/ledger-direct/ledger-direct-magento2
-composer require hardcastle/ledger-direct-magento2:^1.1
+composer require hardcastle/ledger-direct-magento2
 bin/magento setup:upgrade
 bin/magento setup:di:compile
 bin/magento setup:static-content:deploy -f
@@ -213,8 +213,8 @@ standard (`magento/magento-coding-standard`), and the PHPUnit suite inside a rea
 2.4.8 project, which needs the `MAGENTO_COMPOSER_AUTH` secret with Marketplace access keys; without
 it that job logs a warning and skips. There is no nightly end-to-end run for Magento yet.
 
-A release is a git tag; Composer resolves it as the module's version (`composer.json` carries the
-same number). `CHANGELOG.md` lists the versions.
+A release is a git tag, which Packagist picks up and Composer resolves as the module's version;
+`composer.json` carries no version field of its own. `CHANGELOG.md` lists the versions.
 
 ## Translations
 
