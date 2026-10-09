@@ -123,6 +123,11 @@ answers `"state":"wrong_asset"` with `amount_paid.issuer` the RLUSD issuer and `
 full value; the order *XRPL payment incomplete* with a "not in the requested USDC" history line. Then send the
 USDC: `redirect`, `processing`, and `xrpl.hash` is the USDC transaction.
 
+Run it a second time **across the asset class**: an *XRP* order paid with RLUSD. Look for the same wrong-asset
+block; the poll's `amount_paid` is the token object and `shortfall` the XRP number; the order *XRPL payment
+incomplete*; then the XRP in full settles with the XRP hash. Core 0.8.1 — before, the payment was skipped and the
+page stayed on *waiting*.
+
 ## PS-05 — Settled
 
 Place an XRP order of about 1.00 in shop currency. Send exactly the amount the page shows.
