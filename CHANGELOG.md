@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1
 
 - The module is on Packagist as `hardcastle/ledger-direct-magento2`; `composer.json` no longer carries a
   `version` field, the git tag is the version. No change for shops.
