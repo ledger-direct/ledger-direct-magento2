@@ -5,6 +5,7 @@ namespace Hardcastle\LedgerDirect\Tests\Unit\Cron;
 
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Cron\SettlePendingOrders;
+use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Service\OrderSettlementService;
@@ -28,6 +29,12 @@ class SettlePendingOrdersTest extends TestCase
     private $logger;
 
     private SettlePendingOrders $cron;
+
+    /** @var SystemConfig|MockObject */
+    private $systemConfig;
+
+    /** @var string The configured receiving account; empty means none. */
+    private string $configuredAccount = '';
 
     /** @var Order[] */
     private array $pendingOrders = [];
@@ -57,11 +64,16 @@ class SettlePendingOrdersTest extends TestCase
             return $intent;
         });
 
-        $this->cron = new SettlePendingOrders(
+                $this->systemConfig = $this->createMock(SystemConfig::class);
+        $this->systemConfig->method('getDestinationAccount')->willReturnCallback(fn () => $this->configuredAccount);
+        $this->systemConfig->method('getNetwork')->willReturn('testnet');
+
+$this->cron = new SettlePendingOrders(
             $collectionFactory,
             $this->orderPaymentService,
             $this->settlementService,
-            $this->logger
+            $this->logger,
+            $this->systemConfig
         );
     }
 
@@ -93,6 +105,22 @@ class SettlePendingOrdersTest extends TestCase
 
         $this->assertSame([['rMerchant', 'testnet', false], ['rMerchant', 'mainnet', false]], $synced, 'unthrottled, once per pair');
         $this->assertSame([$first, $second, $third], $matched);
+    }
+
+    /**
+     * A payment on an order the merchant cancelled, with nothing else pending, must still reach
+     * the transaction table: the configured account is synced on every run, whether or not an
+     * order points at it.
+     */
+    public function testTheConfiguredAccountIsSyncedEvenWithNothingPending(): void
+    {
+        $this->configuredAccount = 'rConfiguredAccount';
+
+        $this->orderPaymentService->expects($this->once())->method('syncLedger')
+            ->with('rConfiguredAccount', 'testnet', false);
+        $this->orderPaymentService->expects($this->never())->method('matchOrder');
+
+        $this->cron->execute();
     }
 
     public function testSettlesEveryPendingOrderWhosePaymentArrived(): void

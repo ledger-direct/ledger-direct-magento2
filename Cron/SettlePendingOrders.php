@@ -3,6 +3,7 @@
 namespace Hardcastle\LedgerDirect\Cron;
 
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
+use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Service\OrderSettlementService;
 use Magento\Sales\Model\Order;
@@ -15,11 +16,12 @@ use Throwable;
  * page. Without this, an order is only ever synced when the customer's page polls - a
  * customer who closes the tab after sending would never see their order confirmed.
  *
- * One node request per receiving account and network, then every open order matched
+ * The configured receiving account is synced on every run, then one node request per further
+ * receiving account and network of the open orders, then every open order matched
  * against the local transaction table - not one sync per order. Unthrottled: this is the
  * safety net on its own schedule, the throttle is for the payment page that anyone can poll.
  *
- * Which accounts to sync is read from the open orders themselves, not from the
+ * Which further accounts to sync is read from the open orders themselves, not only from the
  * configuration: a shop with a test phase has orders on both networks, and an order quoted
  * against an earlier receiving address still has to settle after the merchant changed it.
  */
@@ -46,21 +48,29 @@ class SettlePendingOrders
     private LoggerInterface $logger;
 
     /**
+     * @var SystemConfig
+     */
+    private SystemConfig $systemConfig;
+
+    /**
      * @param CollectionFactory $orderCollectionFactory
      * @param OrderPaymentService $orderPaymentService
      * @param OrderSettlementService $settlementService
      * @param LoggerInterface $logger
+     * @param SystemConfig $systemConfig
      */
     public function __construct(
         CollectionFactory $orderCollectionFactory,
         OrderPaymentService $orderPaymentService,
         OrderSettlementService $settlementService,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        SystemConfig $systemConfig
     ) {
         $this->orderCollectionFactory = $orderCollectionFactory;
         $this->orderPaymentService = $orderPaymentService;
         $this->settlementService = $settlementService;
         $this->logger = $logger;
+        $this->systemConfig = $systemConfig;
     }
 
     /**
@@ -76,7 +86,16 @@ class SettlePendingOrders
             ->addFieldToFilter('payment.method', ['in' => OrderPaymentService::PAYMENT_METHODS])
             ->addFieldToFilter('main_table.state', Order::STATE_PENDING_PAYMENT);
 
+        // The configured receiving account is synced on every run, open orders or not: a payment
+        // on an order the merchant has already cancelled would otherwise never reach the
+        // transaction table - and the order's Payment Information - until some other order on
+        // the account happened to trigger a sync. One node request.
         $accounts = [];
+        $configuredAccount = $this->systemConfig->getDestinationAccount();
+        if ($configuredAccount !== '') {
+            $configuredNetwork = $this->systemConfig->getNetwork();
+            $accounts[$configuredNetwork . '|' . $configuredAccount] = [$configuredAccount, $configuredNetwork];
+        }
         $matchable = [];
 
         /** @var Order $order */
