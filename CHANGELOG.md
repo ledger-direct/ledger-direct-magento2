@@ -4,6 +4,9 @@
 
 - The module is on Packagist as `hardcastle/ledger-direct-magento2`; `composer.json` no longer carries a
   `version` field, the git tag is the version. No change for shops.
+- Core 0.8.1: a payment in the other asset class — a token sent for an XRP order, or XRP for a token order —
+  is reported as a wrong-token payment with the full amount still due (order status *XRPL payment incomplete*),
+  instead of being ignored. Before, the page stayed on "waiting" while the money sat on the ledger.
 
 ## 1.1.0
 
