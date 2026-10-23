@@ -14,13 +14,17 @@
           index below. Backfilled from the CTID for existing rows by a data patch.
         - the destination-tag table is a per-account counter the core's DestinationTagService
           derives tags from, not a list of issued tags.
+        - the CTID lives in tx_ctid (core 0.9): PostgreSQL reserves ctid as a system column name,
+          so the core fixes the column name for every adapter. Installations from before 1.1.2
+          carry the data over through migrateDataFrom; ctid stays whitelisted so the declarative
+          schema drops it afterwards.
     -->
     <table name="ledger_direct_xrpl_tx" resource="default" engine="innodb" comment="XRPL Transactions Table">
         <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="" />
         <column xsi:type="varchar" name="network" length="16" nullable="false" default="" comment="mainnet | testnet" />
         <column xsi:type="bigint" name="ledger_index" unsigned="true" nullable="false" comment="" />
         <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="" />
-        <column xsi:type="varchar" name="ctid" length="16" nullable="false" comment="XRPL Compact Transaction ID" />
+        <column xsi:type="varchar" name="tx_ctid" length="16" nullable="false" onCreate="migrateDataFrom(ctid)" comment="XRPL Compact Transaction ID" />
         <column xsi:type="varchar" name="account" length="35" nullable="false" comment="" />
         <column xsi:type="varchar" name="destination" length="35" nullable="false" comment="" />
         <column xsi:type="int" name="destination_tag" unsigned="true" nullable="true" comment="" />

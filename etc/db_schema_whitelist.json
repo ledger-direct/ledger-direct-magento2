@@ -5,6 +5,7 @@
             "ledger_index": true,
             "hash": true,
             "ctid": true,
+            "tx_ctid": true,
             "account": true,
             "destination": true,
             "destination_tag": true,

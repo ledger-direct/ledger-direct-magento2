@@ -145,7 +145,7 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
             'network' => 'testnet',
             'ledger_index' => '12345',
             'hash' => 'HASH',
-            'ctid' => 'C000303900000001',
+            'tx_ctid' => 'C000303900000001',
             'account' => 'rSender',
             'destination' => self::ACCOUNT,
             'destination_tag' => '4294967295',
