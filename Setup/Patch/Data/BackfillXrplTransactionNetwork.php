@@ -15,6 +15,9 @@ use Magento\Framework\Setup\Patch\DataPatchInterface;
  * testnet and then switched to the mainnet. Rows without a usable CTID stay '' and are simply
  * not counted for the sync cursor - at worst the next sync paginates once more, and the unique
  * hash index keeps that from storing anything twice.
+ *
+ * Reads `tx_ctid`: setup:upgrade applies the declarative schema, which renames `ctid` to
+ * `tx_ctid` (core 0.9), before it runs the data patches.
  */
 class BackfillXrplTransactionNetwork implements DataPatchInterface
 {
@@ -42,9 +45,9 @@ class BackfillXrplTransactionNetwork implements DataPatchInterface
         $connection->update(
             $table,
             ['network' => new \Magento\Framework\DB\Sql\Expression(
-                "CASE CONV(RIGHT(ctid, 4), 16, 10) WHEN 0 THEN 'mainnet' WHEN 1 THEN 'testnet' ELSE '' END"
+                "CASE CONV(RIGHT(tx_ctid, 4), 16, 10) WHEN 0 THEN 'mainnet' WHEN 1 THEN 'testnet' ELSE '' END"
             )],
-            ['network = ?' => '', 'CHAR_LENGTH(ctid) = ?' => 16]
+            ['network = ?' => '', 'CHAR_LENGTH(tx_ctid) = ?' => 16]
         );
 
         return $this;

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.2
+
+- Core 0.9: the synced transactions store the CTID in the column `tx_ctid` instead of `ctid`, the name every
+  LedgerDirect plugin uses from now on (PostgreSQL reserves `ctid` for a system column). The declarative schema
+  renames the column on `setup:upgrade` and carries the data over; nothing changes for customers or merchants.
+- Core 0.9: a transaction whose CTID is malformed is skipped during sync, and logged, instead of being stored
+  truncated.
+
 ## 1.1.1
 
 - The module is on Packagist as `hardcastle/ledger-direct-magento2`; `composer.json` no longer carries a
