@@ -30,3 +30,6 @@ TODO.md
 # Handover documents (working input for Claude Code sessions, not part of the module)
 /Handover-*.md
 /CLAUDE.md
+
+# bin/marketplace-zip.sh writes here
+/build
