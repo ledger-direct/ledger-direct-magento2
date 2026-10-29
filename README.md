@@ -216,6 +216,13 @@ it that job logs a warning and skips. There is no nightly end-to-end run for Mag
 A release is a git tag, which Packagist picks up and Composer resolves as the module's version;
 `composer.json` carries no version field of its own. `CHANGELOG.md` lists the versions.
 
+The Adobe Commerce Marketplace wants the same code as a zip with `version` in its `composer.json`:
+`bin/marketplace-zip.sh <tag>` builds `build/Hardcastle_LedgerDirect-<tag>.zip` from the tag, writes
+the version into the copy, checks the fields the technical review requires and leaves tests and
+tooling out (`.gitattributes` export-ignore, the same rules Packagist applies). The listing's assets
+live in `docs/marketplace/`: the icon, the user guide (`bin/docs-pdf.sh` renders it from this README)
+and the release notes per version.
+
 ## Translations
 
 English and German, as `i18n/en_US.csv` and `i18n/de_DE.csv`.

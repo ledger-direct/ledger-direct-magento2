@@ -1,0 +1,12 @@
+# Keeps development files out of the distributed package: what Packagist serves and what the
+# Marketplace zip (bin/marketplace-zip.sh) contains. A merchant's app/code needs none of it.
+/tests            export-ignore
+/.github          export-ignore
+/docs             export-ignore
+/bin              export-ignore
+/build            export-ignore
+/.gitattributes   export-ignore
+/.gitignore       export-ignore
+/payment_page.png export-ignore
+/CLAUDE.md        export-ignore
+/Handover-*.md    export-ignore

@@ -1,0 +1,10 @@
+LedgerDirect for Magento 2 — release notes 1.1.3
+
+- Browser wallets work again on the payment page. Every Magento page has RequireJS, and the UMD
+  wrappers of libraries bundled into the payment page package registered with it instead of
+  exporting to CommonJS; the wallet module failed with `default is not a function` the moment the
+  customer opened the wallet list and reported "no browser wallet found" with Crossmark or GemWallet
+  installed — since 1.1.0, when the package replaced the module's own scripts. Payment page package
+  0.3.1 builds without the AMD branch (`view/frontend/web/js/ledger-direct-payment-ui/`, `VERSION`
+  0.3.1); the stylesheet is unchanged
+- The package's `headers` option for the poll (0.3.0) comes along; this module's page does not need it
