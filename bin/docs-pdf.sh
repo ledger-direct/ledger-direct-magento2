@@ -24,7 +24,10 @@ trap 'rm -rf "$work"' EXIT
   @page { margin: 18mm 16mm; }
 </style></head><body>
 HTML
-  npx --yes marked --gfm < README.md
+  # Relative links (LICENSE, CHANGELOG.md, …) would point into the temporary directory, which is
+  # gone when the PDF is read; they become links to the file on GitHub instead.
+  npx --yes marked --gfm < README.md \
+    | sed -E 's#href="([^"#/][^":]*)"#href="https://github.com/ledger-direct/ledger-direct-magento2/blob/main/\1"#g'
   echo '</body></html>'
 } > "$work/readme.html"
 
