@@ -30,6 +30,9 @@ php -r '
   foreach ($json["require"] as $package => $constraint) {
     if (str_starts_with($package, "magento/") && $constraint === "*") { fwrite(STDERR, "wildcard constraint on $package\n"); exit(1); }
   }
+  // Development dependencies are not part of what a shop installs, and the review reads every
+  // section: the coding standard is required with "*" there, which the review would flag.
+  unset($json["require-dev"], $json["scripts"]);
   $ordered = ["name" => $json["name"], "version" => $version] + $json;
   file_put_contents($file, json_encode($ordered, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
 ' "$build/$name/composer.json" "$tag"

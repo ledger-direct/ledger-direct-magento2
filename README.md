@@ -17,7 +17,7 @@ core and are not reimplemented.
 
 Project website: https://www.ledger-direct.com
 
-![Payment Page](payment_page.png)
+![Payment Page](https://raw.githubusercontent.com/ledger-direct/ledger-direct-magento2/main/payment_page.png)
 
 ## How it works
 
