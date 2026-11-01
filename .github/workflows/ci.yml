@@ -121,7 +121,15 @@ jobs:
       # default. This job checks our code against Magento's classes, not the Magento build's CVEs.
       - name: composer install
         working-directory: magento
-        run: composer install --no-interaction --prefer-dist --no-progress --no-blocking
+        # The mirror occasionally drops an HTTP/2 stream mid-download (curl error 18). Composer's cache
+        # keeps what arrived, so a retry only fetches the rest.
+        run: |
+          for attempt in 1 2 3; do
+            composer install --no-interaction --prefer-dist --no-progress --no-blocking && exit 0
+            echo "::warning::composer install failed (attempt $attempt), retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: Run unit tests
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
@@ -130,7 +138,8 @@ jobs:
   # mirror shows up. Needs the MAGENTO_COMPOSER_AUTH secret:
   #   {"http-basic":{"repo.magento.com":{"username":"<public key>","password":"<private key>"}}}
   unit-tests-adobe:
-    name: Unit tests (Magento ${{ matrix.magento-version }}, repo.magento.com)
+    # No matrix expression in the name: a skipped job shows it unexpanded. GitHub appends the matrix.
+    name: Unit tests against repo.magento.com
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
@@ -202,7 +211,15 @@ jobs:
         env:
           COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
         working-directory: magento
-        run: composer install --no-interaction --prefer-dist --no-progress --no-blocking
+        # The mirror occasionally drops an HTTP/2 stream mid-download (curl error 18). Composer's cache
+        # keeps what arrived, so a retry only fetches the rest.
+        run: |
+          for attempt in 1 2 3; do
+            composer install --no-interaction --prefer-dist --no-progress --no-blocking && exit 0
+            echo "::warning::composer install failed (attempt $attempt), retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
