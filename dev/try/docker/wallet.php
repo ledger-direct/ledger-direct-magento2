@@ -86,6 +86,16 @@ switch ($command) {
         $wallet = Wallet::fromSeed($data['seed']);
         $lines = json_decode((string) ($argv[3] ?? '[]'), true) ?: [];
         $done = $data['trust_lines'] ?? [];
+        $pending = array_values(array_filter(
+            $lines,
+            static fn (array $limit): bool => !in_array($limit['currency'] . '.' . $limit['issuer'], $done, true)
+        ));
+
+        // Recorded once, set for good: a restart needs no node at all, so a node that is down or slow
+        // cannot switch RLUSD and USDC off.
+        if ($pending === []) {
+            exit(0);
+        }
 
         // A faucet account takes a ledger or two to show up as validated; autofill needs it.
         for ($wait = 0; accountExists($client, $data['address']) !== true; $wait++) {
@@ -95,11 +105,8 @@ switch ($command) {
             sleep(2);
         }
 
-        foreach ($lines as $limit) {
+        foreach ($pending as $limit) {
             $key = $limit['currency'] . '.' . $limit['issuer'];
-            if (in_array($key, $done, true)) {
-                continue;
-            }
             $response = $client->submitAndWait([
                 'TransactionType' => 'TrustSet',
                 'Account' => $wallet->getAddress(),
