@@ -14,7 +14,7 @@
     </type>
 
     <!-- Interface defaults -->
-    <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\Api\XrpPaymentService" />
+    <preference for="Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface" type="Hardcastle\LedgerDirect\Model\API\XrpPaymentService" />
     <preference for="Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface" type="Hardcastle\LedgerDirect\Model\XrpPayment" />
 
     <!--
