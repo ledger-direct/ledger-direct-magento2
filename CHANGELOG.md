@@ -8,6 +8,11 @@
   500 ("Class … does not exist"). Affected: every release up to 1.1.3 on a case-sensitive file system. A new
   unit test resolves every class the XML configuration names under its exact name, so CI on Linux
   catches this
+- `bin/magento setup:db:status` reports the module up to date after `setup:upgrade`. Ten
+  columns of the two ledger tables were declared with an empty comment, which Magento's declarative
+  schema read as a difference on every run: the status never settled, and every `setup:upgrade`
+  rewrote both tables — a deploy pipeline that decides on maintenance mode by that status would
+  enter it on every deploy. The columns carry real comments now; no data changes
 
 ## 1.1.3
 
