@@ -5,7 +5,7 @@
 - The payment page works on Linux. `etc/di.xml` named the payment-details service
   `Model\Api\XrpPaymentService`, while the class lives in `Model/API`; file systems that ignore case
   (macOS, Windows) resolved it, a Linux server — where shops run — answered every payment page with a
-  500 ("Class … does not exist"). Affected: 1.1.0 to 1.1.3 installed from Packagist on Linux. A new
+  500 ("Class … does not exist"). Affected: every release up to 1.1.3 on a case-sensitive file system. A new
   unit test resolves every class the XML configuration names under its exact name, so CI on Linux
   catches this
 
