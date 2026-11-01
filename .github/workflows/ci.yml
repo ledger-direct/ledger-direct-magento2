@@ -55,7 +55,7 @@ jobs:
       - name: Run phpcs (Magento2 standard)
         run: >
           phpcs-tools/vendor/bin/phpcs --standard=Magento2 --extensions=php
-          --ignore=*/tests/*
+          --ignore=*/tests/*,*/dev/*
           module
 
   unit-tests:

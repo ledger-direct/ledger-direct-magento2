@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Try it in five minutes: `dev/try` starts a complete Magento shop with the module on the XRP Ledger
+  testnet (`docker compose up -d --wait`), with a demo article for 1 EUR, a fresh testnet receiving
+  account and a demo admin login — no Magento access keys, Magento Open Source comes from Mage-OS's
+  public mirror. A CI job builds it on every pull request, installs the module into a fresh Magento on
+  Linux the way a merchant does and smoke-tests the payment page and the status endpoint
 - The payment page works on Linux. `etc/di.xml` named the payment-details service
   `Model\Api\XrpPaymentService`, while the class lives in `Model/API`; file systems that ignore case
   (macOS, Windows) resolved it, a Linux server — where shops run — answered every payment page with a

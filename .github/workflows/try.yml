@@ -1,0 +1,116 @@
+name: Try stack
+
+# The try-it stack in dev/try: every pull request and every push to main builds the image from the
+# checkout, starts the stack the way a visitor does and runs dev/try/smoke.sh against it (storefront,
+# guest order, payment page markup contract, status endpoint PS-01 and PS-07). It installs the module
+# into a fresh Magento on Linux the way a merchant does — the route that broke in 1.1.3.
+#
+# Publishing the image to GHCR (ghcr.io/ledger-direct/try-magento) happens on a version tag only when
+# the repository variable LD_PUBLISH_TRY_IMAGE is "true", or by hand (workflow_dispatch, "publish").
+# A first publish creates the package private; switch it to public once in the package settings.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the image to GHCR as ":edge"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/ledger-direct/try-magento
+
+jobs:
+  smoke:
+    name: Build, start and smoke-test the try stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the shop image from this checkout
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: dev/try/Dockerfile
+          tags: ${{ env.IMAGE }}:ci
+          load: true
+          cache-from: type=gha,scope=try-magento
+          cache-to: type=gha,mode=max,scope=try-magento
+
+      - name: Start the stack
+        working-directory: dev/try
+        env:
+          LD_TRY_IMAGE: ${{ env.IMAGE }}:ci
+          # Empty unless set: the shop then takes a fresh account from the testnet faucet.
+          LD_TESTNET_ACCOUNT: ${{ vars.LD_TRY_TESTNET_ACCOUNT }}
+        run: |
+          started=$(date +%s)
+          docker compose up -d --wait --no-build
+          echo "Stack up, shop installed: $(( $(date +%s) - started )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          dev/try/smoke.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Shop log
+        if: always()
+        working-directory: dev/try
+        run: docker compose logs --no-color --tail 200 phpfpm
+
+  publish:
+    name: Publish the try image
+    needs: smoke
+    if: >-
+      (startsWith(github.ref, 'refs/tags/') && vars.LD_PUBLISH_TRY_IMAGE == 'true')
+      || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Build and push (amd64 and arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: dev/try/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            LD_VERSION=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('dev-{0}', github.sha) }}
+          cache-from: type=gha,scope=try-magento
