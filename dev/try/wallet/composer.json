@@ -1,0 +1,14 @@
+{
+    "name": "ledger-direct/try-magento-wallet",
+    "description": "The try-it shop's own testnet wallet: a fresh account from the faucet and its trust lines. Kept apart from Magento's vendor/, run as its own process.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "hardcastle/xrpl_php": "3.0.0"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

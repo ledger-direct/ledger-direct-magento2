@@ -24,10 +24,11 @@ FROM ${EXTENSION_INSTALLER} AS extension-installer
 FROM ${PHP_IMAGE} AS base
 COPY --from=extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
-# The PHP extensions Magento requires beyond what the official image builds in.
-RUN install-php-extensions bcmath ftp gd intl pdo_mysql soap sockets xsl zip \
+# The PHP extensions Magento requires beyond what the official image builds in, plus gmp for the
+# wallet tool's signing (hardcastle/xrpl_php).
+RUN install-php-extensions bcmath ftp gd gmp intl pdo_mysql soap sockets xsl zip \
  && apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/*
 COPY dev/try/docker/php.ini /usr/local/etc/php/conf.d/zz-ledger-direct-try.ini
 
@@ -57,6 +58,12 @@ RUN --mount=type=cache,target=/var/cache/composer \
     done \
  && rm -rf /opt/ledger-direct/module
 
+# The shop's testnet wallet tool (hardcastle/xrpl_php), in a vendor/ of its own: it runs as a separate
+# process, so its dependencies never meet Magento's.
+COPY dev/try/wallet/composer.json /opt/ledger-direct/wallet/composer.json
+RUN --mount=type=cache,target=/var/cache/composer \
+    composer install --no-interaction --no-progress --no-dev --working-dir=/opt/ledger-direct/wallet
+
 FROM base AS runtime
 ARG LD_VERSION=dev-try
 ARG MAGENTO_VERSION=2.4.8-p5
@@ -68,7 +75,8 @@ LABEL org.opencontainers.image.title="LedgerDirect for Magento 2 — try it" \
       com.ledger-direct.magento.version="${MAGENTO_VERSION}"
 WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
-COPY dev/try/docker/entrypoint.sh dev/try/docker/install.php /usr/local/share/ledger-direct/
+COPY --from=build /opt/ledger-direct/wallet /opt/ledger-direct/wallet
+COPY dev/try/docker/entrypoint.sh dev/try/docker/install.php dev/try/docker/wallet.php /usr/local/share/ledger-direct/
 # What identifies this build to an existing shop: the resolved packages. When it differs from the one
 # the shop was set up with (an updated image on existing volumes), the entrypoint runs setup:upgrade.
 RUN chmod 0755 /usr/local/share/ledger-direct/entrypoint.sh \

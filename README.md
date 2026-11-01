@@ -30,20 +30,24 @@ cd ledger-direct-magento2/dev/try
 docker compose up -d --wait        # first start installs the shop: about a minute
 ```
 
-1. Open http://localhost:8088/, put the **LedgerDirect demo article** (1 EUR) in the cart and check
-   out with *Pay with XRP*.
+1. Open http://localhost:8088/: the home page explains the demo and offers the **LedgerDirect demo
+   article** (1 EUR). Put it in the cart and check out as a guest with *Pay with XRP*, *RLUSD* or
+   *USDC*.
 2. The payment page shows the amount, the receiving account and the destination tag. Pay it from a
    testnet wallet — [Xaman](https://xaman.app/) in testnet mode or [Crossmark](https://crossmark.io/)
-   — funded from the [XRP Testnet faucet](https://xrpl.org/xrp-testnet-faucet.html). Send the
-   amount exactly as shown, **with the destination tag**.
+   — funded from the [XRP Testnet faucet](https://xrpl.org/resources/dev-tools/xrp-faucets); RLUSD
+   and USDC come from the [RLUSD faucet](https://tryrlusd.com/) and the
+   [Circle faucet](https://faucet.circle.com/). Send the amount exactly as shown, **with the
+   destination tag**, or connect the wallet with the buttons on the page.
 3. The page notices the payment within seconds and moves on to the order; the order is invoiced and
    *Processing* in the admin at http://localhost:8088/admin (demo login `demo` /
    `demo-ledgerdirect-1` — a local demo login, never reuse it).
 
-The shop takes a fresh receiving account from the testnet faucet on its first start (`docker compose
-logs phpfpm` names it) and offers XRP only, because RLUSD and USDC need trust lines on the receiving
-account. To try the stablecoins too, start it with a testnet address of your own that has the trust
-lines ([RLUSD faucet](https://tryrlusd.com/), [Circle faucet](https://faucet.circle.com/) for USDC):
+On its first start the shop creates its own testnet wallet from the faucet and sets the trust lines
+to the RLUSD and USDC issuers on it, so all three assets can be paid right away (`docker compose logs
+phpfpm` names the address). The wallet's seed stays in the stack's volume, testnet only. When the
+testnet has been reset, the next start notices and creates a new wallet. To receive into an address
+of your own instead — it then needs the trust lines itself:
 
 ```
 LD_TESTNET_ACCOUNT=r... docker compose up -d --wait

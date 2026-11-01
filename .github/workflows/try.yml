@@ -64,6 +64,28 @@ jobs:
           dev/try/smoke.sh | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
+      # The storefront the way a prospect sees it, in a real browser: home page, cart, guest
+      # checkout with each LedgerDirect method, payment page. GitHub's runners ship Chrome.
+      - name: Browser walk (XRP, RLUSD, USDC)
+        working-directory: dev/try/browser
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: |
+          npm install --no-audit --no-fund
+          mkdir -p screenshots
+          for method in xrp_payment xrpl_rlusd_payment xrpl_usdc_payment; do
+            echo "== $method"
+            node visitor.mjs http://localhost:8088 screenshots "$method"
+          done
+
+      - name: Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: try-stack-screenshots
+          path: dev/try/browser/screenshots
+          if-no-files-found: ignore
+
       - name: Shop log
         if: always()
         working-directory: dev/try
