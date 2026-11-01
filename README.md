@@ -95,9 +95,11 @@ of them — if `composer require` fails with "affected by security advisories", 
 its current patch release first.
 
 This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
-`app/code/Hardcastle/LedgerDirect` instead, require the core at project level yourself
-(`composer require hardcastle/ledger-direct-core:^0.9`) and run the same three `bin/magento`
-commands.
+`app/code/Hardcastle/LedgerDirect` instead, Composer does not read the module's own `composer.json`;
+require its two dependencies at project level yourself
+(`composer require hardcastle/ledger-direct-core:^0.9 "bacon/bacon-qr-code:^2.0 || ^3.0"`, the
+QR-code library renders the payment page's code for browsers without JavaScript) and run the same
+three `bin/magento` commands.
 
 Installing creates two tables for ledger data (synced transactions and the destination-tag counter)
 and the order status *XRPL payment incomplete*. Updates run through `setup:upgrade` as usual.
