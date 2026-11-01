@@ -76,7 +76,8 @@ from what is already stored. A guest order can poll too — the link carries the
 
 The module is installed with Composer from
 [Packagist](https://packagist.org/packages/hardcastle/ledger-direct-magento2); the git tags are
-the versions:
+the versions. Run the commands in the root directory of the Magento installation, the one with
+Magento's own `composer.json`:
 
 ```
 composer require hardcastle/ledger-direct-magento2
@@ -85,10 +86,20 @@ bin/magento setup:di:compile
 bin/magento setup:static-content:deploy -f
 ```
 
+The module depends on `magento/framework`, which Composer only finds through `repo.magento.com`
+as configured in that project. Run in an empty directory, `composer require` therefore reports
+that `magento/framework` "could not be found in any version"; that is expected for any Magento
+extension and not a problem with the package. Composer 2.9 and later also refuses to resolve
+dependencies that have known security advisories, and older Magento patch releases lock several
+of them — if `composer require` fails with "affected by security advisories", update Magento to
+its current patch release first.
+
 This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
-`app/code/Hardcastle/LedgerDirect` instead, require the core at project level yourself
-(`composer require hardcastle/ledger-direct-core:^0.8`) and run the same three `bin/magento`
-commands.
+`app/code/Hardcastle/LedgerDirect` instead, Composer does not read the module's own `composer.json`;
+require its two dependencies at project level yourself
+(`composer require hardcastle/ledger-direct-core:^0.9 "bacon/bacon-qr-code:^2.0 || ^3.0"`, the
+QR-code library renders the payment page's code for browsers without JavaScript) and run the same
+three `bin/magento` commands.
 
 Installing creates two tables for ledger data (synced transactions and the destination-tag counter)
 and the order status *XRPL payment incomplete*. Updates run through `setup:upgrade` as usual.
