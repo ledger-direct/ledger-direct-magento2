@@ -242,8 +242,8 @@ vendor/bin/phpunit -c app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
 
 The unit suite runs the real core services and stubs only the edges this module owns: the HTTP
 client, the transaction repository port and Magento's repositories. It is offline by design and
-needs no database. `tests/README.md` has the details, including the Magento Marketplace keys CI
-needs to build a Magento project.
+needs no database. `tests/README.md` has the details, including the Magento Marketplace keys the
+weekly cross-check against `repo.magento.com` uses (no other job needs them).
 
 To work against a local core checkout instead of the released version, add a path repository to
 the *Magento project's* `composer.json` and require the branch; keep the module's own constraint on
@@ -258,8 +258,12 @@ composer require hardcastle/ledger-direct-core:dev-master
 
 Every push and pull request runs `.github/workflows/ci.yml`: PHP syntax, the Magento 2 coding
 standard (`magento/magento-coding-standard`), and the PHPUnit suite inside a real Magento 2.4.7 and
-2.4.8 project, which needs the `MAGENTO_COMPOSER_AUTH` secret with Marketplace access keys; without
-it that job logs a warning and skips. There is no nightly end-to-end run for Magento yet.
+2.4.8 project. Magento Open Source comes from [Mage-OS's public mirror](https://mirror.mage-os.org/),
+which needs no access keys — pull requests from forks are tested too — and is several times faster
+than `repo.magento.com`; Composer's package cache is kept between runs. Once a week, and on demand,
+the same tests run against `repo.magento.com` itself (`MAGENTO_COMPOSER_AUTH` secret with Marketplace
+access keys; without it that job logs a warning and skips), so a gap in the mirror shows up. There is
+no nightly end-to-end run for Magento yet.
 
 A release is a git tag, which Packagist picks up and Composer resolves as the module's version;
 `composer.json` carries no version field of its own. `CHANGELOG.md` lists the versions.
