@@ -18,19 +18,22 @@
           so the core fixes the column name for every adapter. Installations from before 1.1.2
           carry the data over through migrateDataFrom; ctid stays whitelisted so the declarative
           schema drops it afterwards.
+        - every column carries a non-empty comment: with comment="" Magento's declarative schema
+          sees a difference on every run (setup:db:status never reports "up to date" and each
+          setup:upgrade rewrites both tables).
     -->
     <table name="ledger_direct_xrpl_tx" resource="default" engine="innodb" comment="XRPL Transactions Table">
-        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="" />
+        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="Row ID" />
         <column xsi:type="varchar" name="network" length="16" nullable="false" default="" comment="mainnet | testnet" />
-        <column xsi:type="bigint" name="ledger_index" unsigned="true" nullable="false" comment="" />
-        <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="" />
+        <column xsi:type="bigint" name="ledger_index" unsigned="true" nullable="false" comment="Ledger index the transaction was validated in" />
+        <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="Transaction hash" />
         <column xsi:type="varchar" name="tx_ctid" length="16" nullable="false" onCreate="migrateDataFrom(ctid)" comment="XRPL Compact Transaction ID" />
-        <column xsi:type="varchar" name="account" length="35" nullable="false" comment="" />
-        <column xsi:type="varchar" name="destination" length="35" nullable="false" comment="" />
-        <column xsi:type="int" name="destination_tag" unsigned="true" nullable="true" comment="" />
-        <column xsi:type="int" name="date" unsigned="true" nullable="false" comment="" />
-        <column xsi:type="text"  name="meta" nullable="false" comment="" />
-        <column xsi:type="text"  name="tx" nullable="false" comment="" />
+        <column xsi:type="varchar" name="account" length="35" nullable="false" comment="Sending account" />
+        <column xsi:type="varchar" name="destination" length="35" nullable="false" comment="Receiving account" />
+        <column xsi:type="int" name="destination_tag" unsigned="true" nullable="true" comment="XRPL destination tag" />
+        <column xsi:type="int" name="date" unsigned="true" nullable="false" comment="Close time, seconds since the Ripple epoch" />
+        <column xsi:type="text"  name="meta" nullable="false" comment="Transaction metadata, JSON" />
+        <column xsi:type="text"  name="tx" nullable="false" comment="Transaction, JSON" />
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="id"/>
         </constraint>
@@ -48,7 +51,7 @@
         </index>
     </table>
     <table name="ledger_direct_xrpl_destination_tag" resource="default" engine="innodb" comment="XRPL Destination Tag Counter Table">
-        <column xsi:type="varchar" name="destination_account" length="64" nullable="false" comment="" />
+        <column xsi:type="varchar" name="destination_account" length="64" nullable="false" comment="Receiving account the counter belongs to" />
         <column xsi:type="int" name="sequence" unsigned="true" nullable="false" comment="Sequence number issued last" />
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="destination_account"/>

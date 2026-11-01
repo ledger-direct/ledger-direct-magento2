@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `bin/magento setup:db:status` reports the module up to date after `setup:upgrade`. Ten
+  columns of the two ledger tables were declared with an empty comment, which Magento's declarative
+  schema read as a difference on every run: the status never settled, and every `setup:upgrade`
+  rewrote both tables — a deploy pipeline that decides on maintenance mode by that status would
+  enter it on every deploy. The columns carry real comments now; no data changes
+
 ## 1.1.3
 
 - Browser wallets work again on the payment page. Every Magento page has RequireJS, and the UMD
@@ -44,9 +52,6 @@
 - The "Check payment now" button is a form that reloads the page, which syncs — it works without JavaScript now.
 - Icons for XRP, RLUSD and USDC next to the payment methods in the checkout.
 - Requires `hardcastle/ledger-direct-core` ^0.8 and `bacon/bacon-qr-code`.
-
-## Unreleased
-
 - Payment instructions email right after the order is placed, with the key link to the payment page (configurable:
   enabled, sender identity, template). The order confirmation is still held back until the payment has arrived.
 - Payment information block for LedgerDirect orders (admin order view, customer order view, order emails): quote,
