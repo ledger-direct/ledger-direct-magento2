@@ -8,6 +8,9 @@ use PHPUnit\Framework\TestCase;
 /**
  * Every class the module's XML configuration names must exist under exactly that name.
  *
+ * Virtual types are names, not classes, and are skipped; so are the core's classes, which come from
+ * Composer and are not the module's to get wrong.
+ *
  * A reference whose case differs from the file (Model\Api vs Model/API) resolves on macOS and
  * Windows, whose file systems ignore case, and fails on Linux — where shops run. The payment page
  * of 1.1.3 answered every request with a 500 on Linux for exactly that reason, while the dev shop
@@ -36,12 +39,19 @@ class DiConfigurationTest extends TestCase
                 $virtualTypes[$name] = true;
             }
 
-            // type="…" / instance="…" attributes, and class names given as element text
-            preg_match_all('/(?:type|instance|class)="(Hardcastle\\\\LedgerDirect\\\\[^"]+)"/', $xml, $attributes);
+            // type="…" / instance="…" / class="…", the class a preference is for (for="…") and the class a
+            // <type> configures (name="…"), and class names given as element text
+            preg_match_all(
+                '/(?:type|instance|class|for|name)="(Hardcastle\\\\LedgerDirect\\\\[^"]+)"/',
+                $xml,
+                $attributes
+            );
             preg_match_all('/>\s*(Hardcastle\\\\LedgerDirect\\\\[A-Za-z0-9_\\\\]+)\s*</', $xml, $texts);
 
-            foreach (array_merge($attributes[1], $texts[1]) as $class) {
-                $references[$class] = basename(dirname($file)) . '/' . basename($file);
+            foreach ([$attributes[1], $texts[1]] as $classes) {
+                foreach ($classes as $class) {
+                    $references[$class] = basename(dirname($file)) . '/' . basename($file);
+                }
             }
         }
 
@@ -64,6 +74,10 @@ class DiConfigurationTest extends TestCase
         );
 
         $declared = (new \ReflectionClass($class))->getName();
-        $this->assertSame($class, $declared, sprintf('%s names %s, but the class is declared as %s', $file, $class, $declared));
+        $this->assertSame(
+            $class,
+            $declared,
+            sprintf('%s names %s, but the class is declared as %s', $file, $class, $declared)
+        );
     }
 }

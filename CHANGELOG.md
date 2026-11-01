@@ -53,9 +53,6 @@
 - The "Check payment now" button is a form that reloads the page, which syncs — it works without JavaScript now.
 - Icons for XRP, RLUSD and USDC next to the payment methods in the checkout.
 - Requires `hardcastle/ledger-direct-core` ^0.8 and `bacon/bacon-qr-code`.
-
-## Unreleased
-
 - Payment instructions email right after the order is placed, with the key link to the payment page (configurable:
   enabled, sender identity, template). The order confirmation is still held back until the payment has arrived.
 - Payment information block for LedgerDirect orders (admin order view, customer order view, order emails): quote,
