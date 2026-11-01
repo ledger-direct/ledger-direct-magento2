@@ -205,8 +205,8 @@ vendor/bin/phpunit -c app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
 
 The unit suite runs the real core services and stubs only the edges this module owns: the HTTP
 client, the transaction repository port and Magento's repositories. It is offline by design and
-needs no database. `tests/README.md` has the details, including the Magento Marketplace keys CI
-needs to build a Magento project.
+needs no database. `tests/README.md` has the details, including the Magento Marketplace keys the
+weekly cross-check against `repo.magento.com` uses (no other job needs them).
 
 To work against a local core checkout instead of the released version, add a path repository to
 the *Magento project's* `composer.json` and require the branch; keep the module's own constraint on

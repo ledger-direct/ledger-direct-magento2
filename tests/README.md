@@ -36,12 +36,12 @@ Notes
 `.github/workflows/ci.yml` runs three jobs on every push/PR:
 - `lint` – `php -l` across all module sources.
 - `coding-standard` – `phpcs --standard=Magento2` via `magento/magento-coding-standard`, which is public on packagist.org and needs no credentials.
-- `unit-tests` – builds a real Magento 2.4.7 and 2.4.8 project (for real framework/interface classes to mock against) and runs this module's PHPUnit suite inside it.
+- `unit-tests` – builds a real Magento 2.4.7 and 2.4.8 project (for real framework/interface classes to mock against) and runs this module's PHPUnit suite inside it. Magento Open Source comes from Mage-OS's public mirror (https://mirror.mage-os.org/), which needs no access keys, so pull requests from forks run the suite too. Composer's package cache is kept between runs.
 
-The `unit-tests` matrix needs a `MAGENTO_COMPOSER_AUTH` repository secret with a free Magento Marketplace account's access keys, in the JSON form Composer expects:
+A fourth job, `unit-tests-adobe`, runs the same suite against `repo.magento.com` itself — weekly and on demand (`workflow_dispatch`), never on pull requests — so a gap in the mirror shows up. Only that job needs the `MAGENTO_COMPOSER_AUTH` repository secret with a free Magento Marketplace account's access keys, in the JSON form Composer expects:
 
 ```json
 {"http-basic":{"repo.magento.com":{"username":"<public key>","password":"<private key>"}}}
 ```
 
-Get the keys from marketplace.magento.com → My Profile → Access Keys, then add the secret under the repo's Settings → Secrets and variables → Actions. Without it, the `unit-tests` job logs a warning and skips its Magento-dependent steps instead of failing (so external contributors' fork PRs still get useful `lint`/`coding-standard` results).
+Get the keys from marketplace.magento.com → My Profile → Access Keys, then add the secret under the repo's Settings → Secrets and variables → Actions. Without it, `unit-tests-adobe` logs a warning and skips; nothing else depends on it.
