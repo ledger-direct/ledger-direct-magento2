@@ -1,0 +1,13 @@
+{
+  "name": "ledger-direct-try-magento-browser",
+  "private": true,
+  "description": "Walks the try shop in a real browser: home page, cart, guest checkout, payment page.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "walk": "node visitor.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "24.43.1"
+  }
+}
