@@ -69,7 +69,10 @@ LABEL org.opencontainers.image.title="LedgerDirect for Magento 2 — try it" \
 WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 COPY dev/try/docker/entrypoint.sh dev/try/docker/install.php /usr/local/share/ledger-direct/
-RUN chmod 0755 /usr/local/share/ledger-direct/entrypoint.sh
+# What identifies this build to an existing shop: the resolved packages. When it differs from the one
+# the shop was set up with (an updated image on existing volumes), the entrypoint runs setup:upgrade.
+RUN chmod 0755 /usr/local/share/ledger-direct/entrypoint.sh \
+ && sha256sum /var/www/html/composer.lock | cut -c1-16 > /usr/local/share/ledger-direct/build-id
 USER www-data
 ENV LD_PORT=8080
 EXPOSE 8080

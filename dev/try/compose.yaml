@@ -1,8 +1,9 @@
 # LedgerDirect for Magento 2 — try it in five minutes, on the XRP Ledger testnet.
 #
-#   docker compose up -d --wait          # first start installs the shop, about two minutes
+#   docker compose up -d --wait          # first start installs the shop, about a minute
 #   open http://localhost:8088/
-#   docker compose down                  # reset: the next `up` starts from scratch
+#   docker compose down                  # stop; the shop and its orders stay in the volumes
+#   docker compose down -v               # reset: the next `up` installs a fresh shop
 #
 # Settings (environment or a .env file next to this one):
 #   LD_TRY_PORT          host port of the shop (default 8088, bound to 127.0.0.1 only)
@@ -11,7 +12,9 @@
 #   LD_TRY_IMAGE         the shop image (default: the published one; `--build` builds this checkout)
 #
 # The services are named as the end-to-end harness expects (phpfpm). Nothing but the shop is
-# published to the host; the database and the search engine stay inside this stack.
+# published to the host; the database and the search engine stay inside this stack. The shop's state
+# lives in named volumes, so recreating a container (a new image, a changed LD_TESTNET_ACCOUNT) keeps
+# the shop and its orders.
 name: ledger-direct-try-magento
 
 services:
@@ -26,6 +29,10 @@ services:
       LD_STABLECOINS: ${LD_STABLECOINS:-1}
     ports:
       - "127.0.0.1:${LD_TRY_PORT:-8088}:8080"
+    volumes:
+      - shop-etc:/var/www/html/app/etc
+      - shop-var:/var/www/html/var
+      - shop-media:/var/www/html/pub/media
     depends_on:
       db:
         condition: service_healthy
@@ -39,6 +46,8 @@ services:
       MARIADB_DATABASE: magento
       MARIADB_USER: magento
       MARIADB_PASSWORD: magento
+    volumes:
+      - db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -54,7 +63,16 @@ services:
       # A try-it stack runs on laptops whose Docker disk is often nearly full; OpenSearch would then
       # refuse to create Magento's search index, and the catalogue pages would stay empty.
       cluster.routing.allocation.disk.threshold_enabled: "false"
+    volumes:
+      - search-data:/usr/share/opensearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -fs localhost:9200/_cluster/health"]
       interval: 5s
       retries: 60
+
+volumes:
+  shop-etc:
+  shop-var:
+  shop-media:
+  db-data:
+  search-data:

@@ -49,8 +49,9 @@ lines ([RLUSD faucet](https://tryrlusd.com/), [Circle faucet](https://faucet.cir
 LD_TESTNET_ACCOUNT=r... docker compose up -d --wait
 ```
 
-`LD_TRY_PORT` moves the shop off port 8088. `docker compose down` resets everything; the next `up`
-installs a fresh shop. `docker compose up --build` builds the image from your checkout instead of
+Setting `LD_TESTNET_ACCOUNT` later works too: the next `up` applies it to the existing shop.
+`LD_TRY_PORT` moves the shop off port 8088. `docker compose down` stops the stack and keeps the shop
+and its orders; `docker compose down -v` resets everything, and the next `up` installs a fresh shop. `docker compose up --build` builds the image from your checkout instead of
 pulling the published one. Magento Open Source comes from
 [Mage-OS's public mirror](https://mirror.mage-os.org/); it is not an official Magento image, and
 the shop is for trying the module, not for production.
