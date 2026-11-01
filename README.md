@@ -19,6 +19,42 @@ Project website: https://www.ledger-direct.com
 
 ![Payment Page](https://raw.githubusercontent.com/ledger-direct/ledger-direct-magento2/main/payment_page.png)
 
+## Try it in five minutes
+
+A complete Magento shop with the module, on the XRP Ledger **testnet** — no Magento account, no
+access keys, no real money. You need Docker and about 3 GB of disk.
+
+```
+git clone https://github.com/ledger-direct/ledger-direct-magento2.git
+cd ledger-direct-magento2/dev/try
+docker compose up -d --wait        # first start installs the shop: about a minute
+```
+
+1. Open http://localhost:8088/, put the **LedgerDirect demo article** (1 EUR) in the cart and check
+   out with *Pay with XRP*.
+2. The payment page shows the amount, the receiving account and the destination tag. Pay it from a
+   testnet wallet — [Xaman](https://xaman.app/) in testnet mode or [Crossmark](https://crossmark.io/)
+   — funded from the [XRP Testnet faucet](https://xrpl.org/xrp-testnet-faucet.html). Send the
+   amount exactly as shown, **with the destination tag**.
+3. The page notices the payment within seconds and moves on to the order; the order is invoiced and
+   *Processing* in the admin at http://localhost:8088/admin (demo login `demo` /
+   `demo-ledgerdirect-1` — a local demo login, never reuse it).
+
+The shop takes a fresh receiving account from the testnet faucet on its first start (`docker compose
+logs phpfpm` names it) and offers XRP only, because RLUSD and USDC need trust lines on the receiving
+account. To try the stablecoins too, start it with a testnet address of your own that has the trust
+lines ([RLUSD faucet](https://tryrlusd.com/), [Circle faucet](https://faucet.circle.com/) for USDC):
+
+```
+LD_TESTNET_ACCOUNT=r... docker compose up -d --wait
+```
+
+`LD_TRY_PORT` moves the shop off port 8088. `docker compose down` resets everything; the next `up`
+installs a fresh shop. `docker compose up --build` builds the image from your checkout instead of
+pulling the published one. Magento Open Source comes from
+[Mage-OS's public mirror](https://mirror.mage-os.org/); it is not an official Magento image, and
+the shop is for trying the module, not for production.
+
 ## How it works
 
 A customer picks XRP, RLUSD or USDC at checkout; each is a payment method of its own. The order is

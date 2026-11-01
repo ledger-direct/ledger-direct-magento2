@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Try it in five minutes: `dev/try` starts a complete Magento shop with the module on the XRP Ledger
+  testnet (`docker compose up -d --wait`), with a demo article for 1 EUR, a fresh testnet receiving
+  account and a demo admin login — no Magento access keys, Magento Open Source comes from Mage-OS's
+  public mirror. A CI job builds it on every pull request, installs the module into a fresh Magento on
+  Linux the way a merchant does and smoke-tests the payment page and the status endpoint
 - `bin/magento setup:db:status` reports the module up to date after `setup:upgrade`. Ten
   columns of the two ledger tables were declared with an empty comment, which Magento's declarative
   schema read as a difference on every run: the status never settled, and every `setup:upgrade`
