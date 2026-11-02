@@ -29,6 +29,17 @@ category=$(curl -fsS "$BASE/ledger-direct-demo.html")
 grep -q 'LedgerDirect demo article' <<<"$category" || fail "the demo category does not list the demo article"
 pass "demo category lists the demo article"
 
+# The miniatures from dev/try/catalog/catalog.json, in their category and on the home page.
+catalog="$(dirname "$0")/catalog/catalog.json"
+miniatures=$(curl -fsS "$BASE/miniatures.html")
+home=$(curl -fsS "$BASE/")
+while IFS= read -r name; do
+  html_name=$(sed 's/&/\&amp;/g' <<<"$name")
+  grep -qF "$html_name" <<<"$miniatures" || fail "the Miniatures category lacks \"$name\""
+  grep -qF "$html_name" <<<"$home" || fail "the home page lacks \"$name\""
+done < <(jq -r '.products[]."en-GB".name' "$catalog")
+pass "home page and the Miniatures category show $(jq '.products | length' "$catalog") miniatures"
+
 address='{"firstname":"Try","lastname":"Visitor","street":["1 Testnet Way"],"city":"Berlin","postcode":"10115","country_id":"DE","telephone":"000","email":"visitor@example.invalid"}'
 cart=$(rest -X POST "$BASE/rest/V1/guest-carts" | jq -r .)
 rest -X POST "$BASE/rest/V1/guest-carts/$cart/items" -d "{\"cartItem\":{\"sku\":\"$SKU\",\"qty\":1,\"quote_id\":\"$cart\"}}" >/dev/null

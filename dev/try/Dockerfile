@@ -77,10 +77,16 @@ WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 COPY --from=build /opt/ledger-direct/wallet /opt/ledger-direct/wallet
 COPY dev/try/docker/entrypoint.sh dev/try/docker/install.php dev/try/docker/wallet.php /usr/local/share/ledger-direct/
+# The miniatures (catalog.json and pictures; their licence is in dev/try/catalog/NOTICE.md).
+COPY dev/try/catalog/catalog.json dev/try/catalog/NOTICE.md /usr/local/share/ledger-direct/catalog/
+COPY dev/try/catalog/images /usr/local/share/ledger-direct/catalog/images
 # What identifies this build to an existing shop: the resolved packages. When it differs from the one
 # the shop was set up with (an updated image on existing volumes), the entrypoint runs setup:upgrade.
+# The same for the catalogue: a new one is imported into an existing shop on its next start.
 RUN chmod 0755 /usr/local/share/ledger-direct/entrypoint.sh \
- && sha256sum /var/www/html/composer.lock | cut -c1-16 > /usr/local/share/ledger-direct/build-id
+ && sha256sum /var/www/html/composer.lock | cut -c1-16 > /usr/local/share/ledger-direct/build-id \
+ && (cd /usr/local/share/ledger-direct/catalog && cat catalog.json images/* | sha256sum | cut -c1-16) \
+      > /usr/local/share/ledger-direct/catalog-id
 USER www-data
 ENV LD_PORT=8080
 EXPOSE 8080

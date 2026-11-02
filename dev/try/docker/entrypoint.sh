@@ -26,7 +26,7 @@ cd /var/www/html
 : "${LD_PORT:=8080}"
 
 INSTALLED=var/.ledger-direct-try-installed      # setup:install completed
-CATALOG=var/.ledger-direct-try-catalog          # demo category and article created
+CATALOG=var/.ledger-direct-try-catalog          # the catalogue (catalog-id) last imported
 BUILD=var/.ledger-direct-try-build              # the image the shop was last set up with
 SETUP=/usr/local/share/ledger-direct
 log() { printf '[ledger-direct-try] %s\n' "$*"; }
@@ -91,10 +91,10 @@ fi
 
 php "$SETUP/install.php" config
 
-if [ ! -f "$CATALOG" ]; then
+if ! cmp -s "$SETUP/catalog-id" "$CATALOG" 2>/dev/null; then
   php "$SETUP/install.php" catalog
   bin/magento indexer:reindex 2>&1 | grep -v "has been rebuilt successfully" || true
-  touch "$CATALOG"
+  cp "$SETUP/catalog-id" "$CATALOG"
 fi
 bin/magento cache:flush >/dev/null
 log "ready in $(( $(date +%s) - started )) s"
