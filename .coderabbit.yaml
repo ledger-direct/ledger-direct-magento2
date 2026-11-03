@@ -1,0 +1,90 @@
+# CodeRabbit configuration. Background and the review routine:
+# LedgerDirect-CodeRabbit-Review-Ablauf (maintainer notes), skill coderabbit-loop.
+# Release-only pull requests (version and CHANGELOG heading, no code) are
+# titled "task: release <version>" and opt out with "@coderabbitai ignore" at
+# the end of their description. There is no ignore_title_keywords: it matches
+# a keyword anywhere in the title, not as a prefix, and feature pull requests
+# here carry versions and "release" in their titles. Ask with
+# `@coderabbitai review` if a release pull request should be reviewed.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+    - .*
+    auto_pause_after_reviewed_commits: 5
+  path_instructions:
+  - path: '**'
+    instructions: |
+      Payment behaviour is defined by the LedgerDirect core contract, not by this plugin:
+      INVARIANTS.md in ledger-direct/ledger-direct-core-php (payment intent, payment
+      status, settlement policy, throttling, refusals). The plugin is an adapter.
+      - Judge payment states, amounts, tolerances, status payloads and refusals against
+        that contract. Name the section a finding relies on.
+      - Parity: the LedgerDirect plugins for Magento, Shopware, PrestaShop and
+        WooCommerce must answer alike (same status fields, same states, same refusal
+        codes and bodies, e.g. 403 {"error":"forbidden"}). A divergence from another
+        plugin is a valid finding; name that plugin.
+      - Being stricter than the contract is not a goal. Do not propose behaviour the
+        contract does not ask for.
+      - Testnet/mainnet: never suggest mainnet defaults; never accept seeds, secrets or
+        private keys in code, fixtures, logs or docs.
+  - path: '{Api,Block,Commands,Controller,Cron,Gateway,Helper,Model,Observer,Port,Service,Setup,ViewModel,etc,view}/**'
+    instructions: |-
+      Magento 2 module (Magento Open Source 2.4.7 and 2.4.8, PHP 8.2-8.4), aimed at the
+      Adobe Commerce Marketplace: no deprecated APIs (no ObjectManager::getInstance, no
+      AbstractMethod), magento-coding-standard clean, constructor DI only, declarative
+      schema with db_schema_whitelist.json. Class names in etc/*.xml must match the
+      file's exact case (Linux). Payment methods are Magento\Payment\Model\Method\Adapter
+      virtual types in etc/di.xml.
+  - path: tests/**
+    instructions: |
+      Tests (PHPUnit). A test must fail without the change it covers.
+      Do not ask for tests of trivial getters or framework glue. Network access in unit
+      tests is a defect.
+  - path: dev/**
+    instructions: |
+      Developer and demo tooling: the try stack (docker compose, one-command shop on the
+      XRPL testnet for prospects), CI helpers and manual-test scripts. Not shop runtime
+      code and not shipped in the release package.
+      Review for: state and reset (named volumes, `down -v` is the reset, never wipe an
+      installed shop silently, settings re-applied on every start, image updates
+      detected), reproducibility (pinned image tags and versions), ports bound to
+      127.0.0.1, database not published, testnet only, no seeds or keys in files or logs.
+      Do not ask for production hardening (TLS, process managers, secrets managers).
+  - path: .github/**
+    instructions: |
+      GitHub Actions. Existing merge gates must keep working for fork pull requests
+      (secrets are absent there). Pin third-party actions by major version at least.
+      Publishing steps must stay gated (tag plus repository variable).
+  - path: view/frontend/web/js/ledger-direct-payment-ui/**
+    instructions: |
+      Verbatim copy of @ledger-direct/payment-ui (github.com/ledger-direct/ledger-direct-payment-ui),
+      built there and copied here unchanged; the VERSION file names the release.
+      Review provenance only: does VERSION match the files, were they changed by hand?
+      Do not review the code itself; findings about it belong in the payment-ui repo.
+  - path: CHANGELOG.md
+    instructions: Entries go under `## Unreleased` until a release renames it. One bullet per change,
+      written for merchants.
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+    - ledger-direct/ledger-direct-core-php:INVARIANTS.md
+  learnings:
+    scope: global
+  linked_repositories:
+  - repository: ledger-direct/ledger-direct-core-php
+    instructions: 'The shared core every plugin adapts: INVARIANTS.md is the payment contract (intent,
+      status, settlement, throttle, refusals); src/ holds PaymentIntent, PaymentStatus, SettlementPolicy,
+      StablecoinRegistry. A plugin change that contradicts it, or needs a core change, is a finding.'
+  - repository: ledger-direct/ledger-direct-payment-ui
+    instructions: The payment page script copied into each plugin. Its markup contract (data-ld-* attributes,
+      poll URL, status payload) must be what the plugin's template renders and its status endpoint returns.
+  - repository: ledger-direct/ledger-direct-e2e
+    instructions: End-to-end harness with the payment-status case catalogue (PS-01 ...). Its platform
+      driver expects the plugin's routes, compose service names and try stack layout.
