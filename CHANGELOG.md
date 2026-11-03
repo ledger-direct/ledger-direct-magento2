@@ -3,8 +3,10 @@
 ## Unreleased
 
 - Try shop: three hand-painted miniatures (2–4 EUR) on the home page and in a *Miniatures* category
-  instead of the plain demo article; an existing try shop picks up a changed catalogue on its next
-  start. Their pictures and texts are not under the MIT licence (`dev/try/catalog/NOTICE.md`)
+  instead of the plain demo article; on its next start an existing try shop takes over new articles
+  and changed names, texts and prices from the catalogue (changed pictures, URL keys and removed
+  articles need `docker compose down -v`). Their pictures and texts are not under the MIT licence
+  (`dev/try/catalog/NOTICE.md`)
 
 ## 1.1.4
 
