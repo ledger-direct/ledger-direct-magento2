@@ -74,7 +74,8 @@ knowledge_base:
   code_guidelines:
     enabled: true
     filePatterns:
-    - ledger-direct/ledger-direct-core-php:INVARIANTS.md
+    - files: ledger-direct/ledger-direct-core-php:INVARIANTS.md
+      applyTo: Api/**,Block/**,Commands/**,Controller/**,Cron/**,Gateway/**,Helper/**,Model/**,Observer/**,Port/**,Service/**,Setup/**,ViewModel/**,etc/**,view/base/**,view/frontend/email/**,view/frontend/layout/**,view/frontend/templates/**,view/frontend/web/css/**,view/frontend/web/js/view/**,view/frontend/web/template/**,tests/**
   learnings:
     scope: global
   linked_repositories:
