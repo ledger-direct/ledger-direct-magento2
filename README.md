@@ -30,9 +30,10 @@ cd ledger-direct-magento2/dev/try
 docker compose up -d --wait        # first start installs the shop: about a minute
 ```
 
-1. Open http://localhost:8088/: the home page explains the demo and offers the **LedgerDirect demo
-   article** (1 EUR). Put it in the cart and check out as a guest with *Pay with XRP*, *RLUSD* or
-   *USDC*.
+1. Open http://localhost:8088/: the home page explains the demo and offers three hand-painted
+   **miniatures** (2–4 EUR). Put one in the cart and check out as a guest with *Pay with XRP*,
+   *RLUSD* or *USDC*. Their pictures and texts are not under the MIT licence; see
+   [`dev/try/catalog/NOTICE.md`](dev/try/catalog/NOTICE.md).
 2. The payment page shows the amount, the receiving account and the destination tag. Pay it from a
    testnet wallet — [Xaman](https://xaman.app/) in testnet mode or [Crossmark](https://crossmark.io/)
    — funded from the [XRP Testnet faucet](https://xrpl.org/resources/dev-tools/xrp-faucets); RLUSD

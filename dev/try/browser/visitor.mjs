@@ -5,6 +5,10 @@
 //   npm install
 //   CHROME=/path/to/chrome node visitor.mjs [base url] [screenshot dir] [xrp_payment|xrpl_rlusd_payment|xrpl_usdc_payment]
 import puppeteer from 'puppeteer-core';
+import { readFileSync } from 'node:fs';
+// The article to buy: the first miniature of the catalogue, found on the home page by its URL key —
+// never "the first product", which changes with the catalogue.
+const PRODUCT = JSON.parse(readFileSync(new URL('../catalog/catalog.json', import.meta.url))).products[0].slug;
 const BASE = process.argv[2] ?? 'http://localhost:8088';
 const OUT = process.argv[3] ?? '.';
 const METHOD = process.argv[4] ?? 'xrp_payment';
@@ -28,11 +32,17 @@ const step = async (name, fn) => {
 
 await step('1-home', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle0', timeout: 60000 });
-  await page.waitForSelector('.product-item', { timeout: 20000 });
+  await page.waitForSelector(`.product-item a[href*="/${PRODUCT}"]`, { timeout: 20000 });
 });
 await step('2-add-to-cart', async () => {
-  await page.hover('.product-item');
-  await page.click('.product-item button.tocart');
+  const items = await page.$$('.product-item');
+  let target = null;
+  for (const candidate of items) {
+    if (await candidate.$(`a[href*="/${PRODUCT}"]`)) { target = candidate; break; }
+  }
+  if (!target) throw new Error(`no product item for ${PRODUCT} on the home page`);
+  await target.hover();
+  await (await target.$('button.tocart')).click();
   await page.waitForFunction(() => document.querySelector('.minicart-wrapper .counter-number')?.textContent.trim() === '1', { timeout: 30000 });
 });
 await step('3-checkout-shipping', async () => {
