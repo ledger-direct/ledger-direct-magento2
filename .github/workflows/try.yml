@@ -59,10 +59,14 @@ jobs:
           echo "Stack up, shop installed: $(( $(date +%s) - started )) s" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke test
+        # smoke.sh's own exit status decides the step, not tee's; the summary fence is closed either way.
         run: |
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          dev/try/smoke.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          set +e
+          dev/try/smoke.sh 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       # The storefront the way a prospect sees it, in a real browser: home page, cart, guest
       # checkout with each LedgerDirect method, payment page. GitHub's runners ship Chrome.

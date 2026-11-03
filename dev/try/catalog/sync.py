@@ -51,8 +51,17 @@ def slugify(text: str) -> str:
     return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
 
 
+def has_picture(source: Path, article: Path) -> bool:
+    images = front_matter(article.read_text(encoding='utf-8'))[0]['images']
+    return bool(images) and (source / images[0]['file']).is_file()
+
+
 def main(source: Path) -> None:
     articles = sorted(p for p in source.glob('[0-9]*.md') if not p.name.startswith('_'))
+    # Nothing is removed unless the source has at least one article with its picture: a missing or
+    # empty TryoutCatalog must not leave the try shops with an empty catalogue.
+    if not any(has_picture(source, p) for p in articles):
+        sys.exit(f'no article with a picture in {source}; catalogue left unchanged')
     out_images = HERE / 'images'
     out_images.mkdir(exist_ok=True)
     for old in out_images.glob('*.jpg'):
