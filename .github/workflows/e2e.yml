@@ -5,8 +5,8 @@
 # keeps its own receiving account, which the harness restores after the run.
 #
 # Not a merge gate: the testnet and its faucet are not deterministic. It runs
-# - on a pushed version tag: the automated cases (no PS-10), before the release is announced; a red
-#   run reports, it does not stop the release;
+# - on a pushed version tag: the automated cases (all but PS-04 and PS-10), before the release is
+#   announced; a red run reports, it does not stop the release;
 # - not on a schedule in this repository: whether the plugins get a regular run is open (test
 #   economy, step D3);
 # - by hand, with the cases to run.
@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       cases:
-        description: 'Case IDs, "automated" (no PS-10) or "all" (all includes PS-10, 35 minutes)'
+        description: 'Case IDs, "automated" (all but PS-04 and PS-10) or "all" (PS-10 waits 35 minutes)'
         default: 'automated'
 
 # Nothing here writes to GitHub.
@@ -55,6 +55,9 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # No token left in .git/config for the harness's npm dependencies to read.
+          persist-credentials: false
 
       - name: Log in to Docker Hub
         if: env.DOCKERHUB_USERNAME != ''
@@ -86,6 +89,7 @@ jobs:
         with:
           repository: ledger-direct/ledger-direct-e2e
           path: e2e
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -103,6 +107,11 @@ jobs:
           # The harness reads the testnet treasury variables; in CI they hold the dedicated CI wallet.
           LEDGERDIRECT_TESTNET_XRPL_TREASURY_SEED: ${{ secrets.LEDGERDIRECT_CI_XRPL_TREASURY_SEED }}
           LEDGERDIRECT_TESTNET_XRPL_TREASURY_ADDRESS: ${{ secrets.LEDGERDIRECT_CI_XRPL_TREASURY_ADDRESS }}
+          # Spending limits, in the asset's units. A full run against a try shop spends about 5 XRP and
+          # 2 RLUSD and USDC each; a run that wants more (a pricier article, a falling XRP price, a
+          # loop) fails loudly instead of emptying the CI wallet. No other asset gets anything.
+          LD_E2E_MAX_PAYMENT: '5'
+          LD_E2E_RUN_BUDGET: XRP=15,RLUSD=5,USDC=5
           CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'automated' }}
         run: node dist/cli.js run --target "$TARGET" --try --cases "$CASES" --report out/report.json
 
