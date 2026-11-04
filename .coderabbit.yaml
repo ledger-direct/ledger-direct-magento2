@@ -1,11 +1,13 @@
 # CodeRabbit configuration. Background and the review routine:
 # LedgerDirect-CodeRabbit-Review-Ablauf (maintainer notes), skill coderabbit-loop.
-# Release-only pull requests (version and CHANGELOG heading, no code) are
-# titled "task: release <version>" and opt out with "@coderabbitai ignore" at
-# the end of their description. There is no ignore_title_keywords: it matches
-# a keyword anywhere in the title, not as a prefix, and feature pull requests
-# here carry versions and "release" in their titles. Ask with
-# `@coderabbitai review` if a release pull request should be reviewed.
+# Pull requests without an automatic review, each opted out on its own with "@coderabbitai ignore"
+# at the end of its description:
+# - release-only, titled "task: release <version>" (version and CHANGELOG heading, no code);
+# - documentation-only, titled "docs: ..." (Markdown, docs/, screenshots, readme.txt; nothing else).
+# Dependabot pull requests skip it through ignore_usernames. There is no ignore_title_keywords: it
+# matches a keyword anywhere in the title, case-insensitive and not as a prefix, so a title like
+# "fix: task: release parser" or "fix: docs: links in the error page" would skip a real review.
+# Ask with `@coderabbitai review` to have any opted-out pull request reviewed.
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: en-US
 reviews:
@@ -17,6 +19,8 @@ reviews:
     base_branches:
     - .*
     auto_pause_after_reviewed_commits: 5
+    ignore_usernames:
+    - dependabot[bot]
   path_instructions:
   - path: '**'
     instructions: |
@@ -60,11 +64,15 @@ reviews:
     instructions: |
       GitHub Actions. Existing merge gates must keep working for fork pull requests
       (secrets are absent there). Pin third-party actions by major version at least.
-      Publishing steps must stay gated: the repository variable LD_PUBLISH_TRY_IMAGE plus either a
-      pushed version tag or a manual run with "publish" (which may also tag ":latest" on purpose).
-      Jobs run only for the changes that concern them (job "changes", .github/actions/changes):
-      a documentation-only pull request runs lint alone, the try stack builds only for runtime
-      changes. The action and the gating are the same in every plugin repository; keep them so.
+      Publishing stays gated. Where a repository publishes the try image: the repository variable
+      LD_PUBLISH_TRY_IMAGE plus either a pushed version tag or a manual run with "publish" (which
+      may also tag ":latest" on purpose). Release builds run on a pushed version tag only.
+      Jobs are gated by the "changes" job (.github/actions/changes): a documentation-only change
+      runs the lint job alone (Shopware: shopware-cli validate), the try stack runs only when
+      something the shop runs may have changed, and a failed classification runs everything. The
+      action and the gating are the same in every LedgerDirect plugin repository and the core; a
+      change to the pattern belongs in all of them, not in a per-repository variant or a
+      third-party path filter.
   - path: view/frontend/web/js/ledger-direct-payment-ui/**
     instructions: |
       Verbatim copy of @ledger-direct/payment-ui (github.com/ledger-direct/ledger-direct-payment-ui),
