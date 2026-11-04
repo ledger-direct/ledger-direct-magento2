@@ -60,7 +60,8 @@ reviews:
     instructions: |
       GitHub Actions. Existing merge gates must keep working for fork pull requests
       (secrets are absent there). Pin third-party actions by major version at least.
-      Publishing steps must stay gated (tag plus repository variable).
+      Publishing steps must stay gated: the repository variable LD_PUBLISH_TRY_IMAGE plus either a
+      pushed version tag or a manual run with "publish" (which may also tag ":latest" on purpose).
   - path: view/frontend/web/js/ledger-direct-payment-ui/**
     instructions: |
       Verbatim copy of @ledger-direct/payment-ui (github.com/ledger-direct/ledger-direct-payment-ui),
