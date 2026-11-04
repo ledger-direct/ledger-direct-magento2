@@ -5,10 +5,12 @@
 # keeps its own receiving account, which the harness restores after the run.
 #
 # Not a merge gate: the testnet and its faucet are not deterministic. It runs
-# - on a pushed version tag: the automated cases (all but PS-04 and PS-10), before the release is
-#   announced; a red run reports, it does not stop the release;
-# - not on a schedule in this repository: whether the plugins get a regular run is open (test
-#   economy, step D3);
+# - on a pushed version tag: the `testnet` cases (all but PS-10's 35-minute wait), before the
+#   release is announced; a red run reports, it does not stop the release;
+# - weekly, on Monday, every case: PS-04 and PS-10 included. It tests the plugin's main branch and
+#   the harness's current main without a code change in between (a testnet reset, a new base image,
+#   a harness change). The four plugin repositories run an hour apart (Shopware 02:17, PrestaShop
+#   03:17, WooCommerce 04:17, Magento 05:17 UTC), so their runs do not share the treasury at once;
 # - by hand, with the cases to run.
 # The workflow is the same in every LedgerDirect plugin repository except for the target.
 #
@@ -22,10 +24,14 @@ on:
   push:
     # version tags only (1.9.0)
     tags: ['[0-9]+.[0-9]+.[0-9]+']
+  # Monday, 05:17 UTC: off the full hour, when GitHub delays or drops scheduled runs under load;
+  # the other plugin repositories run in the hours next to it.
+  schedule:
+    - cron: '17 5 * * 1'
   workflow_dispatch:
     inputs:
       cases:
-        description: 'Case IDs, "automated" (all but PS-04 and PS-10) or "all" (PS-10 waits 35 minutes)'
+        description: 'Case IDs, "automated" (all but PS-04 and PS-10), "testnet" (all but PS-10) or "all" (PS-10 waits 35 minutes)'
         default: 'automated'
 
 # Nothing here writes to GitHub.
@@ -33,9 +39,11 @@ permissions:
   contents: read
 
 # One run at a time in this repository: every run pays from the same treasury account, and two runs
-# sending from it at once collide on its sequence numbers. Later runs queue (up to 100); none is
-# cancelled, so a version tag's run is never replaced by a later one. The group does not reach
-# across repositories; the other plugin repositories' runs are kept apart by their schedules.
+# sending from it at once collide on its sequence numbers. Later runs queue instead of replacing
+# each other, so a version tag's run is not dropped for a later one; GitHub keeps up to 100 waiting
+# and cancels runs beyond that. The group does not reach across repositories: the other plugin
+# repositories' runs are kept apart by their schedules, and the harness resubmits a payment whose
+# sequence number another run took (tefPAST_SEQ).
 concurrency:
   group: e2e-testnet
   cancel-in-progress: false
@@ -101,6 +109,15 @@ jobs:
         working-directory: e2e
         run: npm ci && npm run build
 
+      # The treasury above what a run needs (XRP from the faucet, stablecoins from the DEX, trust
+      # lines with room), or the job fails here naming the shortfall, not mid-run with
+      # tecUNFUNDED_PAYMENT. Runs return what they received, so this rarely has anything to do.
+      - name: Check the treasury
+        working-directory: e2e
+        env:
+          LEDGERDIRECT_TESTNET_XRPL_TREASURY_SEED: ${{ secrets.LEDGERDIRECT_CI_XRPL_TREASURY_SEED }}
+        run: node dist/cli.js wallet ensure --xrp 50 --rlusd 10 --usdc 10
+
       - name: Run the case catalogue
         working-directory: e2e
         env:
@@ -112,7 +129,7 @@ jobs:
           # loop) fails loudly instead of emptying the CI wallet. No other asset gets anything.
           LD_E2E_MAX_PAYMENT: '5'
           LD_E2E_RUN_BUDGET: XRP=15,RLUSD=5,USDC=5
-          CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'automated' }}
+          CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'testnet' }}
         run: node dist/cli.js run --target "$TARGET" --try --cases "$CASES" --report out/report.json
 
       - name: Upload the report
