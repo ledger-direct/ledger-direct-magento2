@@ -1,0 +1,120 @@
+# End-to-end run against the XRPL testnet, on the try stack (dev/try): the shop a visitor gets with
+# `docker compose up`, built from this checkout, not a development shop. The harness
+# ledger-direct-e2e then drives the case catalogue PS-01…PS-11 against it with `--try`, the same
+# command that works locally. Real transactions on the testnet, paid from the CI treasury; the shop
+# keeps its own receiving account, which the harness restores after the run.
+#
+# Not a merge gate: the testnet and its faucet are not deterministic. It runs
+# - on a pushed version tag: the automated cases (no PS-10), before the release is announced; a red
+#   run reports, it does not stop the release;
+# - not on a schedule in this repository: whether the plugins get a regular run is open (test
+#   economy, step D3);
+# - by hand, with the cases to run.
+# The workflow is the same in every LedgerDirect plugin repository except for the target.
+#
+# Secrets (organisation-wide, shared by the plugin repos):
+#   LEDGERDIRECT_CI_XRPL_TREASURY_SEED / _ADDRESS   the CI payer wallet (XRP, RLUSD, USDC), separate from the local one
+#   DOCKERHUB_USERNAME / DOCKERHUB_TOKEN             pulls count against the organisation, not the runner's IP
+# The harness repository ledger-direct/ledger-direct-e2e is public; its checkout needs no token.
+name: E2E (testnet)
+
+on:
+  push:
+    # version tags only (1.9.0)
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: 'Case IDs, "automated" (no PS-10) or "all" (all includes PS-10, 35 minutes)'
+        default: 'automated'
+
+# Nothing here writes to GitHub.
+permissions:
+  contents: read
+
+# One run at a time in this repository: every run pays from the same treasury account, and two runs
+# sending from it at once collide on its sequence numbers. Later runs queue (up to 100); none is
+# cancelled, so a version tag's run is never replaced by a later one. The group does not reach
+# across repositories; the other plugin repositories' runs are kept apart by their schedules.
+concurrency:
+  group: e2e-testnet
+  cancel-in-progress: false
+  queue: max
+
+env:
+  TARGET: magento
+  IMAGE: ledger-direct/try-magento:e2e
+
+jobs:
+  e2e:
+    name: ld-e2e against the try stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      # Secrets are not available in step conditions; their presence is, through the environment.
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      # The same image the try workflow builds; its layer cache is read, not written.
+      - name: Build the shop image from this checkout
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: dev/try/Dockerfile
+          tags: ${{ env.IMAGE }}
+          load: true
+          cache-from: type=gha,scope=try-magento
+
+      - name: Start the try stack
+        working-directory: dev/try
+        env:
+          LD_TRY_IMAGE: ${{ env.IMAGE }}
+        run: docker compose up -d --wait --no-build
+
+      - name: Check out the harness
+        uses: actions/checkout@v4
+        with:
+          repository: ledger-direct/ledger-direct-e2e
+          path: e2e
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Build the harness
+        working-directory: e2e
+        run: npm ci && npm run build
+
+      - name: Run the case catalogue
+        working-directory: e2e
+        env:
+          # The harness reads the testnet treasury variables; in CI they hold the dedicated CI wallet.
+          LEDGERDIRECT_TESTNET_XRPL_TREASURY_SEED: ${{ secrets.LEDGERDIRECT_CI_XRPL_TREASURY_SEED }}
+          LEDGERDIRECT_TESTNET_XRPL_TREASURY_ADDRESS: ${{ secrets.LEDGERDIRECT_CI_XRPL_TREASURY_ADDRESS }}
+          CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'automated' }}
+        run: node dist/cli.js run --target "$TARGET" --try --cases "$CASES" --report out/report.json
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ld-e2e-report
+          path: e2e/out/report.json
+          if-no-files-found: ignore
+
+      - name: Shop log
+        if: failure()
+        working-directory: dev/try
+        run: docker compose logs --no-color --tail 200
