@@ -115,10 +115,12 @@ jobs:
       && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
       || (github.event_name == 'workflow_dispatch' && inputs.publish))
     # One publish at a time across all refs, so a tag push and a manual run never push ":latest"
-    # concurrently; a queued run waits instead of being cancelled midway.
+    # concurrently. Runs wait in order instead of being cancelled: neither the running one nor a
+    # pending one (queue: max keeps up to 100 pending, the default would replace the pending run).
     concurrency:
       group: try-image-publish
       cancel-in-progress: false
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
