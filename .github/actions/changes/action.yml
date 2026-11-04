@@ -1,0 +1,24 @@
+name: What changed
+description: >-
+  Classifies the files this run changed. docs_only: every changed file is documentation
+  (Markdown, docs/, changelog, licence, readme.txt, CodeRabbit config). runtime: at least one
+  changed file can change what the shop runs (not docs, not tests, not the test-tool configs, not
+  .github/ apart from the try workflow). Runs that have no diff to classify (tags, workflow_dispatch,
+  schedule, a new or force-pushed branch) count as runtime and not docs-only.
+outputs:
+  docs_only:
+    description: '"true" when only documentation changed'
+    value: ${{ steps.classify.outputs.docs_only }}
+  runtime:
+    description: '"true" when something the shop runs may have changed'
+    value: ${{ steps.classify.outputs.runtime }}
+runs:
+  using: composite
+  steps:
+    - id: classify
+      shell: bash
+      env:
+        EVENT: ${{ github.event_name }}
+        BEFORE: ${{ github.event.before }}
+        AFTER: ${{ github.sha }}
+      run: bash "$GITHUB_ACTION_PATH/classify.sh"
