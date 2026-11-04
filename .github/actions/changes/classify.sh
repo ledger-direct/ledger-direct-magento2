@@ -16,6 +16,9 @@ diff_range() {
       # actions/checkout checks out the merge commit; its first parent is the base branch.
       echo 'HEAD^1 HEAD' ;;
     push)
+      # A tag always counts as runtime, also when it was moved onto a commit it had been on before:
+      # BEFORE is then the old target and the diff could read as documentation only.
+      case "${GITHUB_REF-}" in refs/tags/*) return 0 ;; esac
       if [ -z "${BEFORE-}" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
          || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
         echo "::notice::no base to diff against; classifying as runtime" >&2; return
