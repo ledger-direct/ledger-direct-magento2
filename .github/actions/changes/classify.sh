@@ -48,6 +48,16 @@ fi
 files="$(printf '%s\n' "$files" | grep -v '^$' || true)"
 deleted="$(printf '%s\n' "$deleted" | grep -v '^$' || true)"
 
+# Can a change to this file reach the shop? Tests, the test tools' configs and GitHub's own files
+# cannot; the try workflow and this action can, because they decide when the stack is built.
+reaches_shop() {
+  case "$1" in
+    .github/workflows/try.yml|.github/actions/changes/*) return 0 ;;
+    .github/*) return 1 ;;
+  esac
+  ! printf '%s' "$1" | grep -Eq "$not_runtime"
+}
+
 docs_only=true; runtime=false
 if [ -z "$files" ]; then docs_only=false; fi
 while IFS= read -r f; do
@@ -55,16 +65,16 @@ while IFS= read -r f; do
   if [ "$f" = '*' ]; then docs_only=false; runtime=true; continue; fi
   if printf '%s' "$f" | grep -Eq "$docs"; then continue; fi
   docs_only=false
-  case "$f" in
-    .github/workflows/try.yml) ;;      # the try workflow itself is part of the try stack
-    .github/*) continue ;;             # every other workflow or GitHub config never reaches the shop
-  esac
-  if printf '%s' "$f" | grep -Eq "$not_runtime"; then continue; fi
-  runtime=true
+  if reaches_shop "$f"; then runtime=true; fi
 done <<< "$files"
-# A deleted file is never documentation-only: a release build or a link elsewhere may require it
-# (the release archive check needs LICENSE.md, for example). The full CI then runs.
-if [ -n "$deleted" ]; then docs_only=false; fi
+# A deleted file is never documentation: a release build or a link elsewhere may require it (the
+# release archive check needs LICENSE.md, the try image copies dev/try/catalog/NOTICE.md). The full
+# CI runs, and the try stack too when the file could reach the shop.
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  docs_only=false
+  if reaches_shop "$f"; then runtime=true; fi
+done <<< "$deleted"
 
 echo "changed: $(printf '%s' "$files" | grep -c . || true) file(s), deleted: $(printf '%s' "$deleted" | grep -c . || true); docs_only=$docs_only runtime=$runtime"
 { echo "docs_only=$docs_only"; echo "runtime=$runtime"; } >> "${GITHUB_OUTPUT:-/dev/stdout}"
