@@ -54,7 +54,9 @@ jobs:
   coding-standard:
     name: Coding standard (magento-coding-standard)
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    # Fail-safe: a failed "changes" job leaves the output empty and the job runs; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +93,9 @@ jobs:
   unit-tests:
     name: Unit tests (Magento ${{ matrix.magento-version }})
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    # Fail-safe: a failed "changes" job leaves the output empty and the job runs; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -169,9 +173,12 @@ jobs:
     # No matrix expression in the name: a skipped job shows it unexpanded. GitHub appends the matrix.
     name: Unit tests against repo.magento.com
     needs: changes
+    # Fail-safe: a failed "changes" job leaves the output empty and the job runs; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
     if: >-
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-      && needs.changes.outputs.docs_only != 'true'
+      ${{ !cancelled()
+      && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
