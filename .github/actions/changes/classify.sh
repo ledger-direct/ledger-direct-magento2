@@ -5,9 +5,10 @@
 set -euo pipefail
 
 docs='^([^/]+/)*[^/]+\.md$|^docs/|^readme\.txt$|^CHANGELOG|^LICENSE|^\.coderabbit\.yaml$|^\.github/(ISSUE_TEMPLATE/|PULL_REQUEST_TEMPLATE|CODEOWNERS|dependabot\.yml)'
-# Changes that never reach the shop: tests and the configs of the test tools, CI workflows other than
-# the try stack's, editor and git housekeeping.
-not_runtime='^tests?/|^phpunit(\.xml)?(\.dist)?$|^phpstan[^/]*$|^\.phpcs[^/]*$|^phpcs\.xml(\.dist)?$|^\.php-cs-fixer[^/]*$|^\.editorconfig$|^\.gitattributes$|^\.gitignore$'
+# Changes that never reach the shop: tests and the configs of the test tools (at the root or under
+# dev/), the CodeRabbit config, editor and git housekeeping. CI workflows other than the try stack's
+# are handled in reaches_shop().
+not_runtime='^tests?/|^(dev/)?phpunit(\.xml)?(\.dist)?$|^(dev/)?phpstan[^/]*$|^(dev/)?\.phpcs[^/]*$|^(dev/)?phpcs\.xml(\.dist)?$|^(dev/)?\.php-cs-fixer[^/]*$|^\.coderabbit\.yaml$|^\.editorconfig$|^\.gitattributes$|^\.gitignore$'
 
 # The commits to diff: "<base> <head>", or empty when there is no base (then everything counts).
 diff_range() {
