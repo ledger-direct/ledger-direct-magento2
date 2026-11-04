@@ -15,6 +15,10 @@ on:
     - cron: '17 4 * * 1'
   workflow_dispatch:
 
+# Every job only reads the repository; nothing here writes to GitHub.
+permissions:
+  contents: read
+
 # A newer push to the same pull request cancels its run in progress. Every other run (push to main,
 # tag, manual) gets a group of its own: GitHub keeps only one pending run per group, so a shared
 # group would cancel a pending main run whose changes the next run never classifies again.
