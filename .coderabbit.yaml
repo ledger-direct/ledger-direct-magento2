@@ -3,7 +3,8 @@
 # Pull requests without an automatic review, each opted out on its own with "@coderabbitai ignore"
 # at the end of its description:
 # - release-only, titled "task: release <version>" (version and CHANGELOG heading, no code);
-# - documentation-only, titled "docs: ..." (Markdown, docs/, screenshots, readme.txt; nothing else).
+# - documentation-only, titled "docs: ..." (Markdown, docs/, readme.txt, README screenshots;
+#   nothing else). This decides the review only; CI classifies on its own (.github/** rule below).
 # Dependabot pull requests skip it through ignore_usernames. There is no ignore_title_keywords: it
 # matches a keyword anywhere in the title, case-insensitive and not as a prefix, so a title like
 # "fix: task: release parser" or "fix: docs: links in the error page" would skip a real review.
@@ -66,12 +67,17 @@ reviews:
       (secrets are absent there). Pin third-party actions by major version at least.
       Publishing stays gated. Where a repository publishes the try image: the repository variable
       LD_PUBLISH_TRY_IMAGE plus either a pushed version tag or a manual run with "publish" (which
-      may also tag ":latest" on purpose). Release builds run on a pushed version tag only.
-      Jobs are gated by the "changes" job (.github/actions/changes): a documentation-only change
-      runs the lint job alone (Shopware: shopware-cli validate), the try stack runs only when
-      something the shop runs may have changed, and a failed classification runs everything. The
-      action and the gating are the same in every LedgerDirect plugin repository and the core; a
-      change to the pattern belongs in all of them, not in a per-repository variant or a
+      may also tag ":latest" on purpose). Publishing a release (GitHub release, store or registry
+      upload) runs on a pushed version tag only; building a release archive as a check may run on
+      every change.
+      Jobs are gated by the "changes" job (.github/actions/changes). When it reports docs_only=true
+      (every changed file is Markdown, docs/, a changelog, the licence, readme.txt, the CodeRabbit
+      config or GitHub metadata, and none was deleted), only the lint job runs (Shopware:
+      shopware-cli validate; the core has no lint job, so only "changes" runs). Images outside
+      docs/ such as payment_page.png and every deletion run the full suite. The try stack runs only
+      when something the shop runs may have changed, and a failed classification runs everything.
+      The action and the gating are the same in every LedgerDirect plugin repository and the core;
+      a change to the pattern belongs in all of them, not in a per-repository variant or a
       third-party path filter.
   - path: view/frontend/web/js/ledger-direct-payment-ui/**
     instructions: |
