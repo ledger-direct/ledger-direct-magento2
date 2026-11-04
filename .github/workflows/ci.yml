@@ -1,15 +1,42 @@
 name: CI
 
+# What runs depends on what changed (job "changes", .github/actions/changes): a pull request that
+# touches only documentation runs the lint job and nothing else; everything else runs the whole
+# suite. Tags, schedule and manual runs have no diff to classify and run everything. A newer commit
+# on the same pull request cancels the run still going.
+
 on:
   push:
-    branches: [main, master, 'feat/**']
+    # main only: feature branches are covered by their pull request
+    branches: [main]
   pull_request:
   # Weekly: the same unit tests against Adobe's own repository, as a cross-check of the mirror.
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
 
+# A newer push to the same pull request cancels its run in progress. Every other run (push to main,
+# tag, manual) gets a group of its own: GitHub keeps only one pending run per group, so a shared
+# group would cancel a pending main run whose changes the next run never classifies again.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.changes.outputs.docs_only }}
+      runtime: ${{ steps.changes.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # pull_request: the merge commit and both parents; push: the pushed range
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+      - id: changes
+        uses: ./.github/actions/changes
+
   lint:
     name: PHP lint
     runs-on: ubuntu-latest
@@ -29,6 +56,10 @@ jobs:
 
   coding-standard:
     name: Coding standard (magento-coding-standard)
+    needs: changes
+    # Fail-safe: a failed "changes" job leaves the output empty and the job runs; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +95,10 @@ jobs:
 
   unit-tests:
     name: Unit tests (Magento ${{ matrix.magento-version }})
+    needs: changes
+    # Fail-safe: a failed "changes" job leaves the output empty and the job runs; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -140,7 +175,13 @@ jobs:
   unit-tests-adobe:
     # No matrix expression in the name: a skipped job shows it unexpanded. GitHub appends the matrix.
     name: Unit tests against repo.magento.com
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: changes
+    # Fail-safe: a failed "changes" job leaves the output empty and the job runs; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
+    if: >-
+      ${{ !cancelled()
+      && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

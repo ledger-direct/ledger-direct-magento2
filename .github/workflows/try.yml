@@ -15,6 +15,11 @@ name: Try stack
 #   as well it also becomes ":latest", so the try image can follow a catalogue or base-image change
 #   without a plugin release. "latest" without "publish" publishes nothing.
 # A first publish creates the package private; switch it to public once in the package settings.
+#
+# The stack is built only when something it runs may have changed (job "changes",
+# .github/actions/changes): module code, Composer, dev/try, this workflow. A pull request that
+# touches only documentation, tests or other workflows skips it; tags and manual runs always build.
+# A newer commit on the same pull request cancels the run still going.
 
 on:
   pull_request:
@@ -39,9 +44,34 @@ permissions:
 env:
   IMAGE: ghcr.io/ledger-direct/try-magento
 
+# A newer push to the same pull request cancels its run in progress. Every other run (push to main,
+# tag, manual) gets a group of its own: GitHub keeps only one pending run per group, so a shared
+# group would cancel a pending main run whose changes the next run never classifies again.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.changes.outputs.docs_only }}
+      runtime: ${{ steps.changes.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # pull_request: the merge commit and both parents; push: the pushed range
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+      - id: changes
+        uses: ./.github/actions/changes
+
   smoke:
     name: Build, start and smoke-test the try stack
+    needs: changes
+    # Fail-safe: when the "changes" job did not succeed the stack is built anyway; without the
+    # !cancelled() it would be skipped, and a skipped job counts as passed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.runtime == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
