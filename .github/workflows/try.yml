@@ -44,9 +44,9 @@ permissions:
 env:
   IMAGE: ghcr.io/ledger-direct/try-magento
 
-# Pull requests share a group per number, so a newer commit cancels the run still going. Every other
-# run gets a group of its own: a group keeps one pending run only, and a push to main must not
-# replace a pending manual or tag run.
+# A newer push to the same pull request cancels its run in progress. Every other run (push to main,
+# tag, manual) gets a group of its own: GitHub keeps only one pending run per group, so a shared
+# group would cancel a pending main run whose changes the next run never classifies again.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
