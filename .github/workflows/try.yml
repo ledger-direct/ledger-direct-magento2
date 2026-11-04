@@ -8,8 +8,10 @@ name: Try stack
 # Publishing the image to GHCR (ghcr.io/ledger-direct/try-magento):
 # only when the repository variable LD_PUBLISH_TRY_IMAGE is "true" (it switches publishing off as a
 # whole), and then
-# - on a version tag: tagged with the version and ":latest", the image `docker compose up` pulls;
-# - by hand (workflow_dispatch, "publish"): tagged ":edge" and "dev-<short sha>". With "latest" ticked
+# - on a pushed version tag: tagged with the version and ":latest", the image `docker compose up`
+#   pulls;
+# - by hand (workflow_dispatch, "publish", on any branch or tag): tagged ":edge" and
+#   "dev-<short sha>". With "latest" ticked
 #   as well it also becomes ":latest", so the try image can follow a catalogue or base-image change
 #   without a plugin release. "latest" without "publish" publishes nothing.
 # A first publish creates the package private; switch it to public once in the package settings.
@@ -109,7 +111,8 @@ jobs:
     needs: smoke
     if: >-
       vars.LD_PUBLISH_TRY_IMAGE == 'true'
-      && (startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish))
+      && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+      || (github.event_name == 'workflow_dispatch' && inputs.publish))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -132,10 +135,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
+          # ":latest" only from the rules below, never added automatically
+          flavor: latest=false
           tags: |
-            type=ref,event=tag
-            type=raw,value=dev-{{sha}},priority=300,enable=${{ github.event_name == 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/') }}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.latest) }}
+            type=ref,event=tag,enable=${{ github.event_name == 'push' }}
+            type=raw,value=dev-{{sha}},priority=300,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=latest,enable=${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.latest) }}
             type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build and push (amd64 and arm64)
@@ -148,5 +153,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            LD_VERSION=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('dev-{0}', github.sha) }}
+            LD_VERSION=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.ref_name || format('dev-{0}', github.sha) }}
           cache-from: type=gha,scope=try-magento
