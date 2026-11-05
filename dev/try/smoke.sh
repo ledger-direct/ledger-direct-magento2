@@ -78,23 +78,40 @@ pass "a wrong key is refused with 403 (PS-07)"
 # the default scope: Magento_Paypal serves the section as payment_<country>, and the email template
 # field asked for a default template named after that path. Admin links carry secret keys, so the
 # page is reached through the links the admin itself renders: dashboard → configuration → payment.
-jar=$(mktemp)
-admin() { curl -fsS -b "$jar" -c "$jar" -L "$@"; }
-login_page=$(admin "$BASE/admin/")
-form_key=$(grep -o 'name="form_key" type="hidden" value="[^"]*"' <<<"$login_page" | head -1 | sed 's/.*value="//; s/"$//')
+# Magento sets the admin cookie for domain=localhost, which curl's cookie engine refuses (no dot in
+# the domain), so the session cookie is carried by hand and redirects are followed here.
+admin_cookie=
+admin_page=$(mktemp)
+admin() { # admin <url> [curl args…]: the final page in $admin_page, its status code in $admin_code
+  local url=$1 headers cookie location
+  shift
+  headers=$(mktemp)
+  for _ in 1 2 3 4 5; do
+    admin_code=$(curl -sS -o "$admin_page" -D "$headers" -w '%{http_code}' \
+      ${admin_cookie:+-H "Cookie: admin=$admin_cookie"} "$@" "$url")
+    cookie=$(grep -io '^set-cookie: admin=[^;]*' "$headers" | tail -1 | cut -d= -f2- || true)
+    [ -z "$cookie" ] || admin_cookie=$cookie
+    location=$(grep -i '^location:' "$headers" | tail -1 | cut -d' ' -f2- | tr -d '\r' || true)
+    [ -n "$location" ] || return 0
+    url=$location
+    set --
+  done
+  fail "admin: more than 5 redirects from $url"
+}
+admin "$BASE/admin/"
+form_key=$(grep -o 'name="form_key" type="hidden" value="[^"]*"' "$admin_page" | head -1 | sed 's/.*value="//; s/"$//')
 [ -n "$form_key" ] || fail "admin login page without form key"
-dashboard=$(admin -X POST "$BASE/admin/" --data-urlencode "form_key=$form_key" \
-  --data-urlencode "login[username]=$ADMIN_USER" --data-urlencode "login[password]=$ADMIN_PASSWORD")
-config_url=$(grep -o "$BASE/admin/admin/system_config/index/key/[0-9a-f]*/" <<<"$dashboard" | head -1)
+admin "$BASE/admin/" -X POST --data-urlencode "form_key=$form_key" \
+  --data-urlencode "login[username]=$ADMIN_USER" --data-urlencode "login[password]=$ADMIN_PASSWORD"
+config_url=$(grep -o "$BASE/admin/admin/system_config/index/key/[0-9a-f]*/" "$admin_page" | head -1)
 [ -n "$config_url" ] || fail "admin login failed, or the dashboard has no configuration link"
-config=$(admin "$config_url")
-payment_url=$(grep -o "$BASE/admin/admin/system_config/edit/section/payment/key/[0-9a-f]*/" <<<"$config" | head -1)
+admin "$config_url"
+payment_url=$(grep -o "$BASE/admin/admin/system_config/edit/section/payment/key/[0-9a-f]*/" "$admin_page" | head -1)
 [ -n "$payment_url" ] || fail "the configuration page has no link to Payment Methods"
-payment=$(mktemp)
-code=$(curl -s -b "$jar" -c "$jar" -o "$payment" -w '%{http_code}' "$payment_url")
-[ "$code" = 200 ] || fail "admin Payment Methods answered $code"
+admin "$payment_url"
+[ "$admin_code" = 200 ] || fail "admin Payment Methods answered $admin_code"
 for group in 'Ledger Direct / XRPL' 'Ledger Direct - XRP (XRPL)' 'Ledger Direct - RLUSD (XRPL)' 'Ledger Direct - USDC (XRPL)'; do
-  grep -qF "$group" "$payment" || fail "admin Payment Methods lacks the group \"$group\""
+  grep -qF "$group" "$admin_page" || fail "admin Payment Methods lacks the group \"$group\""
 done
 pass "admin Payment Methods shows the module's four groups"
 
