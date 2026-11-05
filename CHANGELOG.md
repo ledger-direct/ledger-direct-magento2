@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The admin page *Payment Methods* renders again in the default and website scope. Since the payment
+  instructions email (1.1.0) the template field looked for a default template named after the
+  section Magento_Paypal serves for the merchant country (`payment_us_…`, `payment_other_…`), which
+  does not exist, and the whole page failed: no payment method could be configured in the admin
+
 ## 1.1.5
 
 - Try shop: three hand-painted miniatures (2–4 EUR) on the home page and in a *Miniatures* category

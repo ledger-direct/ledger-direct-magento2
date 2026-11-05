@@ -34,7 +34,7 @@
                 </field>
                 <field id="pending_email_template" translate="label" type="select" sortOrder="8" showInDefault="1" showInWebsite="1" canRestore="1">
                     <label>Payment instructions email template</label>
-                    <source_model>Magento\Config\Model\Config\Source\Email\Template</source_model>
+                    <source_model>Hardcastle\LedgerDirect\Model\Config\Source\PendingEmailTemplate</source_model>
                     <depends><field id="pending_email_enabled">1</field></depends>
                 </field>
                 <field id="page_logo_mode" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" canRestore="1">
