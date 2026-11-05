@@ -87,7 +87,7 @@ admin() { # admin <url> [curl args…]: the final page in $admin_page, its statu
   shift
   headers=$(mktemp)
   for _ in 1 2 3 4 5; do
-    admin_code=$(curl -sS -o "$admin_page" -D "$headers" -w '%{http_code}' \
+    admin_code=$(curl -sS --max-time 120 -o "$admin_page" -D "$headers" -w '%{http_code}' \
       ${admin_cookie:+-H "Cookie: admin=$admin_cookie"} "$@" "$url")
     cookie=$(grep -io '^set-cookie: admin=[^;]*' "$headers" | tail -1 | cut -d= -f2- || true)
     [ -z "$cookie" ] || admin_cookie=$cookie
