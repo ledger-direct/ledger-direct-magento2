@@ -268,10 +268,13 @@ which needs no access keys — pull requests from forks are tested too — and i
 than `repo.magento.com`; Composer's package cache is kept between runs. Once a week, and on demand,
 the same tests run against `repo.magento.com` itself (`MAGENTO_COMPOSER_AUTH` secret with Marketplace
 access keys; without it that job logs a warning and skips), so a gap in the mirror shows up.
+A pull request that changes only documentation (Markdown, `docs/`, the changelog and the like) runs
+PHP syntax alone; when the job that classifies the changes fails, everything runs.
 
 `.github/workflows/try.yml` builds the try stack (`dev/try`) from the checkout, starts it and runs
-`dev/try/smoke.sh` against it, then walks the storefront in a real browser. `.github/workflows/e2e.yml`
-drives the core's case catalogue on the XRPL testnet against that try stack with the harness
+`dev/try/smoke.sh` against it, then walks the storefront in a real browser. A pull request skips it
+when it changes only documentation, tests, test tool settings or other workflows.
+`.github/workflows/e2e.yml` drives the core's case catalogue on the XRPL testnet against that try stack with the harness
 [`ledger-direct-e2e`](https://github.com/ledger-direct/ledger-direct-e2e): on a version tag (every case
 but the 35-minute wait), every Monday at 05:17 UTC (every case) and by hand. It does not gate a merge:
 the testnet and its faucet are not deterministic.
