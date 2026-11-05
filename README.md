@@ -267,8 +267,14 @@ standard (`magento/magento-coding-standard`), and the PHPUnit suite inside a rea
 which needs no access keys — pull requests from forks are tested too — and is several times faster
 than `repo.magento.com`; Composer's package cache is kept between runs. Once a week, and on demand,
 the same tests run against `repo.magento.com` itself (`MAGENTO_COMPOSER_AUTH` secret with Marketplace
-access keys; without it that job logs a warning and skips), so a gap in the mirror shows up. There is
-no nightly end-to-end run for Magento yet.
+access keys; without it that job logs a warning and skips), so a gap in the mirror shows up.
+
+`.github/workflows/try.yml` builds the try stack (`dev/try`) from the checkout, starts it and runs
+`dev/try/smoke.sh` against it, then walks the storefront in a real browser. `.github/workflows/e2e.yml`
+drives the core's case catalogue on the XRPL testnet against that try stack with the harness
+[`ledger-direct-e2e`](https://github.com/ledger-direct/ledger-direct-e2e): on a version tag (every case
+but the 35-minute wait), every Monday at 05:17 UTC (every case) and by hand. It does not gate a merge:
+the testnet and its faucet are not deterministic.
 
 A release is a git tag, which Packagist picks up and Composer resolves as the module's version;
 `composer.json` carries no version field of its own. `CHANGELOG.md` lists the versions.
