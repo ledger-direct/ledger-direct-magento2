@@ -19,7 +19,8 @@ name: Try stack
 # The stack is built only when something it runs may have changed (job "changes",
 # .github/actions/changes): module code, Composer, dev/try, this workflow. A pull request that
 # touches only documentation, tests or other workflows skips it; tags and manual runs always build.
-# A newer commit on the same pull request cancels the run still going.
+# A newer commit on the same pull request cancels the run still going. Job "passed" ("Try passed")
+# sums up the jobs a pull request runs; it is the check a merge requires.
 
 on:
   pull_request:
@@ -136,6 +137,34 @@ jobs:
         if: always()
         working-directory: dev/try
         run: docker compose logs --no-color --tail 200 phpfpm
+
+  # The one check a merge into main requires (see ci.yml, job "passed"). Skipped on purpose (nothing
+  # the stack runs changed) counts as passed; failed or cancelled does not. Publishing is left out:
+  # it never runs on a pull request.
+  passed:
+    name: Try passed
+    needs: [changes, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    # Reads this run's job list, nothing else.
+    permissions:
+      actions: read
+    steps:
+      - name: Every job passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
+          JOBS: repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs?per_page=100
+        # needs.<job>.result can say "success" for a matrix one of whose legs was cancelled before a
+        # runner took it (https://github.com/orgs/community/discussions/211624), so every finished job
+        # of this run, each matrix leg on its own, is checked as well.
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
+          gh api "$JOBS" > jobs.json
+          jq -r '.jobs[] | select(.status == "completed") | "\(.name): \(.conclusion)"' jobs.json
+          jq -e '[.jobs[] | select(.status == "completed") | .conclusion]
+            | all(. == "success" or . == "skipped")' jobs.json > /dev/null
 
   publish:
     name: Publish the try image
