@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.6
 
 - The admin page *Payment Methods* renders again in the default and website scope. Since the payment
   instructions email (1.1.0) the template field looked for a default template named after the
