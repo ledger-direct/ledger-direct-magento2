@@ -280,6 +280,16 @@ the testnet and its faucet are not deterministic.
 These two are the checks a merge into `main` requires. A job skipped on purpose (a pull request that
 changes only documentation) counts as passed, a failed or cancelled one does not.
 
+The rules for `main` are a GitHub ruleset, kept in `.github/rulesets/main.json`: changes only through
+a pull request, no approval needed, *CI passed* and *Try passed* green on its last commit, merged
+as a squash or a merge commit; no force push, no deletion. Repository admins may merge a pull request
+without the checks, never push to `main` directly. A change to the rules is a pull request that
+changes the file; after the merge it is applied on GitHub
+(`gh api -X PUT repos/<owner>/<repo>/rulesets/<id> --input .github/rulesets/main.json`, the first time
+`-X POST repos/<owner>/<repo>/rulesets`). Every Monday, and on demand, `ci.yml` checks that the
+ruleset on GitHub matches the file (`.github/rulesets/check.sh`). Who may bypass the rules is not
+part of that check: GitHub shows the bypass list only to admins of the repository.
+
 A release is a git tag, which Packagist picks up and Composer resolves as the module's version;
 `composer.json` carries no version field of its own. `CHANGELOG.md` lists the versions.
 

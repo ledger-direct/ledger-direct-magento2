@@ -138,7 +138,9 @@ jobs:
         working-directory: dev/try
         run: docker compose logs --no-color --tail 200 phpfpm
 
-  # The one check a merge into main requires (see ci.yml, job "passed"). Skipped on purpose (nothing
+  # The one check a merge into main requires (see ci.yml, job "passed"). Its name is in
+  # .github/rulesets/main.json: renaming the job blocks every merge until the ruleset on GitHub is
+  # changed too. Skipped on purpose (nothing
   # the stack runs changed) counts as passed; failed or cancelled does not. Publishing is left out:
   # it never runs on a pull request.
   passed:
@@ -155,16 +157,20 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
           GH_TOKEN: ${{ github.token }}
           JOBS: repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs?per_page=100
+          # Jobs this check leaves out, by the start of their name: publishing, not in needs
+          UNGATED: '["Publish the try image"]'
         # needs.<job>.result can say "success" for a matrix one of whose legs was cancelled before a
         # runner took it (https://github.com/orgs/community/discussions/211624), so every finished job
-        # of this run, each matrix leg on its own, is checked as well.
+        # of this run, each matrix leg on its own, is checked as well, except the ones in UNGATED:
+        # whether they are finished at this point is a matter of timing.
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
           gh api "$JOBS" > jobs.json
-          jq -r '.jobs[] | select(.status == "completed") | "\(.name): \(.conclusion)"' jobs.json
-          jq -e '[.jobs[] | select(.status == "completed") | .conclusion]
-            | all(. == "success" or . == "skipped")' jobs.json > /dev/null
+          jq --argjson ungated "$UNGATED" '[.jobs[] | select(.status == "completed")
+            | select(.name as $n | $ungated | any(. as $p | $n | startswith($p)) | not)]' jobs.json > gated.json
+          jq -r '.[] | "\(.name): \(.conclusion)"' gated.json
+          jq -e 'all(.[]; .conclusion == "success" or .conclusion == "skipped")' gated.json > /dev/null
 
   publish:
     name: Publish the try image
