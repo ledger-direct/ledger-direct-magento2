@@ -10,6 +10,7 @@
   RLUSD and USDC. The *Enabled* switch in *Ledger Direct / XRPL* is gone: it saved a setting nothing
   read, so switching it off left XRP in the checkout. Check the new switch after the update; it shows
   whether XRP is really on
+- The checkout shows the title set in the admin for RLUSD and USDC too; it showed a fixed text instead
 
 ## 1.1.5
 

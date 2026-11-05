@@ -32,10 +32,6 @@ define(
                 return require.toUrl('Hardcastle_LedgerDirect/images/usdc_payment.svg');
             },
 
-            getTitle: function() {
-                  return 'Pay with USDC | Ledger Direct';
-            },
-
             placeOrder: function()
             {
                 let self = this;

@@ -166,7 +166,7 @@ Stores → Configuration → Sales → Payment Methods → Ledger Direct / XRPL:
 | Payment page: Xaman API key, WalletConnect project id | Public identifiers, optional. With one of them, customers on a phone get an "Open in wallet app" button. Never the API secret. |
 
 Each asset is a payment method of its own, with its *Enabled* switch and the title the checkout
-shows, in the groups *Ledger Direct – XRP (XRPL)*, *Ledger Direct – RLUSD (XRPL)* and
+shows (also in emails and the order view), in the groups *Ledger Direct – XRP (XRPL)*, *Ledger Direct – RLUSD (XRPL)* and
 *Ledger Direct – USDC (XRPL)* next to it. XRP is on by default; the stablecoins are off by default and
 need the trustline on the receiving account first.
 
