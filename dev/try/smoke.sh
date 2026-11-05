@@ -78,6 +78,7 @@ pass "a wrong key is refused with 403 (PS-07)"
 # the default scope: Magento_Paypal serves the section as payment_<country>, and the email template
 # field asked for a default template named after that path. Admin links carry secret keys, so the
 # page is reached through the links the admin itself renders: dashboard → configuration → payment.
+# A search that finds nothing must not end the script under pipefail before its `fail` names why.
 # Magento sets the admin cookie for domain=localhost, which curl's cookie engine refuses (no dot in
 # the domain), so the session cookie is carried by hand and redirects are followed here.
 admin_cookie=
@@ -99,14 +100,14 @@ admin() { # admin <url> [curl args…]: the final page in $admin_page, its statu
   fail "admin: more than 5 redirects from $url"
 }
 admin "$BASE/admin/"
-form_key=$(grep -o 'name="form_key" type="hidden" value="[^"]*"' "$admin_page" | head -1 | sed 's/.*value="//; s/"$//')
+form_key=$({ grep -o 'name="form_key" type="hidden" value="[^"]*"' "$admin_page" || true; } | head -1 | sed 's/.*value="//; s/"$//')
 [ -n "$form_key" ] || fail "admin login page without form key"
 admin "$BASE/admin/" -X POST --data-urlencode "form_key=$form_key" \
   --data-urlencode "login[username]=$ADMIN_USER" --data-urlencode "login[password]=$ADMIN_PASSWORD"
-config_url=$(grep -o "$BASE/admin/admin/system_config/index/key/[0-9a-f]*/" "$admin_page" | head -1)
+config_url=$({ grep -o "$BASE/admin/admin/system_config/index/key/[0-9a-f]*/" "$admin_page" || true; } | head -1)
 [ -n "$config_url" ] || fail "admin login failed, or the dashboard has no configuration link"
 admin "$config_url"
-payment_url=$(grep -o "$BASE/admin/admin/system_config/edit/section/payment/key/[0-9a-f]*/" "$admin_page" | head -1)
+payment_url=$({ grep -o "$BASE/admin/admin/system_config/edit/section/payment/key/[0-9a-f]*/" "$admin_page" || true; } | head -1)
 [ -n "$payment_url" ] || fail "the configuration page has no link to Payment Methods"
 admin "$payment_url"
 [ "$admin_code" = 200 ] || fail "admin Payment Methods answered $admin_code"
