@@ -146,13 +146,25 @@ jobs:
     needs: [changes, smoke]
     if: always()
     runs-on: ubuntu-latest
+    # Reads this run's job list, nothing else.
+    permissions:
+      actions: read
     steps:
       - name: Every job passed or was skipped on purpose
         env:
           NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
+          JOBS: repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs?per_page=100
+        # needs.<job>.result can say "success" for a matrix one of whose legs was cancelled before a
+        # runner took it (https://github.com/orgs/community/discussions/211624), so every finished job
+        # of this run, each matrix leg on its own, is checked as well.
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
+          gh api "$JOBS" > jobs.json
+          jq -r '.jobs[] | select(.status == "completed") | "\(.name): \(.conclusion)"' jobs.json
+          jq -e '[.jobs[] | select(.status == "completed") | .conclusion]
+            | all(. == "success" or . == "skipped")' jobs.json > /dev/null
 
   publish:
     name: Publish the try image
