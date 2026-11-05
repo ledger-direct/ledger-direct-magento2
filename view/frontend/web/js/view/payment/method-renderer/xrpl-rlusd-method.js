@@ -32,10 +32,6 @@ define(
                 return require.toUrl('Hardcastle_LedgerDirect/images/rlusd_payment.svg');
             },
 
-            getTitle: function() {
-                  return 'Pay with RLUSD | Ledger Direct';
-            },
-
             placeOrder: function()
             {
                 let self = this;

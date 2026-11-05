@@ -102,7 +102,6 @@ function configure($om): void
 
     $config = $om->get(WriterInterface::class);
     foreach ([
-        'payment/ledger_direct/active' => 1,
         'payment/ledger_direct/use_testnet' => 1,
         'payment/ledger_direct/xrpl_testnet_account' => $account,
         'payment/ledger_direct/quote_expiry' => 300,

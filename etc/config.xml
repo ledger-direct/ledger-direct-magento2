@@ -4,7 +4,6 @@
     <default>
         <payment>
             <ledger_direct>
-                <active>1</active>
                 <use_testnet>0</use_testnet>
                 <quote_expiry>300</quote_expiry>
                 <page_logo_mode>shop</page_logo_mode>

@@ -157,7 +157,6 @@ Stores → Configuration → Sales → Payment Methods → Ledger Direct / XRPL:
 
 | Setting | |
 |---|---|
-| Enabled | Switches the XRP payment method on. |
 | Use testnet | The receiving account must belong to the selected network. |
 | Account, testnet and mainnet | The shop's receiving account on each network; the one for the selected network is used. |
 | Quote validity (seconds) | How long a quoted amount stays fixed. Default 300. |
@@ -166,9 +165,10 @@ Stores → Configuration → Sales → Payment Methods → Ledger Direct / XRPL:
 | Payment page: accent colour | The one colour of the payment page — buttons, countdown bar, destination tag — with white text on it, so it must be dark enough (contrast 4.5:1). Default `#1f5eff`; a lighter colour is refused on save. |
 | Payment page: Xaman API key, WalletConnect project id | Public identifiers, optional. With one of them, customers on a phone get an "Open in wallet app" button. Never the API secret. |
 
-The stablecoins are payment methods of their own, each with its *Enabled* switch and title, in the
-groups *Ledger Direct – RLUSD (XRPL)* and *Ledger Direct – USDC (XRPL)* next to it. They are off by
-default and need the trustline on the receiving account first.
+Each asset is a payment method of its own, with its *Enabled* switch and the title the checkout
+shows, in the groups *Ledger Direct – XRP (XRPL)*, *Ledger Direct – RLUSD (XRPL)* and
+*Ledger Direct – USDC (XRPL)* next to it. XRP is on by default; the stablecoins are off by default and
+need the trustline on the receiving account first.
 
 Issuer addresses are not configurable. They are fixed in the core: a wrong issuer would send
 customer funds to a dead trustline.
