@@ -271,7 +271,22 @@ jobs:
         if: steps.auth.outputs.has_auth == 'true'
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
 
-  # The one check a merge into main requires. A job's own name changes with its matrix and shows
+  # Weekly and on demand: the ruleset GitHub enforces on main is the one in .github/rulesets/main.json.
+  # Not part of "CI passed": a pull request that changes the file differs from GitHub until the
+  # ruleset is applied after the merge.
+  ruleset:
+    name: Branch rules match .github/rulesets
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare the ruleset on GitHub with the file
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/rulesets/check.sh "${{ github.repository }}" .github/rulesets/main.json
+
+  # The one check a merge into main requires. Its name is in .github/rulesets/main.json: renaming the
+  # job blocks every merge until the ruleset on GitHub is changed too. A job's own name changes with its matrix and shows
   # unexpanded when the job is skipped, so the branch rules name this job instead. Skipped on purpose
   # (a documentation-only pull request) counts as passed; failed or cancelled does not. always(), not
   # !cancelled(): a skipped job counts as passed, so this job has to run and report in every case.

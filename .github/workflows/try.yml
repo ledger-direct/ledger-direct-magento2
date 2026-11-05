@@ -138,7 +138,9 @@ jobs:
         working-directory: dev/try
         run: docker compose logs --no-color --tail 200 phpfpm
 
-  # The one check a merge into main requires (see ci.yml, job "passed"). Skipped on purpose (nothing
+  # The one check a merge into main requires (see ci.yml, job "passed"). Its name is in
+  # .github/rulesets/main.json: renaming the job blocks every merge until the ruleset on GitHub is
+  # changed too. Skipped on purpose (nothing
   # the stack runs changed) counts as passed; failed or cancelled does not. Publishing is left out:
   # it never runs on a pull request.
   passed:
