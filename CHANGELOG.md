@@ -6,6 +6,10 @@
   instructions email (1.1.0) the template field looked for a default template named after the
   section Magento_Paypal serves for the merchant country (`payment_us_…`, `payment_other_…`), which
   does not exist, and the whole page failed: no payment method could be configured in the admin
+- XRP has its own group in the admin, *Ledger Direct – XRP (XRPL)*, with *Enabled* and *Title*, like
+  RLUSD and USDC. The *Enabled* switch in *Ledger Direct / XRPL* is gone: it saved a setting nothing
+  read, so switching it off left XRP in the checkout. Check the new switch after the update; it shows
+  whether XRP is really on
 
 ## 1.1.5
 
