@@ -19,7 +19,8 @@ name: Try stack
 # The stack is built only when something it runs may have changed (job "changes",
 # .github/actions/changes): module code, Composer, dev/try, this workflow. A pull request that
 # touches only documentation, tests or other workflows skips it; tags and manual runs always build.
-# A newer commit on the same pull request cancels the run still going.
+# A newer commit on the same pull request cancels the run still going. Job "passed" ("Try passed")
+# sums up the jobs a pull request runs; it is the check a merge requires.
 
 on:
   pull_request:
@@ -136,6 +137,22 @@ jobs:
         if: always()
         working-directory: dev/try
         run: docker compose logs --no-color --tail 200 phpfpm
+
+  # The one check a merge into main requires (see ci.yml, job "passed"). Skipped on purpose (nothing
+  # the stack runs changed) counts as passed; failed or cancelled does not. Publishing is left out:
+  # it never runs on a pull request.
+  passed:
+    name: Try passed
+    needs: [changes, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
 
   publish:
     name: Publish the try image

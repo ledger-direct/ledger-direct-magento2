@@ -276,6 +276,10 @@ drives the core's case catalogue on the XRPL testnet against that try stack with
 but the 35-minute wait), every Monday at 05:17 UTC (every case) and by hand. It does not gate a merge:
 the testnet and its faucet are not deterministic.
 
+`ci.yml` and `try.yml` each end in one job that sums up the others, *CI passed* and *Try passed*.
+These two are the checks a merge into `main` requires. A job skipped on purpose (a pull request that
+changes only documentation) counts as passed, a failed or cancelled one does not.
+
 A release is a git tag, which Packagist picks up and Composer resolves as the module's version;
 `composer.json` carries no version field of its own. `CHANGELOG.md` lists the versions.
 

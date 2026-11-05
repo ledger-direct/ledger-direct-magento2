@@ -3,7 +3,8 @@ name: CI
 # What runs depends on what changed (job "changes", .github/actions/changes): a pull request that
 # touches only documentation runs the lint job and nothing else; everything else runs the whole
 # suite. Tags, schedule and manual runs have no diff to classify and run everything. A newer commit
-# on the same pull request cancels the run still going.
+# on the same pull request cancels the run still going. Job "passed" ("CI passed") sums up the jobs
+# a pull request runs; it is the check a merge requires.
 
 on:
   push:
@@ -269,3 +270,21 @@ jobs:
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
+
+  # The one check a merge into main requires. A job's own name changes with its matrix and shows
+  # unexpanded when the job is skipped, so the branch rules name this job instead. Skipped on purpose
+  # (a documentation-only pull request) counts as passed; failed or cancelled does not. always(), not
+  # !cancelled(): a skipped job counts as passed, so this job has to run and report in every case.
+  # The repo.magento.com cross-check is left out: it never runs on a pull request.
+  passed:
+    name: CI passed
+    needs: [changes, lint, coding-standard, unit-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
