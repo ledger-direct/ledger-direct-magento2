@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
 
 - Xahau: XAH on the [Xahau](https://xahau.network) network, a chain of its own that speaks the XRP
   Ledger's protocol, paid by destination tag. A configuration group *Ledger Direct / Xahau* (testnet
