@@ -9,7 +9,9 @@
   it is set to another one; the browser-wallet buttons stay off on a Xahau page. Xahau has its own
   tables (`ledger_direct_xahau_tx`, `ledger_direct_xahau_destination_tag`, created by `setup:upgrade`)
   and shares nothing with the XRP Ledger, also for an account that exists on both. The cron job syncs
-  the configured account of each chain. Needs `hardcastle/ledger-direct-core` 0.11
+  the configured account of each chain. Saving a Xahau account that is also the XRP Ledger's account on the
+  same network shows a warning: the same address is a different account on each chain. Needs
+  `hardcastle/ledger-direct-core` 0.11
 - `ledger-direct:xrpl-account:lookup` and `ledger-direct:xrpl-transaction:lookup` take `--chain XAHAU`;
   `ledger-direct:xrp-price:lookup --asset XAH` quotes XAH
 - The payment methods come from the core's chain catalogue: one method per chain and asset, and a test
