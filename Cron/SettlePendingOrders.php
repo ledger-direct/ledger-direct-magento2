@@ -4,6 +4,7 @@ namespace Hardcastle\LedgerDirect\Cron;
 
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Service\OrderSettlementService;
 use Magento\Sales\Model\Order;
@@ -53,24 +54,32 @@ class SettlePendingOrders
     private SystemConfig $systemConfig;
 
     /**
+     * @var PaymentMethods
+     */
+    private PaymentMethods $paymentMethods;
+
+    /**
      * @param CollectionFactory $orderCollectionFactory
      * @param OrderPaymentService $orderPaymentService
      * @param OrderSettlementService $settlementService
      * @param LoggerInterface $logger
      * @param SystemConfig $systemConfig
+     * @param PaymentMethods $paymentMethods
      */
     public function __construct(
         CollectionFactory $orderCollectionFactory,
         OrderPaymentService $orderPaymentService,
         OrderSettlementService $settlementService,
         LoggerInterface $logger,
-        SystemConfig $systemConfig
+        SystemConfig $systemConfig,
+        PaymentMethods $paymentMethods
     ) {
         $this->orderCollectionFactory = $orderCollectionFactory;
         $this->orderPaymentService = $orderPaymentService;
         $this->settlementService = $settlementService;
         $this->logger = $logger;
         $this->systemConfig = $systemConfig;
+        $this->paymentMethods = $paymentMethods;
     }
 
     /**
@@ -83,18 +92,24 @@ class SettlePendingOrders
         $orders = $this->orderCollectionFactory->create();
         // The payment-incomplete status lives under the same state, so those orders are included.
         $orders->join(['payment' => 'sales_order_payment'], 'main_table.entity_id = payment.parent_id', [])
-            ->addFieldToFilter('payment.method', ['in' => OrderPaymentService::PAYMENT_METHODS])
+            ->addFieldToFilter('payment.method', ['in' => $this->paymentMethods->codes()])
             ->addFieldToFilter('main_table.state', Order::STATE_PENDING_PAYMENT);
 
-        // The configured receiving account is synced on every run, open orders or not: a payment
-        // on an order the merchant has already cancelled would otherwise never reach the
-        // transaction table - and the order's Payment Information - until some other order on
-        // the account happened to trigger a sync. One node request.
+        // The configured receiving account of every chain is synced on every run, open orders or
+        // not: a payment on an order the merchant has already cancelled would otherwise never
+        // reach the transaction table - and the order's Payment Information - until some other
+        // order on the account happened to trigger a sync. One node request per account.
         $accounts = [];
-        $configuredAccount = $this->systemConfig->getDestinationAccount();
-        if ($configuredAccount !== '') {
-            $configuredNetwork = $this->systemConfig->getNetwork();
-            $accounts[$configuredNetwork . '|' . $configuredAccount] = [$configuredAccount, $configuredNetwork];
+        foreach ($this->paymentMethods->supportedChains() as $chain) {
+            $configuredAccount = $this->systemConfig->getDestinationAccount($chain);
+            if ($configuredAccount !== '') {
+                $configuredNetwork = $this->systemConfig->getNetwork($chain);
+                $accounts[$chain . '|' . $configuredNetwork . '|' . $configuredAccount] = [
+                    $chain,
+                    $configuredAccount,
+                    $configuredNetwork,
+                ];
+            }
         }
         $matchable = [];
 
@@ -106,15 +121,16 @@ class SettlePendingOrders
                 continue;
             }
 
-            $accounts[$intent->network . '|' . $intent->destinationAccount] = [
+            $accounts[$intent->chain . '|' . $intent->network . '|' . $intent->destinationAccount] = [
+                $intent->chain,
                 $intent->destinationAccount,
                 $intent->network,
             ];
             $matchable[] = $order;
         }
 
-        foreach ($accounts as [$account, $network]) {
-            $this->orderPaymentService->syncLedger($account, $network, false);
+        foreach ($accounts as [$chain, $account, $network]) {
+            $this->orderPaymentService->syncLedger($chain, $account, $network, false);
         }
 
         $settled = 0;

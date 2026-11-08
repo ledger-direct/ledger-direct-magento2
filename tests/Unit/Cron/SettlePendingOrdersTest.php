@@ -16,6 +16,7 @@ use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 
 class SettlePendingOrdersTest extends TestCase
 {
@@ -33,8 +34,8 @@ class SettlePendingOrdersTest extends TestCase
     /** @var SystemConfig|MockObject */
     private $systemConfig;
 
-    /** @var string The configured receiving account; empty means none. */
-    private string $configuredAccount = '';
+    /** @var array<string, string> The configured receiving account by chain; a missing chain has none. */
+    private array $configuredAccounts = [];
 
     /** @var Order[] */
     private array $pendingOrders = [];
@@ -64,16 +65,18 @@ class SettlePendingOrdersTest extends TestCase
             return $intent;
         });
 
-                $this->systemConfig = $this->createMock(SystemConfig::class);
-        $this->systemConfig->method('getDestinationAccount')->willReturnCallback(fn () => $this->configuredAccount);
+        $this->systemConfig = $this->createMock(SystemConfig::class);
+        $this->systemConfig->method('getDestinationAccount')
+            ->willReturnCallback(fn (string $chain) => $this->configuredAccounts[$chain] ?? '');
         $this->systemConfig->method('getNetwork')->willReturn('testnet');
 
-$this->cron = new SettlePendingOrders(
+        $this->cron = new SettlePendingOrders(
             $collectionFactory,
             $this->orderPaymentService,
             $this->settlementService,
             $this->logger,
-            $this->systemConfig
+            $this->systemConfig,
+            new PaymentMethods()
         );
     }
 
@@ -89,8 +92,8 @@ $this->cron = new SettlePendingOrders(
 
         $synced = [];
         $this->orderPaymentService->expects($this->exactly(2))->method('syncLedger')
-            ->willReturnCallback(function (string $account, string $network, bool $throttled) use (&$synced): void {
-                $synced[] = [$account, $network, $throttled];
+            ->willReturnCallback(function (string $chain, string $account, string $network, bool $throttled) use (&$synced): void {
+                $synced[] = [$chain, $account, $network, $throttled];
             });
         $matched = [];
         $this->orderPaymentService->expects($this->exactly(3))->method('matchOrder')
@@ -103,7 +106,11 @@ $this->cron = new SettlePendingOrders(
 
         $this->cron->execute();
 
-        $this->assertSame([['rMerchant', 'testnet', false], ['rMerchant', 'mainnet', false]], $synced, 'unthrottled, once per pair');
+        $this->assertSame(
+            [['XRPL', 'rMerchant', 'testnet', false], ['XRPL', 'rMerchant', 'mainnet', false]],
+            $synced,
+            'unthrottled, once per chain, account and network'
+        );
         $this->assertSame([$first, $second, $third], $matched);
     }
 
@@ -114,13 +121,36 @@ $this->cron = new SettlePendingOrders(
      */
     public function testTheConfiguredAccountIsSyncedEvenWithNothingPending(): void
     {
-        $this->configuredAccount = 'rConfiguredAccount';
+        $this->configuredAccounts = ['XRPL' => 'rConfiguredAccount'];
 
         $this->orderPaymentService->expects($this->once())->method('syncLedger')
-            ->with('rConfiguredAccount', 'testnet', false);
+            ->with('XRPL', 'rConfiguredAccount', 'testnet', false);
         $this->orderPaymentService->expects($this->never())->method('matchOrder');
 
         $this->cron->execute();
+    }
+
+    /**
+     * Every chain's configured account is synced on its own chain: the same address may receive
+     * on the XRP Ledger and on Xahau, and the two are different accounts in different tables.
+     */
+    public function testEveryChainsConfiguredAccountIsSyncedOnItsChain(): void
+    {
+        $this->configuredAccounts = ['XRPL' => 'rSameAddress', 'XAHAU' => 'rSameAddress'];
+        $xahauOrder = $this->givenPendingOrder(
+            PaymentIntent::quote('xahau-xah-payment', 'XAHAU', 'testnet', 'XAH', 'USD', 'XAH/USD', 1.0, 1.0, 'rSameAddress', 1)
+        );
+
+        $synced = [];
+        $this->orderPaymentService->expects($this->exactly(2))->method('syncLedger')
+            ->willReturnCallback(function (string $chain, string $account, string $network, bool $throttled) use (&$synced): void {
+                $synced[] = [$chain, $account, $network];
+            });
+        $this->orderPaymentService->expects($this->once())->method('matchOrder')->with($xahauOrder)->willReturn(null);
+
+        $this->cron->execute();
+
+        $this->assertSame([['XRPL', 'rSameAddress', 'testnet'], ['XAHAU', 'rSameAddress', 'testnet']], $synced);
     }
 
     public function testSettlesEveryPendingOrderWhosePaymentArrived(): void

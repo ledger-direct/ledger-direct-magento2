@@ -31,12 +31,46 @@ class MagentoXrplTransactionRepositoryTest extends TestCase
         $this->connection = $this->createMock(AdapterInterface::class);
         $this->connection->method('quoteIdentifier')->willReturnCallback(fn (string $name) => '`' . $name . '`');
 
+        $this->repository = new MagentoXrplTransactionRepository($this->resourceConnection());
+    }
+
+    private function resourceConnection(): ResourceConnection
+    {
         $resourceConnection = $this->createMock(ResourceConnection::class);
         $resourceConnection->method('getConnection')->willReturn($this->connection);
         // A configured db/table_prefix must reach every statement.
         $resourceConnection->method('getTableName')->willReturnCallback(fn (string $table) => 'pfx_' . $table);
 
-        $this->repository = new MagentoXrplTransactionRepository($resourceConnection);
+        return $resourceConnection;
+    }
+
+    /**
+     * The Xahau instance works on Xahau's tables, the ones the core's Schema names, and on
+     * nothing of the XRP Ledger's.
+     */
+    public function testTheXahauRepositoryUsesTheXahauTables(): void
+    {
+        $repository = new MagentoXrplTransactionRepository($this->resourceConnection(), 'XAHAU');
+        $tables = [];
+        $this->connection->method('update')->willReturnCallback(function (string $table) use (&$tables): int {
+            $tables[] = $table;
+
+            return 1;
+        });
+        $this->givenLastInsertId('5');
+        $this->connection->expects($this->once())->method('truncateTable')->with('pfx_ledger_direct_xahau_tx');
+
+        $repository->nextDestinationTagSequence(self::ACCOUNT);
+        $repository->truncate();
+
+        $this->assertSame(['pfx_ledger_direct_xahau_destination_tag'], $tables);
+    }
+
+    public function testAChainWithoutTablesIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new MagentoXrplTransactionRepository($this->resourceConnection(), 'STELLAR');
     }
 
     public function testAnExistingCounterIsAdvancedWithASingleUpdate(): void

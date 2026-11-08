@@ -5,10 +5,10 @@ namespace Hardcastle\LedgerDirect\Tests\Unit\Port;
 
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
-use InvalidArgumentException;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\Helper\Context;
 use PHPUnit\Framework\TestCase;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 
 /**
  * The port over the real SystemConfig helper, with only Magento's scope config stubbed:
@@ -32,7 +32,7 @@ class MagentoConfigProviderTest extends TestCase
         $context = $this->createMock(Context::class);
         $context->method('getScopeConfig')->willReturn($scopeConfig);
 
-        return new MagentoConfigProvider(new SystemConfig($context));
+        return new MagentoConfigProvider(new SystemConfig($context), new PaymentMethods());
     }
 
     public function testTestnetSettingsAreReportedInTheCoreVocabulary(): void
@@ -101,10 +101,47 @@ class MagentoConfigProviderTest extends TestCase
         );
     }
 
-    public function testAnotherChainIsAWiringMistake(): void
+    /**
+     * Xahau has a group of its own; the XRPL keys stay in the shared group as they were.
+     */
+    public function testXahauIsReadFromItsOwnGroup(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $provider = $this->createProvider([
+            'payment/ledger_direct/use_testnet' => 0,
+            'payment/ledger_direct/xrpl_mainnet_account' => 'rMainnetMerchant',
+            'payment/ledger_direct_xahau/use_testnet' => 1,
+            'payment/ledger_direct_xahau/xahau_testnet_account' => ' rXahauTestnetMerchant ',
+            'payment/ledger_direct_xahau/xahau_mainnet_account' => 'rXahauMainnetMerchant',
+            'payment/xahau_xah_payment/active' => 1,
+            'payment/xrp_payment/active' => 0,
+        ]);
 
-        $this->createProvider([])->getNetwork('XLM');
+        $this->assertSame('testnet', $provider->getNetwork('XAHAU'));
+        $this->assertSame('rXahauTestnetMerchant', $provider->getDestinationAccount('XAHAU'), 'trimmed');
+        $this->assertTrue($provider->isAssetEnabled('XAHAU', 'XAH'));
+        $this->assertFalse($provider->isAssetEnabled('XAHAU', 'XRP'), 'XRP is not an asset of Xahau');
+        $this->assertSame('mainnet', $provider->getNetwork('XRPL'));
+        $this->assertSame('rMainnetMerchant', $provider->getDestinationAccount('XRPL'));
+        $this->assertFalse($provider->isAssetEnabled('XRPL', 'XRP'), 'XRP off while XAH is on');
+    }
+
+    /**
+     * A chain the module has no payment methods for (Stellar in the catalogue, anything else)
+     * gets no settings, never another chain's: its testnet, no account, no asset.
+     */
+    public function testAChainWithoutPaymentMethodsHasNoSettings(): void
+    {
+        $provider = $this->createProvider([
+            'payment/ledger_direct/use_testnet' => 0,
+            'payment/ledger_direct/xrpl_mainnet_account' => 'rMainnetMerchant',
+            'payment/xrp_payment/active' => 1,
+        ]);
+
+        foreach (['STELLAR', 'XLM'] as $chain) {
+            $this->assertSame('testnet', $provider->getNetwork($chain));
+            $this->assertSame('', $provider->getDestinationAccount($chain));
+            $this->assertFalse($provider->isAssetEnabled($chain, 'XLM'));
+            $this->assertFalse($provider->isAssetEnabled($chain, 'XRP'));
+        }
     }
 }

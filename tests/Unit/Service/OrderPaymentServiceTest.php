@@ -17,6 +17,7 @@ use Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle;
 use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
 use Hardcastle\LedgerDirect\Core\Xrpl\XrplTransaction;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
+use Hardcastle\LedgerDirect\Model\ChainServices;
 use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Tests\Mock\Http\StubHttpClient;
@@ -31,6 +32,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 
 /**
  * Adapter-level tests: the core services are the real ones, only the edges the platform
@@ -43,11 +45,16 @@ class OrderPaymentServiceTest extends TestCase
 {
     private const DESTINATION_ACCOUNT = 'rTestnetMerchant';
 
+    private const XAHAU_ACCOUNT = 'rXahauTestnetMerchant';
+
     /** Sequence 0 run through the core's fixed permutation. */
     private const FIRST_DESTINATION_TAG = 114729;
 
     /** @var XrplTransactionRepositoryInterface|MockObject */
     private $transactionRepository;
+
+    /** @var XrplTransactionRepositoryInterface|MockObject the Xahau tables, shared with the XRPL ones in nothing */
+    private $xahauRepository;
 
     /** @var OrderRepositoryInterface|MockObject */
     private $orderRepository;
@@ -61,6 +68,7 @@ class OrderPaymentServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->transactionRepository = $this->createMock(XrplTransactionRepositoryInterface::class);
+        $this->xahauRepository = $this->createMock(XrplTransactionRepositoryInterface::class);
         $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->writtenAdditionalData = [];
@@ -73,7 +81,7 @@ class OrderPaymentServiceTest extends TestCase
 
         $order = $this->givenOrder('xrp_payment');
 
-        $returned = $this->createService()->prepareOrderPaymentForXrpl($order);
+        $returned = $this->createService()->prepareOrderPayment($order);
 
         $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
 
@@ -106,7 +114,7 @@ class OrderPaymentServiceTest extends TestCase
     {
         $this->transactionRepository->method('nextDestinationTagSequence')->willReturn(0);
 
-        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrpl_rlusd_payment'));
+        $this->createService()->prepareOrderPayment($this->givenOrder('xrpl_rlusd_payment'));
 
         $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
 
@@ -131,7 +139,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->expects($this->never())->method('nextDestinationTagSequence');
         $this->orderRepository->expects($this->never())->method('save');
 
-        $returned = $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+        $returned = $this->createService()->prepareOrderPayment($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame($stored->toArray(), $returned->toArray());
     }
@@ -147,7 +155,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->expects($this->never())->method('nextDestinationTagSequence');
         $this->orderRepository->expects($this->once())->method('save');
 
-        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored), true);
+        $this->createService()->prepareOrderPayment($this->givenOrder('xrp_payment', $stored), true);
 
         $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
 
@@ -168,7 +176,7 @@ class OrderPaymentServiceTest extends TestCase
 
         $this->orderRepository->expects($this->never())->method('save');
 
-        $returned = $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+        $returned = $this->createService()->prepareOrderPayment($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame($stored->toArray(), $returned->toArray());
     }
@@ -179,7 +187,7 @@ class OrderPaymentServiceTest extends TestCase
 
         $this->orderRepository->expects($this->never())->method('save');
 
-        $returned = $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('xrp_payment', $stored));
+        $returned = $this->createService()->prepareOrderPayment($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame('HASH', $returned->hash);
     }
@@ -189,7 +197,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Unsupported payment method: checkmo');
 
-        $this->createService()->prepareOrderPaymentForXrpl($this->givenOrder('checkmo'));
+        $this->createService()->prepareOrderPayment($this->givenOrder('checkmo'));
     }
 
     /**
@@ -201,7 +209,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->expectException(AssetNotAcceptedException::class);
 
         $this->createService(['payment/xrpl_usdc_payment/active' => 0])
-            ->prepareOrderPaymentForXrpl($this->givenOrder('xrpl_usdc_payment'));
+            ->prepareOrderPayment($this->givenOrder('xrpl_usdc_payment'));
     }
 
     public function testSyncRecordsTheSettlementOnTheStoredQuote(): void
@@ -214,7 +222,7 @@ class OrderPaymentServiceTest extends TestCase
             ->willReturn([$this->givenLedgerTransaction(['delivered_amount' => '40000000'])]);
         $this->orderRepository->expects($this->once())->method('save');
 
-        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
+        $fulfilled = $this->createService()->syncOrderTransaction(
             $this->givenOrder('xrp_payment', $this->givenStoredIntent())
         );
 
@@ -242,7 +250,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->method('findTransactions')->willReturn([$this->givenLedgerTransaction([])]);
         $this->orderRepository->expects($this->never())->method('save');
 
-        $this->assertNull($this->createService()->syncOrderTransactionWithXrpl(
+        $this->assertNull($this->createService()->syncOrderTransaction(
             $this->givenOrder('xrp_payment', $this->givenStoredIntent())
         ));
     }
@@ -265,7 +273,7 @@ class OrderPaymentServiceTest extends TestCase
             $this->transactionRepository->method('getLastSyncedLedgerIndex')->willReturn(null);
             $this->transactionRepository->method('findTransactions')->willReturn($newestFirst);
 
-            $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
+            $fulfilled = $this->createService()->syncOrderTransaction(
                 $this->givenOrder('xrp_payment', $this->givenStoredIntent())
             );
 
@@ -290,7 +298,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->method('findTransactions')
             ->willReturn([$this->givenLedgerTransaction(['delivered_amount' => $wrongIssuer])]);
 
-        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrpl_rlusd_payment', $intent));
+        $fulfilled = $this->createService()->syncOrderTransaction($this->givenOrder('xrpl_rlusd_payment', $intent));
 
         $this->assertNotNull($fulfilled, 'a genuine payment attempt reaches the order');
         $policy = new SettlementPolicy();
@@ -303,7 +311,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->expects($this->never())->method('findTransactions');
         $this->orderRepository->expects($this->never())->method('save');
 
-        $this->assertNull($this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment')));
+        $this->assertNull($this->createService()->syncOrderTransaction($this->givenOrder('xrp_payment')));
     }
 
     public function testSyncReturnsAnAlreadySettledPaymentWithoutTouchingTheLedger(): void
@@ -314,7 +322,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->transactionRepository->expects($this->never())->method('findTransactions');
 
         $fulfilled = $this->createService(httpClient: $httpClient)
-            ->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
+            ->syncOrderTransaction($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame('HASH', $fulfilled->hash);
         $this->assertSame([], $httpClient->requestedUris);
@@ -332,7 +340,7 @@ class OrderPaymentServiceTest extends TestCase
         $this->logger->expects($this->once())->method('warning');
 
         $result = $this->createService(httpClient: new StubHttpClient(2.5, [], 503))
-            ->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $this->givenStoredIntent()));
+            ->syncOrderTransaction($this->givenOrder('xrp_payment', $this->givenStoredIntent()));
 
         $this->assertNull($result);
     }
@@ -349,7 +357,7 @@ class OrderPaymentServiceTest extends TestCase
             $this->givenLedgerTransaction(['delivered_amount' => '20000000'], hash: 'FIRST', ledgerIndex: '1000'),
         ]);
 
-        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl(
+        $fulfilled = $this->createService()->syncOrderTransaction(
             $this->givenOrder('xrp_payment', $this->givenStoredIntent())
         );
 
@@ -373,7 +381,7 @@ class OrderPaymentServiceTest extends TestCase
         ]);
         $this->orderRepository->expects($this->once())->method('save');
 
-        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
+        $fulfilled = $this->createService()->syncOrderTransaction($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame('SECOND', $fulfilled?->hash);
         $this->assertSame(50.0, $fulfilled?->amountPaid);
@@ -396,7 +404,7 @@ class OrderPaymentServiceTest extends TestCase
             $this->givenLedgerTransaction(['delivered_amount' => $wrongIssuer], hash: 'WRONG', ledgerIndex: '1000'),
         ]);
 
-        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrpl_rlusd_payment', $stored));
+        $fulfilled = $this->createService()->syncOrderTransaction($this->givenOrder('xrpl_rlusd_payment', $stored));
 
         $this->assertSame('RIGHT', $fulfilled?->hash);
         $this->assertTrue((new SettlementPolicy())->isSettled($fulfilled));
@@ -415,7 +423,7 @@ class OrderPaymentServiceTest extends TestCase
         ]);
         $this->orderRepository->expects($this->never())->method('save');
 
-        $fulfilled = $this->createService()->syncOrderTransactionWithXrpl($this->givenOrder('xrp_payment', $stored));
+        $fulfilled = $this->createService()->syncOrderTransaction($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame('FIRST', $fulfilled?->hash);
         $this->assertSame(20.0, $fulfilled?->amountPaid);
@@ -435,11 +443,11 @@ class OrderPaymentServiceTest extends TestCase
         $service = $this->createService(httpClient: $httpClient, throttle: $throttle);
         $order = $this->givenOrder('xrp_payment', $this->givenStoredIntent());
 
-        $service->syncOrderTransactionWithXrpl($order, true);
-        $service->syncOrderTransactionWithXrpl($order, true);
+        $service->syncOrderTransaction($order, true);
+        $service->syncOrderTransaction($order, true);
         $this->assertCount(1, $this->nodeRequests($httpClient), 'the second poll inside the window makes no node request');
 
-        $service->syncOrderTransactionWithXrpl($order, false);
+        $service->syncOrderTransaction($order, false);
         $this->assertCount(2, $this->nodeRequests($httpClient), 'the cron is never throttled');
     }
 
@@ -467,6 +475,52 @@ class OrderPaymentServiceTest extends TestCase
         $this->createService()->readPaymentIntent($order);
     }
 
+    public function testAXahauOrderIsQuotedOnXahauFromItsOwnTagCounter(): void
+    {
+        $this->xahauRepository->expects($this->once())->method('nextDestinationTagSequence')
+            ->with(self::XAHAU_ACCOUNT)->willReturn(0);
+        $this->transactionRepository->expects($this->never())->method('nextDestinationTagSequence');
+        $httpClient = new StubHttpClient(0.01);
+
+        $returned = $this->createService([], $httpClient)->prepareOrderPayment($this->givenOrder('xahau_xah_payment'));
+
+        $this->assertSame('xahau-xah-payment', $returned->type);
+        $this->assertSame('XAHAU', $returned->chain);
+        $this->assertSame('XAH', $returned->baseAsset);
+        $this->assertSame('testnet', $returned->network);
+        $this->assertSame(self::XAHAU_ACCOUNT, $returned->destinationAccount);
+        $this->assertSame(self::FIRST_DESTINATION_TAG, $returned->destinationTag);
+        $this->assertSame('XAHAU', $this->writtenAdditionalData[0]['xrpl']['chain']);
+        // XAH is quoted from Coingecko and Bitrue, never from the XRP oracles.
+        $this->assertNotEmpty(array_filter($httpClient->requestedUris, fn (string $uri) => str_contains($uri, 'ids=xahau')));
+        $this->assertEmpty(array_filter($httpClient->requestedUris, fn (string $uri) => str_contains($uri, 'kraken')));
+    }
+
+    public function testAXahauOrderIsSyncedFromXahauIntoItsOwnTable(): void
+    {
+        $stored = PaymentIntent::quote(
+            'xahau-xah-payment', 'XAHAU', 'testnet', 'XAH', 'EUR', 'XAH/EUR', 0.01, 50.0, self::XAHAU_ACCOUNT, 4294967295, time() + 300
+        );
+        $httpClient = new StubHttpClient(0.01);
+        $this->xahauRepository->expects($this->once())->method('getLastSyncedLedgerIndex')
+            ->with(self::XAHAU_ACCOUNT, 'testnet')->willReturn(null);
+        $this->xahauRepository->expects($this->once())->method('findTransactions')->with(self::XAHAU_ACCOUNT, 4294967295)
+            ->willReturn([$this->givenLedgerTransaction(['delivered_amount' => '50000000'], destination: self::XAHAU_ACCOUNT)]);
+        $this->transactionRepository->expects($this->never())->method('getLastSyncedLedgerIndex');
+        $this->transactionRepository->expects($this->never())->method('findTransactions');
+
+        $fulfilled = $this->createService([], $httpClient)->syncOrderTransaction($this->givenOrder('xahau_xah_payment', $stored));
+
+        $this->assertNotNull($fulfilled);
+        $this->assertSame('HASH', $fulfilled->hash);
+        $this->assertSame('XAHAU', $fulfilled->chain);
+        $this->assertNotEmpty(
+            array_filter($httpClient->requestedUris, fn (string $uri) => str_contains($uri, 'xahau-test.net')),
+            'the sync asks a Xahau node'
+        );
+        $this->assertEmpty(array_filter($httpClient->requestedUris, fn (string $uri) => str_contains($uri, 'altnet.rippletest.net')));
+    }
+
     /**
      * @param array<string, mixed> $configOverrides config path => value
      */
@@ -486,6 +540,10 @@ class OrderPaymentServiceTest extends TestCase
             'payment/xrp_payment/active' => 1,
             'payment/xrpl_rlusd_payment/active' => 1,
             'payment/xrpl_usdc_payment/active' => 1,
+            'payment/ledger_direct_xahau/use_testnet' => 1,
+            'payment/ledger_direct_xahau/xahau_testnet_account' => self::XAHAU_ACCOUNT,
+            'payment/ledger_direct_xahau/xahau_mainnet_account' => 'rXahauMainnetMerchant',
+            'payment/xahau_xah_payment/active' => 1,
         ];
 
         $scopeConfig = $this->createMock(ScopeConfigInterface::class);
@@ -495,28 +553,45 @@ class OrderPaymentServiceTest extends TestCase
         $scopeConfig->method('isSetFlag')->willReturnCallback(fn (string $path) => (bool) ($config[$path] ?? false));
         $context = $this->createMock(Context::class);
         $context->method('getScopeConfig')->willReturn($scopeConfig);
-        $configProvider = new MagentoConfigProvider(new SystemConfig($context));
+        $configProvider = new MagentoConfigProvider(new SystemConfig($context), new PaymentMethods());
 
-        $paymentIntentService = new PaymentIntentService(
-            new PriceService($httpClient, $httpFactory, new NullLogger()),
-            new DestinationTagService($this->transactionRepository),
-            $configProvider
-        );
-
-        $syncService = new SyncService(
-            new XrplClient($httpClient, $httpFactory, $httpFactory),
-            $this->transactionRepository,
-            new NullLogger()
+        // Both chains' service sets as etc/di.xml builds them, the Xahau one on its own repository.
+        $priceService = new PriceService($httpClient, $httpFactory, new NullLogger());
+        $xrplClient = new XrplClient($httpClient, $httpFactory, $httpFactory);
+        $xahauClient = new XrplClient($httpClient, $httpFactory, $httpFactory, 'XAHAU');
+        $cache = new InMemoryCache();
+        $chains = new ChainServices(
+            ['XRPL' => $xrplClient, 'XAHAU' => $xahauClient],
+            [
+                'XRPL' => new SyncService($xrplClient, $this->transactionRepository, new NullLogger()),
+                'XAHAU' => new SyncService($xahauClient, $this->xahauRepository, new NullLogger()),
+            ],
+            [
+                'XRPL' => $throttle ?? new SyncThrottle($cache, new NullLogger()),
+                'XAHAU' => new SyncThrottle($cache, new NullLogger(), chain: 'XAHAU'),
+            ],
+            [
+                'XRPL' => new PaymentIntentService(
+                    $priceService,
+                    new DestinationTagService($this->transactionRepository),
+                    $configProvider
+                ),
+                'XAHAU' => new PaymentIntentService(
+                    $priceService,
+                    new DestinationTagService($this->xahauRepository),
+                    $configProvider,
+                    chain: 'XAHAU'
+                ),
+            ]
         );
 
         return new OrderPaymentService(
             $this->orderRepository,
             $this->createMock(OrderFactory::class),
-            $paymentIntentService,
-            $syncService,
-            $throttle ?? new SyncThrottle(new InMemoryCache(), new NullLogger()),
+            $chains,
             new SettlementPolicy(),
-            $this->logger
+            $this->logger,
+            new PaymentMethods()
         );
     }
 
@@ -542,15 +617,19 @@ class OrderPaymentServiceTest extends TestCase
     /**
      * @param array<string, mixed> $meta
      */
-    private function givenLedgerTransaction(array $meta, string $hash = 'HASH', string $ledgerIndex = '1000'): XrplTransaction
-    {
+    private function givenLedgerTransaction(
+        array $meta,
+        string $hash = 'HASH',
+        string $ledgerIndex = '1000',
+        string $destination = self::DESTINATION_ACCOUNT
+    ): XrplTransaction {
         return new XrplTransaction(
             network: 'testnet',
             ledgerIndex: $ledgerIndex,
             hash: $hash,
             ctid: 'CTID',
             account: 'rSenderAccount',
-            destination: self::DESTINATION_ACCOUNT,
+            destination: $destination,
             destinationTag: 4294967295,
             date: 0,
             meta: $meta,

@@ -108,6 +108,10 @@ function configure($om): void
         'payment/xrp_payment/active' => 1,
         'payment/xrpl_rlusd_payment/active' => $stablecoins ? 1 : 0,
         'payment/xrpl_usdc_payment/active' => $stablecoins ? 1 : 0,
+        // Xahau stays off, on its testnet: whoever switches the XAH method on in the admin pays on the
+        // Xahau testnet, with an account they enter there.
+        'payment/ledger_direct_xahau/use_testnet' => 1,
+        'payment/xahau_xah_payment/active' => 0,
         'carriers/flatrate/active' => 0,
         'carriers/freeshipping/active' => 1,
         'carriers/freeshipping/free_shipping_subtotal' => 0,

@@ -13,6 +13,7 @@ use Magento\Sales\Api\Data\OrderPaymentInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 
 /**
  * Key knowledge, not account membership: the order's protect_code opens the payment page and
@@ -39,7 +40,7 @@ class OrderAccessTest extends TestCase
         $this->customerSession = $this->createMock(CustomerSession::class);
         $this->checkoutSession = $this->createMock(CheckoutSession::class);
 
-        $this->access = new OrderAccess($this->orderRepository, $this->customerSession, $this->checkoutSession);
+        $this->access = new OrderAccess($this->orderRepository, $this->customerSession, $this->checkoutSession, new PaymentMethods());
     }
 
     public function testTheKeyOpensTheOrderWithoutAnySession(): void

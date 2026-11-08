@@ -32,6 +32,12 @@ define(
                 component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xrpl-usdc-method'
             }
         );
+        rendererList.push(
+            {
+                type: 'xahau_xah_payment',
+                component: 'Hardcastle_LedgerDirect/js/view/payment/method-renderer/xahau-xah-method'
+            }
+        );
         return Component.extend({});
     }
 );

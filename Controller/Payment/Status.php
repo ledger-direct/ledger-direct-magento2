@@ -163,7 +163,7 @@ class Status implements HttpGetActionInterface
     private function syncAndSettle(OrderInterface $order): ?\Hardcastle\LedgerDirect\Core\Payment\PaymentIntent
     {
         try {
-            $fulfilledIntent = $this->orderPaymentService->syncOrderTransactionWithXrpl($order, true);
+            $fulfilledIntent = $this->orderPaymentService->syncOrderTransaction($order, true);
 
             if ($fulfilledIntent !== null) {
                 $this->settlementService->settle($order, $fulfilledIntent);

@@ -9,6 +9,7 @@
 
 namespace Hardcastle\LedgerDirect\Commands;
 
+use Hardcastle\LedgerDirect\Core\ChainCatalog;
 use Hardcastle\LedgerDirect\Core\Price\PriceService;
 use Hardcastle\LedgerDirect\Core\Price\PriceUnavailableException;
 use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
@@ -54,7 +55,13 @@ class XrplPriceLookupCommand extends Command
         $this->setName(static::$defaultName);
         $this->setDescription('Price lookup against the core price oracles');
         $this->addOption('iso', null, InputOption::VALUE_REQUIRED, 'Quote currency ISO code, e.g. EUR');
-        $this->addOption('asset', null, InputOption::VALUE_OPTIONAL, 'Base asset: XRP (default), RLUSD or USDC', 'XRP');
+        $this->addOption(
+            'asset',
+            null,
+            InputOption::VALUE_OPTIONAL,
+            'Base asset: XRP (default), RLUSD, USDC or XAH',
+            'XRP'
+        );
     }
 
     /**
@@ -64,7 +71,8 @@ class XrplPriceLookupCommand extends Command
     {
         $quoteCurrency = (string) $input->getOption('iso');
         $baseAsset = strtoupper((string) $input->getOption('asset'));
-        $network = $this->configProvider->getNetwork(MagentoConfigProvider::CHAIN);
+        // The network only matters for an issued asset's issuer; XAH is native and the XRPL network stands in.
+        $network = $this->configProvider->getNetwork(ChainCatalog::XRPL);
 
         try {
             // A total of 1.0 makes the returned quote's exchange rate the price of one unit.

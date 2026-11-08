@@ -2,7 +2,9 @@
 
 namespace Hardcastle\LedgerDirect\Port;
 
+use Hardcastle\LedgerDirect\Core\ChainCatalog;
 use Hardcastle\LedgerDirect\Core\Port\XrplTransactionRepositoryInterface;
+use Hardcastle\LedgerDirect\Core\Xrpl\Schema;
 use Hardcastle\LedgerDirect\Core\Xrpl\XrplTransaction;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
@@ -16,13 +18,13 @@ use Magento\Framework\DB\Sql\Expression;
  *
  * Table names go through ResourceConnection::getTableName() so a configured
  * `db/table_prefix` is honoured, as INVARIANTS.md asks of every platform adapter.
+ *
+ * One instance per chain: Xahau's transactions and tag counters live in tables of their own
+ * (the core's {@see Schema} names them), shared with the XRP Ledger's in nothing, not even for
+ * an account that exists on both chains. etc/di.xml builds the Xahau instance as a virtual type.
  */
 class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInterface
 {
-    public const TX_TABLE = 'ledger_direct_xrpl_tx';
-
-    public const TAG_TABLE = 'ledger_direct_xrpl_destination_tag';
-
     /**
      * Upper bound for a fresh counter's random start (2^31 - 1): leaves at least ~2.1 billion
      * sequences before DestinationTagsExhaustedException, as the port contract requires.
@@ -35,11 +37,23 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     private ResourceConnection $resourceConnection;
 
     /**
-     * @param ResourceConnection $resourceConnection
+     * @var string
      */
-    public function __construct(ResourceConnection $resourceConnection)
+    private string $txTable;
+
+    /**
+     * @var string
+     */
+    private string $tagTable;
+
+    /**
+     * @param ResourceConnection $resourceConnection
+     * @param string $chain the chain whose tables this repository works on
+     */
+    public function __construct(ResourceConnection $resourceConnection, string $chain = ChainCatalog::XRPL)
     {
         $this->resourceConnection = $resourceConnection;
+        [$this->txTable, $this->tagTable] = array_keys(Schema::tables($chain));
     }
 
     /**
@@ -59,7 +73,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     public function nextDestinationTagSequence(string $destinationAccount): int
     {
         $connection = $this->getConnection();
-        $table = $this->getTableName(self::TAG_TABLE);
+        $table = $this->getTableName($this->tagTable);
         $sequence = $connection->quoteIdentifier('sequence');
 
         $advance = function () use ($connection, $table, $sequence, $destinationAccount): int {
@@ -97,7 +111,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
 
         $connection = $this->getConnection();
         $select = $connection->select()
-            ->from($this->getTableName(self::TX_TABLE), ['hash'])
+            ->from($this->getTableName($this->txTable), ['hash'])
             ->where('hash IN (?)', array_values($hashes));
 
         return array_map('strval', $connection->fetchCol($select));
@@ -109,7 +123,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     public function saveTransactions(array $transactions): void
     {
         $connection = $this->getConnection();
-        $table = $this->getTableName(self::TX_TABLE);
+        $table = $this->getTableName($this->txTable);
 
         foreach ($transactions as $transaction) {
             try {
@@ -144,7 +158,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     {
         $connection = $this->getConnection();
         $select = $connection->select()
-            ->from($this->getTableName(self::TX_TABLE))
+            ->from($this->getTableName($this->txTable))
             ->where('destination = ?', $destination)
             ->where('destination_tag = ?', $destinationTag)
             ->order(['ledger_index DESC', 'id DESC']);
@@ -163,7 +177,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
     {
         $connection = $this->getConnection();
         $select = $connection->select()
-            ->from($this->getTableName(self::TX_TABLE), ['last' => new Expression('MAX(ledger_index)')])
+            ->from($this->getTableName($this->txTable), ['last' => new Expression('MAX(ledger_index)')])
             ->where('destination = ?', $destinationAccount)
             ->where('network = ?', $network);
 
@@ -179,7 +193,7 @@ class MagentoXrplTransactionRepository implements XrplTransactionRepositoryInter
      */
     public function truncate(): void
     {
-        $this->getConnection()->truncateTable($this->getTableName(self::TX_TABLE));
+        $this->getConnection()->truncateTable($this->getTableName($this->txTable));
     }
 
     /**

@@ -66,6 +66,72 @@
         </arguments>
     </type>
 
+    <!--
+        Xahau speaks the XRP Ledger's protocol on a network of its own, so the core serves it with
+        the same classes built for the chain: its nodes, its transaction and tag tables (the
+        core's Schema names them, db_schema.xml creates them), a throttle mark of its own. The
+        types above stay the XRP Ledger's; these virtual types are the Xahau set, and
+        ChainServices hands both out by chain.
+    -->
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\TransactionRepository" type="Hardcastle\LedgerDirect\Port\MagentoXrplTransactionRepository">
+        <arguments>
+            <argument name="chain" xsi:type="string">XAHAU</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\Client" type="Hardcastle\LedgerDirect\Core\Xrpl\XrplClient">
+        <arguments>
+            <argument name="httpClient" xsi:type="object">GuzzleHttp\Client</argument>
+            <argument name="requestFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
+            <argument name="streamFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
+            <argument name="chain" xsi:type="string">XAHAU</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\DestinationTagService" type="Hardcastle\LedgerDirect\Core\Xrpl\DestinationTagService">
+        <arguments>
+            <argument name="transactionRepository" xsi:type="object">Hardcastle\LedgerDirect\Xahau\TransactionRepository</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\SyncService" type="Hardcastle\LedgerDirect\Core\Xrpl\SyncService">
+        <arguments>
+            <argument name="xrplClient" xsi:type="object">Hardcastle\LedgerDirect\Xahau\Client</argument>
+            <argument name="transactionRepository" xsi:type="object">Hardcastle\LedgerDirect\Xahau\TransactionRepository</argument>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\SyncThrottle" type="Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle">
+        <arguments>
+            <argument name="cache" xsi:type="object">Hardcastle\LedgerDirect\Model\Cache\RateCache</argument>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="chain" xsi:type="string">XAHAU</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\PaymentIntentService" type="Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService">
+        <arguments>
+            <argument name="destinationTagService" xsi:type="object">Hardcastle\LedgerDirect\Xahau\DestinationTagService</argument>
+            <argument name="chain" xsi:type="string">XAHAU</argument>
+        </arguments>
+    </virtualType>
+    <type name="Hardcastle\LedgerDirect\Model\ChainServices">
+        <arguments>
+            <argument name="clients" xsi:type="array">
+                <item name="XRPL" xsi:type="object">Hardcastle\LedgerDirect\Core\Xrpl\XrplClient</item>
+                <item name="XAHAU" xsi:type="object">Hardcastle\LedgerDirect\Xahau\Client</item>
+            </argument>
+            <argument name="syncServices" xsi:type="array">
+                <item name="XRPL" xsi:type="object">Hardcastle\LedgerDirect\Core\Xrpl\SyncService</item>
+                <item name="XAHAU" xsi:type="object">Hardcastle\LedgerDirect\Xahau\SyncService</item>
+            </argument>
+            <argument name="throttles" xsi:type="array">
+                <item name="XRPL" xsi:type="object">Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle</item>
+                <item name="XAHAU" xsi:type="object">Hardcastle\LedgerDirect\Xahau\SyncThrottle</item>
+            </argument>
+            <argument name="intentServices" xsi:type="array">
+                <item name="XRPL" xsi:type="object">Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService</item>
+                <item name="XAHAU" xsi:type="object">Hardcastle\LedgerDirect\Xahau\PaymentIntentService</item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Payment method facades (Magento\Payment\Model\Method\Adapter) -->
     <virtualType name="Hardcastle\LedgerDirect\Model\PaymentMethod\XrpFacade" type="Magento\Payment\Model\Method\Adapter">
         <arguments>
@@ -93,6 +159,16 @@
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
             <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Info</argument>
             <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcValueHandlerPool</argument>
+            <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="Hardcastle\LedgerDirect\Model\PaymentMethod\XahauXahFacade" type="Magento\Payment\Model\Method\Adapter">
+        <arguments>
+            <argument name="code" xsi:type="string">xahau_xah_payment</argument>
+            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
+            <argument name="infoBlockType" xsi:type="string">Hardcastle\LedgerDirect\Block\Info</argument>
+            <argument name="valueHandlerPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XahauXahValueHandlerPool</argument>
             <argument name="commandPool" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Command\CommandPool</argument>
         </arguments>
     </virtualType>
@@ -157,6 +233,24 @@
         <arguments>
             <argument name="handlers" xsi:type="array">
                 <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfigValueHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfig" type="Magento\Payment\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="string">xahau_xah_payment</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfig</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XahauXahValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfigValueHandler</item>
             </argument>
         </arguments>
     </virtualType>

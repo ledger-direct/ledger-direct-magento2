@@ -47,7 +47,7 @@ class XrpPaymentServiceTest extends TestCase
         $order->method('getOrderCurrencyCode')->willReturn($currencyCode);
 
         $this->order = $order;
-        $this->orderPaymentService->method('prepareOrderPaymentForXrpl')->with($order)->willReturn($intent);
+        $this->orderPaymentService->method('prepareOrderPayment')->with($order)->willReturn($intent);
     }
 
     public function testXrpDetailsComeStraightFromThePaymentIntent(): void

@@ -174,7 +174,7 @@ class Index implements HttpGetActionInterface
          * settled, or closed by the merchant - leaves the page.
          */
         if ($this->orderPaymentService->isAwaitingPayment($order)) {
-            $fulfilledIntent = $this->orderPaymentService->syncOrderTransactionWithXrpl($order, true);
+            $fulfilledIntent = $this->orderPaymentService->syncOrderTransaction($order, true);
 
             if ($fulfilledIntent !== null) {
                 $this->settlementService->settle($order, $fulfilledIntent);

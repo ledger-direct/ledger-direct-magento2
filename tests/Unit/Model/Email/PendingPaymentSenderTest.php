@@ -17,6 +17,7 @@ use Magento\Store\Model\Store;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 
 class PendingPaymentSenderTest extends TestCase
 {
@@ -67,7 +68,8 @@ class PendingPaymentSenderTest extends TestCase
             $scopeConfig,
             $this->orderRepository,
             $orderAccess,
-            $this->logger
+            $this->logger,
+            new PaymentMethods()
         );
     }
 

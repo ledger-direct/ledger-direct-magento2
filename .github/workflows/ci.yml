@@ -155,7 +155,7 @@ jobs:
       # performs, see README.
       - name: Require the module's dependencies at project level
         working-directory: magento
-        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.9" "bacon/bacon-qr-code:^2.0 || ^3.0"
+        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.11" "bacon/bacon-qr-code:^2.0 || ^3.0"
 
       # --no-blocking: Composer 2.9+ refuses dependencies with known security advisories by
       # default. This job checks our code against Magento's classes, not the Magento build's CVEs.
@@ -248,7 +248,7 @@ jobs:
       - name: Require the module's dependencies at project level
         if: steps.auth.outputs.has_auth == 'true'
         working-directory: magento
-        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.9" "bacon/bacon-qr-code:^2.0 || ^3.0"
+        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.11" "bacon/bacon-qr-code:^2.0 || ^3.0"
 
       # --no-blocking: Composer 2.9+ refuses dependencies with known security advisories by
       # default. This job checks our code against Magento's classes, not the Magento build's CVEs.

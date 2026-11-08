@@ -69,7 +69,7 @@ class AdminConfigurationTest extends TestCase
     public function testThePaymentMethodsAreFound(): void
     {
         $this->assertSame(
-            ['xrp_payment', 'xrpl_rlusd_payment', 'xrpl_usdc_payment'],
+            ['xrp_payment', 'xrpl_rlusd_payment', 'xrpl_usdc_payment', 'xahau_xah_payment'],
             array_keys(iterator_to_array(self::paymentMethods()))
         );
     }
@@ -77,11 +77,44 @@ class AdminConfigurationTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
+    /**
+     * The shared group's settings, without the XRPL network and accounts: SystemConfig builds
+     * those keys from the chain's name, and testEveryChainGroupHasTheFieldsSystemConfigReads
+     * covers them.
+     */
     public static function sharedFields(): iterable
     {
         foreach (self::adminGroups()[self::SHARED_GROUP]->field as $field) {
             $id = (string) $field['id'];
+            if (in_array($id, ['use_testnet', 'xrpl_testnet_account', 'xrpl_mainnet_account'], true)) {
+                continue;
+            }
             yield $id => [$id];
+        }
+    }
+
+    /**
+     * The groups that hold a chain's network and accounts, with the keys SystemConfig builds for
+     * them from the chain's name: `<group>/use_testnet` and `<group>/<chain>_<network>_account`.
+     */
+    public static function chainGroups(): iterable
+    {
+        yield 'XRPL' => [self::SHARED_GROUP, 'xrpl'];
+        yield 'XAHAU' => ['ledger_direct_xahau', 'xahau'];
+    }
+
+    /**
+     * @dataProvider chainGroups
+     */
+    public function testEveryChainGroupHasTheFieldsSystemConfigReads(string $group, string $prefix): void
+    {
+        $fields = [];
+        foreach (self::adminGroups()[$group]->field as $field) {
+            $fields[] = (string) $field['id'];
+        }
+
+        foreach (['use_testnet', $prefix . '_testnet_account', $prefix . '_mainnet_account'] as $expected) {
+            $this->assertContains($expected, $fields, "$group has no field $expected");
         }
     }
 

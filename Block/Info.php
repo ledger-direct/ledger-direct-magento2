@@ -5,6 +5,7 @@ namespace Hardcastle\LedgerDirect\Block;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentStatus;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
+use Hardcastle\LedgerDirect\Model\Explorer;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use InvalidArgumentException;
 use Magento\Framework\DataObject;
@@ -23,11 +24,6 @@ use Magento\Sales\Api\Data\OrderPaymentInterface;
  */
 class Info extends \Magento\Payment\Block\Info
 {
-    private const EXPLORER_BY_NETWORK = [
-        'mainnet' => 'https://livenet.xrpl.org/transactions/',
-        'testnet' => 'https://testnet.xrpl.org/transactions/',
-    ];
-
     /**
      * @var string
      */
@@ -49,6 +45,11 @@ class Info extends \Magento\Payment\Block\Info
     private TimezoneInterface $localeDate;
 
     /**
+     * @var Explorer
+     */
+    private Explorer $explorer;
+
+    /**
      * @var PaymentIntent|null
      */
     private ?PaymentIntent $intent = null;
@@ -63,6 +64,7 @@ class Info extends \Magento\Payment\Block\Info
      * @param OrderPaymentService $orderPaymentService
      * @param SettlementPolicy $settlementPolicy
      * @param TimezoneInterface $localeDate
+     * @param Explorer $explorer
      * @param array $data
      */
     public function __construct(
@@ -70,12 +72,14 @@ class Info extends \Magento\Payment\Block\Info
         OrderPaymentService $orderPaymentService,
         SettlementPolicy $settlementPolicy,
         TimezoneInterface $localeDate,
+        Explorer $explorer,
         array $data = []
     ) {
         parent::__construct($context, $data);
         $this->orderPaymentService = $orderPaymentService;
         $this->settlementPolicy = $settlementPolicy;
         $this->localeDate = $localeDate;
+        $this->explorer = $explorer;
     }
 
     /**
@@ -114,13 +118,11 @@ class Info extends \Magento\Payment\Block\Info
     {
         $intent = $this->getPaymentIntent();
 
-        if ($intent === null || $intent->hash === null) {
+        if ($intent === null) {
             return null;
         }
 
-        $base = self::EXPLORER_BY_NETWORK[$intent->network] ?? null;
-
-        return $base === null ? null : $base . $intent->hash;
+        return $this->explorer->transactionUrl($intent->chain, $intent->network, $intent->hash);
     }
 
     /**

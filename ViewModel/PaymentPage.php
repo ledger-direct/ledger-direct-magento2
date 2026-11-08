@@ -13,6 +13,7 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Hardcastle\LedgerDirect\Api\Data\XrpPaymentInterface;
+use Hardcastle\LedgerDirect\Core\ChainCatalog;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentStatus;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentUri;
@@ -20,6 +21,7 @@ use Hardcastle\LedgerDirect\Core\Presentation\AccentColor;
 use Hardcastle\LedgerDirect\Core\Xrpl\XrplAmount;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Model\Config\Source\LogoMode;
+use Hardcastle\LedgerDirect\Model\Explorer;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Pricing\PriceCurrencyInterface;
 use Magento\Framework\UrlInterface;
@@ -42,17 +44,6 @@ use Magento\Store\Model\StoreManagerInterface;
  */
 class PaymentPage implements ArgumentInterface
 {
-    private const EXPLORER = [
-        'mainnet' => 'https://livenet.xrpl.org/transactions/',
-        'testnet' => 'https://testnet.xrpl.org/transactions/',
-    ];
-
-    private const ASSET_LABELS = [
-        'xrp-payment' => 'XRP',
-        'rlusd-payment' => 'RLUSD',
-        'usdc-payment' => 'USDC',
-    ];
-
     /**
      * How many decimals the exchange rate is shown with - an oracle average with a
      * float tail, cosmetic beyond a few places.
@@ -90,12 +81,18 @@ class PaymentPage implements ArgumentInterface
     private StoreManagerInterface $storeManager;
 
     /**
+     * @var Explorer
+     */
+    private Explorer $explorer;
+
+    /**
      * @param SystemConfig $config
      * @param ScopeConfigInterface $scopeConfig
      * @param PriceCurrencyInterface $priceCurrency
      * @param UrlInterface $urlBuilder
      * @param AssetRepository $assetRepository
      * @param StoreManagerInterface $storeManager
+     * @param Explorer $explorer
      */
     public function __construct(
         SystemConfig $config,
@@ -103,7 +100,8 @@ class PaymentPage implements ArgumentInterface
         PriceCurrencyInterface $priceCurrency,
         UrlInterface $urlBuilder,
         AssetRepository $assetRepository,
-        StoreManagerInterface $storeManager
+        StoreManagerInterface $storeManager,
+        Explorer $explorer
     ) {
         $this->config = $config;
         $this->scopeConfig = $scopeConfig;
@@ -111,6 +109,7 @@ class PaymentPage implements ArgumentInterface
         $this->urlBuilder = $urlBuilder;
         $this->assetRepository = $assetRepository;
         $this->storeManager = $storeManager;
+        $this->explorer = $explorer;
     }
 
     /**
@@ -132,7 +131,9 @@ class PaymentPage implements ArgumentInterface
         $amountRequested = $info->getAmountRequested();
         $amountPaid = $info->getAmountPaid();
         $shortfall = $info->getAmountOutstanding();
-        $isToken = $info->getType() !== 'xrp-payment';
+        // The asset from the catalogue, by the intent's type; a native asset is paid in drops.
+        [$chain, $asset] = ChainCatalog::forType($info->getType()) ?? [ChainCatalog::chain(ChainCatalog::XRPL), null];
+        $isToken = $asset === null || !$asset->native;
         $amountDue = $state === PaymentStatus::PARTIAL && $shortfall !== null ? $shortfall : $amountRequested;
         $paymentUri = PaymentUri::forIntent($intent, $amountDue);
         $storeName = $this->storeName();
@@ -142,10 +143,12 @@ class PaymentPage implements ArgumentInterface
             'seconds_left' => $status->secondsLeft,
             'has_expiry' => (bool) $block->getData('has_expiry'),
             'quote_seconds' => $this->config->getQuoteExpirySeconds(),
-            'asset' => self::ASSET_LABELS[$info->getType()] ?? 'XRP',
+            'asset' => $asset?->code ?? 'XRP',
+            'chain' => $chain->chain,
+            'chain_label' => $chain->label,
             'network' => $info->getNetwork(),
             'is_testnet' => $info->getNetwork() !== 'mainnet',
-            'explorer_base' => self::EXPLORER[$info->getNetwork()] ?? self::EXPLORER['testnet'],
+            'explorer_base' => $this->explorer->transactionBase($chain->chain, $info->getNetwork()),
             'destination_account' => $info->getDestinationAccount(),
             'destination_tag' => $info->getDestinationTag(),
             'issuer' => $isToken ? (string) $info->getIssuer() : null,

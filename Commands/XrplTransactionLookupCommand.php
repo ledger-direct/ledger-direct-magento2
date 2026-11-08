@@ -1,5 +1,4 @@
 <?php declare(strict_types=1);
-
 /**
  * Copyright (c) Alexander Busse | Hardcastle Technologies.
  *
@@ -9,7 +8,8 @@
 
 namespace Hardcastle\LedgerDirect\Commands;
 
-use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
+use Hardcastle\LedgerDirect\Core\ChainCatalog;
+use Hardcastle\LedgerDirect\Model\ChainServices;
 use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,9 +24,9 @@ class XrplTransactionLookupCommand extends Command
     protected static $defaultName = 'ledger-direct:xrpl-transaction:lookup';
 
     /**
-     * @var XrplClient
+     * @var ChainServices
      */
-    private XrplClient $xrplClient;
+    private ChainServices $chains;
 
     /**
      * @var MagentoConfigProvider
@@ -34,12 +34,12 @@ class XrplTransactionLookupCommand extends Command
     private MagentoConfigProvider $configProvider;
 
     /**
-     * @param XrplClient $xrplClient
+     * @param ChainServices $chains
      * @param MagentoConfigProvider $configProvider
      */
-    public function __construct(XrplClient $xrplClient, MagentoConfigProvider $configProvider)
+    public function __construct(ChainServices $chains, MagentoConfigProvider $configProvider)
     {
-        $this->xrplClient = $xrplClient;
+        $this->chains = $chains;
         $this->configProvider = $configProvider;
 
         parent::__construct(static::$defaultName);
@@ -51,19 +51,14 @@ class XrplTransactionLookupCommand extends Command
     public function configure(): void
     {
         $this->setName(static::$defaultName);
-        $this->setDescription('XRPL transaction lookup');
+        $this->setDescription('Transaction lookup on the XRP Ledger or Xahau');
         $this->addOption('hash', null, InputOption::VALUE_OPTIONAL, 'Hash identifying a tx');
         $this->addOption('ctid', null, InputOption::VALUE_OPTIONAL, 'CTID identifying a validated tx');
+        $this->addOption('chain', null, InputOption::VALUE_REQUIRED, 'XRPL (default) or XAHAU', ChainCatalog::XRPL);
     }
 
     /**
-     * Look a single transaction up on the ledger
-     *
-     * Exactly one of --hash or --ctid identifies it; the XRPL `tx` method accepts either.
-     *
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
+     * @inheritdoc
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -76,9 +71,10 @@ class XrplTransactionLookupCommand extends Command
             return Command::FAILURE;
         }
 
-        $transaction = $this->xrplClient->tx(
+        $chain = strtoupper((string) $input->getOption('chain'));
+        $transaction = $this->chains->client($chain)->tx(
             (string) ($hash ?: $ctid),
-            $this->configProvider->getNetwork(MagentoConfigProvider::CHAIN)
+            $this->configProvider->getNetwork($chain)
         );
 
         if ($transaction === null) {

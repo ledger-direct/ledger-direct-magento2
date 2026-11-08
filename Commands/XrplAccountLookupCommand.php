@@ -1,5 +1,4 @@
 <?php declare(strict_types=1);
-
 /**
  * Copyright (c) Alexander Busse | Hardcastle Technologies.
  *
@@ -9,8 +8,8 @@
 
 namespace Hardcastle\LedgerDirect\Commands;
 
-use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
-use Hardcastle\LedgerDirect\Core\Xrpl\XrplClient;
+use Hardcastle\LedgerDirect\Core\ChainCatalog;
+use Hardcastle\LedgerDirect\Model\ChainServices;
 use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -25,14 +24,9 @@ class XrplAccountLookupCommand extends Command
     protected static $defaultName = 'ledger-direct:xrpl-account:lookup';
 
     /**
-     * @var XrplClient
+     * @var ChainServices
      */
-    private XrplClient $xrplClient;
-
-    /**
-     * @var SyncService
-     */
-    private SyncService $syncService;
+    private ChainServices $chains;
 
     /**
      * @var MagentoConfigProvider
@@ -40,17 +34,14 @@ class XrplAccountLookupCommand extends Command
     private MagentoConfigProvider $configProvider;
 
     /**
-     * @param XrplClient $xrplClient
-     * @param SyncService $syncService
+     * @param ChainServices $chains
      * @param MagentoConfigProvider $configProvider
      */
     public function __construct(
-        XrplClient $xrplClient,
-        SyncService $syncService,
+        ChainServices $chains,
         MagentoConfigProvider $configProvider
     ) {
-        $this->xrplClient = $xrplClient;
-        $this->syncService = $syncService;
+        $this->chains = $chains;
         $this->configProvider = $configProvider;
 
         parent::__construct(static::$defaultName);
@@ -62,8 +53,11 @@ class XrplAccountLookupCommand extends Command
     public function configure(): void
     {
         $this->setName(static::$defaultName);
-        $this->setDescription('XRPL account lookup: list an account\'s transactions, or sync them into the module');
+        $this->setDescription(
+            'Account lookup on the XRP Ledger or Xahau: list an account\'s transactions, or sync them into the module'
+        );
         $this->addOption('account', null, InputOption::VALUE_REQUIRED, 'Account address');
+        $this->addOption('chain', null, InputOption::VALUE_REQUIRED, 'XRPL (default) or XAHAU', ChainCatalog::XRPL);
         $this->addOption(
             'sync',
             null,
@@ -78,16 +72,19 @@ class XrplAccountLookupCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $accountAddress = (string) $input->getOption('account');
-        $network = $this->configProvider->getNetwork(MagentoConfigProvider::CHAIN);
+        $chain = strtoupper((string) $input->getOption('chain'));
+        $network = $this->configProvider->getNetwork($chain);
 
         if ($input->getOption('sync')) {
-            $this->syncService->syncTransactions($accountAddress, $network);
-            $output->writeln('Synced incoming transactions for ' . $accountAddress . ' on ' . $network . '.');
+            $this->chains->sync($chain)->syncTransactions($accountAddress, $network);
+            $output->writeln(
+                'Synced incoming transactions for ' . $accountAddress . ' on ' . $chain . ' ' . $network . '.'
+            );
 
             return Command::SUCCESS;
         }
 
-        $page = $this->xrplClient->fetchAccountTransactions($accountAddress, $network);
+        $page = $this->chains->client($chain)->fetchAccountTransactions($accountAddress, $network);
         $output->writeln(json_encode($page['transactions'], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         return Command::SUCCESS;

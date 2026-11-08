@@ -57,4 +57,45 @@
             <column name="destination_account"/>
         </constraint>
     </table>
+    <!--
+        Xahau: the same columns under names of their own (the core's Xrpl\Schema names them for
+        every adapter). Nothing is shared with the XRP Ledger's tables, not even for an account
+        that exists on both chains; the index names carry the chain, as they must be unique per
+        database on PostgreSQL. No migrateDataFrom: there is no earlier column to carry over.
+    -->
+    <table name="ledger_direct_xahau_tx" resource="default" engine="innodb" comment="Xahau Transactions Table">
+        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="Row ID" />
+        <column xsi:type="varchar" name="network" length="16" nullable="false" default="" comment="mainnet | testnet" />
+        <column xsi:type="bigint" name="ledger_index" unsigned="true" nullable="false" comment="Ledger index the transaction was validated in" />
+        <column xsi:type="varchar" name="hash" length="64" nullable="false" comment="Transaction hash" />
+        <column xsi:type="varchar" name="tx_ctid" length="16" nullable="false" comment="Xahau Compact Transaction ID" />
+        <column xsi:type="varchar" name="account" length="35" nullable="false" comment="Sending account" />
+        <column xsi:type="varchar" name="destination" length="35" nullable="false" comment="Receiving account" />
+        <column xsi:type="int" name="destination_tag" unsigned="true" nullable="true" comment="Xahau destination tag" />
+        <column xsi:type="int" name="date" unsigned="true" nullable="false" comment="Close time, seconds since the Ripple epoch" />
+        <column xsi:type="text"  name="meta" nullable="false" comment="Transaction metadata, JSON" />
+        <column xsi:type="text"  name="tx" nullable="false" comment="Transaction, JSON" />
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="LEDGERDIRECT_XAHAU_TX_HASH">
+            <column name="hash"/>
+        </constraint>
+        <index referenceId="LEDGER_DIRECT_XAHAU_TX_DESTINATION_DESTINATION_TAG" indexType="btree">
+            <column name="destination"/>
+            <column name="destination_tag"/>
+        </index>
+        <index referenceId="LEDGER_DIRECT_XAHAU_TX_DESTINATION_NETWORK_LEDGER_INDEX" indexType="btree">
+            <column name="destination"/>
+            <column name="network"/>
+            <column name="ledger_index"/>
+        </index>
+    </table>
+    <table name="ledger_direct_xahau_destination_tag" resource="default" engine="innodb" comment="Xahau Destination Tag Counter Table">
+        <column xsi:type="varchar" name="destination_account" length="64" nullable="false" comment="Receiving account the counter belongs to" />
+        <column xsi:type="int" name="sequence" unsigned="true" nullable="false" comment="Sequence number issued last" />
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="destination_account"/>
+        </constraint>
+    </table>
 </schema>

@@ -39,6 +39,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
      data-ld-page="true"
      data-ld-state="<?= $escaper->escapeHtmlAttr($state) ?>"
      data-ld-poll-url="<?= $escaper->escapeUrl($v['poll_url']) ?>"
+     data-ld-chain="<?= $escaper->escapeHtmlAttr($v['chain']) ?>"
      data-ld-asset="<?= $asset ?>"
      data-ld-network="<?= $escaper->escapeHtmlAttr($v['network']) ?>"
      data-ld-explorer-base="<?= $escaper->escapeUrl($v['explorer_base']) ?>"
@@ -213,14 +214,14 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                             <span hidden data-ld-wallet-text="error-network"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorNetwork')) ?></span>
                             <span hidden data-ld-wallet-text="error-mismatch"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorMismatch')) ?></span>
                             <span hidden data-ld-wallet-text="error-other"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletErrorOther')) ?></span>
-                            <span hidden data-ld-wallet-text="network-mainnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.mainnet')) ?></span>
-                            <span hidden data-ld-wallet-text="network-testnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.testnet')) ?></span>
+                            <span hidden data-ld-wallet-text="network-mainnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.' . $v['chain'] . '.mainnet')) ?></span>
+                            <span hidden data-ld-wallet-text="network-testnet"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.' . $v['chain'] . '.testnet')) ?></span>
                         </div>
 
                         <dl class="ld-details">
                             <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailTotal')) ?></dt><dd><?= $escaper->escapeHtml($v['fiat_display']) ?></dd>
                             <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailRate')) ?></dt><dd><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.rateSentence', $v['asset'], $v['rate_display'], $v['currency_code'])) ?></dd>
-                            <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailNetwork')) ?></dt><dd><?= $escaper->escapeHtml(__($v['is_testnet'] ? 'LedgerDirect.paymentPage.network.testnet' : 'LedgerDirect.paymentPage.network.mainnet')) ?></dd>
+                            <dt><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.detailNetwork')) ?></dt><dd><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.network.' . $v['chain'] . ($v['is_testnet'] ? '.testnet' : '.mainnet'))) ?></dd>
                         </dl>
                     </aside>
                 </div>
@@ -261,6 +262,6 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
 
     <footer class="ld-foot">
         <a href="<?= $escaper->escapeUrl($v['cart_url']) ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.backToCart')) ?></a>
-        <span><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.poweredBy')) ?></span>
+        <span><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.poweredBy.' . $v['chain'])) ?></span>
     </footer>
 </div>
