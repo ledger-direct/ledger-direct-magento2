@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- Xahau: XAH on the [Xahau](https://xahau.network) network, a chain of its own that speaks the XRP
+  Ledger's protocol, paid by destination tag. A configuration group *Ledger Direct / Xahau* (testnet
+  switch, receiving account per network) and the payment method *Ledger Direct – XAH (Xahau)*, off by
+  default. The payment request behind the QR code names the Xahau network, so Xaman offers to switch if
+  it is set to another one; the browser-wallet buttons stay off on a Xahau page. Xahau has its own
+  tables (`ledger_direct_xahau_tx`, `ledger_direct_xahau_destination_tag`, created by `setup:upgrade`)
+  and shares nothing with the XRP Ledger, also for an account that exists on both. The cron job syncs
+  the configured account of each chain. Saving a Xahau account that is also the XRP Ledger's account on the
+  same network shows a warning: the same address is a different account on each chain. Needs
+  `hardcastle/ledger-direct-core` 0.11
+- `ledger-direct:xrpl-account:lookup` and `ledger-direct:xrpl-transaction:lookup` take `--chain XAHAU`;
+  `ledger-direct:xrp-price:lookup --asset XAH` quotes XAH
+- The payment methods come from the core's chain catalogue: one method per chain and asset, and a test
+  that turns red when the core adds a chain the module has not decided on
+- `e2e.yml` runs the case catalogue on Xahau too, after the XRP Ledger, from a CI treasury of its own
+  (`LEDGERDIRECT_CI_XAHAU_TREASURY_SEED` / `_ADDRESS`)
+
 ## 1.1.6
 
 - The admin page *Payment Methods* renders again in the default and website scope. Since the payment

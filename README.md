@@ -5,8 +5,8 @@
 ![Magento](https://img.shields.io/badge/Magento-2.4.7%20%7C%202.4.8-orange)
 ![PHP](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4-777bb4)
 
-Accept XRP, RLUSD and USDC directly on the XRP Ledger — no payment processor, no custody, funds
-land in the merchant's own wallet.
+Accept XRP, RLUSD and USDC directly on the XRP Ledger, and XAH on [Xahau](https://xahau.network) — no
+payment processor, no custody, funds land in the merchant's own wallet.
 
 The module is the Magento 2 adapter over
 [`hardcastle/ledger-direct-core`](https://packagist.org/packages/hardcastle/ledger-direct-core), the
@@ -99,7 +99,7 @@ by default) does not touch an order with that status, because there is real mone
 for it. The order's *Payment Information* — on the admin order view, in the customer's order view
 and in the order emails — lists what was quoted (asset, amount, rate, receiving account,
 destination tag, issuer for a stablecoin), the payment status, what arrived and what is still due,
-and the transaction hash as a link to the XRPL explorer.
+and the transaction hash as a link to the chain's explorer.
 
 The page asks the server every 8 seconds. That endpoint syncs with the XRPL node at most once every
 5 seconds per receiving account, whatever the number of customers waiting; in between it answers
@@ -113,6 +113,8 @@ from what is already stored. A guest order can poll too — the link carries the
 - A running Magento cron, for the settlement job
 - An XRP Ledger account. Accepting RLUSD or USDC additionally requires a **trustline** to the
   respective issuer on that account, or payments will fail on the ledger.
+- For XAH, an account on Xahau. Use one that receives on Xahau alone: the same address is a different
+  account on each chain, and the module keeps the two apart.
 
 ## Installation
 
@@ -139,7 +141,7 @@ its current patch release first.
 This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
 `app/code/Hardcastle/LedgerDirect` instead, Composer does not read the module's own `composer.json`;
 require its two dependencies at project level yourself
-(`composer require hardcastle/ledger-direct-core:^0.9 "bacon/bacon-qr-code:^2.0 || ^3.0"`, the
+(`composer require hardcastle/ledger-direct-core:^0.11 "bacon/bacon-qr-code:^2.0 || ^3.0"`, the
 QR-code library renders the payment page's code for browsers without JavaScript) and run the same
 three `bin/magento` commands.
 
@@ -172,6 +174,15 @@ need the trustline on the receiving account first.
 
 Issuer addresses are not configurable. They are fixed in the core: a wrong issuer would send
 customer funds to a dead trustline.
+
+**Xahau** has a group of its own, *Ledger Direct / Xahau*, with *Use testnet* and the receiving
+account per network, and the payment method *Ledger Direct – XAH (Xahau)* next to it, off by default.
+Xahau speaks the XRP Ledger's protocol on a network of its own: payments in XAH by destination tag,
+priced from Coingecko and Bitrue (XAH trades on Bitrue alone; a euro price rests on Coingecko). The
+payment request behind the QR code names the Xahau network, so Xaman offers to switch if it is set
+to another one; the browser-wallet buttons stay off on a Xahau page. Xahau's transactions and tag
+counter live in tables of their own (`ledger_direct_xahau_tx`, `ledger_direct_xahau_destination_tag`),
+shared with the XRP Ledger's in nothing.
 
 The cron job `ledger_direct_settle_pending_orders` runs every five minutes with Magento's cron and
 makes one node request per receiving account and network, then matches every open order against
@@ -274,10 +285,13 @@ PHP syntax alone; when the job that classifies the changes fails, everything run
 `.github/workflows/try.yml` builds the try stack (`dev/try`) from the checkout, starts it and runs
 `dev/try/smoke.sh` against it, then walks the storefront in a real browser. A pull request skips it
 when it changes only documentation, tests, test tool settings or other workflows.
-`.github/workflows/e2e.yml` drives the core's case catalogue on the XRPL testnet against that try stack with the harness
-[`ledger-direct-e2e`](https://github.com/ledger-direct/ledger-direct-e2e): on a version tag (every case
-but the 35-minute wait), every Monday at 05:17 UTC (every case) and by hand. It does not gate a merge:
-the testnet and its faucet are not deterministic.
+`.github/workflows/e2e.yml` drives the core's case catalogue against that try stack with the harness
+[`ledger-direct-e2e`](https://github.com/ledger-direct/ledger-direct-e2e), first on the XRPL testnet, then
+on the Xahau testnet (where the harness switches Xahau on in the shop and PS-04 is skipped, Xahau having
+no issued asset): on a version tag (every case but the 35-minute wait), every Monday at 05:17 UTC (every
+case) and by hand. One CI treasury per chain, from the repository secrets (`LEDGERDIRECT_CI_XRPL_TREASURY_*`,
+`LEDGERDIRECT_CI_XAHAU_TREASURY_*`). It does not gate a merge: the testnets and their faucets are not
+deterministic.
 
 `ci.yml` and `try.yml` each end in one job that sums up the others, *CI passed* and *Try passed*.
 These two are the checks a merge into `main` requires. A job skipped on purpose (a pull request that

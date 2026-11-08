@@ -10,5 +10,8 @@
         <method name="xrpl_usdc_payment">
             <allow_multiple_address>1</allow_multiple_address>
         </method>
+        <method name="xahau_xah_payment">
+            <allow_multiple_address>1</allow_multiple_address>
+        </method>
     </methods>
 </payment>

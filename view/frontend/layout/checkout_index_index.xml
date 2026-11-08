@@ -29,6 +29,9 @@
                                                                     <item name="xrpl_usdc_payment" xsi:type="array">
                                                                         <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
                                                                     </item>
+                                                                    <item name="xahau_xah_payment" xsi:type="array">
+                                                                        <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
+                                                                    </item>
                                                                 </item>
                                                             </item>
                                                         </item>

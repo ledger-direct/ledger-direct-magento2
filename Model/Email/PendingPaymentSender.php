@@ -4,7 +4,7 @@ namespace Hardcastle\LedgerDirect\Model\Email;
 
 use Exception;
 use Hardcastle\LedgerDirect\Service\OrderAccess;
-use Hardcastle\LedgerDirect\Service\OrderPaymentService;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 use Magento\Framework\App\Area;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Mail\Template\TransportBuilder;
@@ -58,24 +58,32 @@ class PendingPaymentSender
     private LoggerInterface $logger;
 
     /**
+     * @var PaymentMethods
+     */
+    private PaymentMethods $paymentMethods;
+
+    /**
      * @param TransportBuilder $transportBuilder
      * @param ScopeConfigInterface $scopeConfig
      * @param OrderRepositoryInterface $orderRepository
      * @param OrderAccess $orderAccess
      * @param LoggerInterface $logger
+     * @param PaymentMethods $paymentMethods
      */
     public function __construct(
         TransportBuilder $transportBuilder,
         ScopeConfigInterface $scopeConfig,
         OrderRepositoryInterface $orderRepository,
         OrderAccess $orderAccess,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        PaymentMethods $paymentMethods
     ) {
         $this->transportBuilder = $transportBuilder;
         $this->scopeConfig = $scopeConfig;
         $this->orderRepository = $orderRepository;
         $this->orderAccess = $orderAccess;
         $this->logger = $logger;
+        $this->paymentMethods = $paymentMethods;
     }
 
     /**
@@ -142,7 +150,7 @@ class PendingPaymentSender
         $payment = $order->getPayment();
 
         return $payment !== null
-            && in_array($payment->getMethod(), OrderPaymentService::PAYMENT_METHODS, true)
+            && in_array($payment->getMethod(), $this->paymentMethods->codes(), true)
             && $order->getState() === Order::STATE_PENDING_PAYMENT
             && (string) $order->getCustomerEmail() !== ''
             && $payment->getAdditionalInformation(self::SENT_AT_KEY) === null

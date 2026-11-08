@@ -33,5 +33,37 @@
         "constraint": {
             "PRIMARY": true
         }
+    },
+    "ledger_direct_xahau_tx": {
+        "column": {
+            "id": true,
+            "network": true,
+            "ledger_index": true,
+            "hash": true,
+            "tx_ctid": true,
+            "account": true,
+            "destination": true,
+            "destination_tag": true,
+            "date": true,
+            "meta": true,
+            "tx": true
+        },
+        "index": {
+            "LEDGER_DIRECT_XAHAU_TX_DESTINATION_DESTINATION_TAG": true,
+            "LEDGER_DIRECT_XAHAU_TX_DESTINATION_NETWORK_LEDGER_INDEX": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "LEDGERDIRECT_XAHAU_TX_HASH": true
+        }
+    },
+    "ledger_direct_xahau_destination_tag": {
+        "column": {
+            "destination_account": true,
+            "sequence": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
     }
 }

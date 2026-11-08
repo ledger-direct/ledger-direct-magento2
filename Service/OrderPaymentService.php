@@ -4,10 +4,9 @@ namespace Hardcastle\LedgerDirect\Service;
 
 use Exception;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
-use Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
-use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
-use Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle;
+use Hardcastle\LedgerDirect\Model\ChainServices;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 use InvalidArgumentException;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\Data\OrderPaymentInterface;
@@ -22,7 +21,9 @@ use Psr\Log\LoggerInterface;
  *
  * Everything about *what* is owed - exchange rate, requested amount, destination tag,
  * matching an on-ledger payment - comes from hardcastle/ledger-direct-core and is not
- * recomputed here.
+ * recomputed here. The core's services come per chain ({@see ChainServices}): the payment
+ * method names the chain an order is quoted on, the stored intent names the chain it is
+ * synced and matched on.
  */
 class OrderPaymentService
 {
@@ -31,17 +32,6 @@ class OrderPaymentService
      * contract (the PaymentIntent it holds is), so it stays as it was.
      */
     public const ADDITIONAL_DATA_KEY = 'xrpl';
-
-    /**
-     * The payment method codes this module owns
-     */
-    public const PAYMENT_METHODS = ['xrp_payment', 'xrpl_rlusd_payment', 'xrpl_usdc_payment'];
-
-    private const BASE_ASSET_BY_PAYMENT_METHOD = [
-        'xrp_payment' => 'XRP',
-        'xrpl_rlusd_payment' => 'RLUSD',
-        'xrpl_usdc_payment' => 'USDC',
-    ];
 
     /**
      * @var OrderRepositoryInterface
@@ -54,19 +44,14 @@ class OrderPaymentService
     private OrderFactory $orderFactory;
 
     /**
-     * @var PaymentIntentService
+     * @var ChainServices
      */
-    private PaymentIntentService $paymentIntentService;
+    private ChainServices $chains;
 
     /**
-     * @var SyncService
+     * @var PaymentMethods
      */
-    private SyncService $syncService;
-
-    /**
-     * @var SyncThrottle
-     */
-    private SyncThrottle $syncThrottle;
+    private PaymentMethods $paymentMethods;
 
     /**
      * @var SettlementPolicy
@@ -81,26 +66,23 @@ class OrderPaymentService
     /**
      * @param OrderRepositoryInterface $orderRepository
      * @param OrderFactory $orderFactory
-     * @param PaymentIntentService $paymentIntentService
-     * @param SyncService $syncService
-     * @param SyncThrottle $syncThrottle
+     * @param ChainServices $chains
      * @param SettlementPolicy $settlementPolicy
      * @param LoggerInterface $logger
+     * @param PaymentMethods $paymentMethods
      */
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         OrderFactory $orderFactory,
-        PaymentIntentService $paymentIntentService,
-        SyncService $syncService,
-        SyncThrottle $syncThrottle,
+        ChainServices $chains,
         SettlementPolicy $settlementPolicy,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        PaymentMethods $paymentMethods
     ) {
         $this->orderRepository = $orderRepository;
         $this->orderFactory = $orderFactory;
-        $this->paymentIntentService = $paymentIntentService;
-        $this->syncService = $syncService;
-        $this->syncThrottle = $syncThrottle;
+        $this->chains = $chains;
+        $this->paymentMethods = $paymentMethods;
         $this->settlementPolicy = $settlementPolicy;
         $this->logger = $logger;
     }
@@ -163,7 +145,7 @@ class OrderPaymentService
      * @param bool $requote fetch a new price for an expired quote
      * @return PaymentIntent
      */
-    public function prepareOrderPaymentForXrpl(OrderInterface $order, bool $requote = false): PaymentIntent
+    public function prepareOrderPayment(OrderInterface $order, bool $requote = false): PaymentIntent
     {
         $existing = $this->readReusablePaymentIntent($order);
 
@@ -172,16 +154,17 @@ class OrderPaymentService
         }
 
         $paymentMethod = (string) $order->getPayment()->getMethod();
-        $baseAsset = self::BASE_ASSET_BY_PAYMENT_METHOD[$paymentMethod] ?? null;
+        $chainAndAsset = $this->paymentMethods->chainAndAssetFor($paymentMethod);
 
-        if ($baseAsset === null) {
+        if ($chainAndAsset === null) {
             throw new InvalidArgumentException('Unsupported payment method: ' . $paymentMethod);
         }
 
-        $intent = $this->paymentIntentService->quoteForOrder(
+        [$chain, $asset] = $chainAndAsset;
+        $intent = $this->chains->intents($chain->chain)->quoteForOrder(
             (float) $order->getTotalDue(),
             (string) $order->getOrderCurrencyCode(),
-            $baseAsset,
+            $asset->code,
             $existing
         );
 
@@ -191,7 +174,7 @@ class OrderPaymentService
     }
 
     /**
-     * Sync the merchant's incoming XRPL transactions and record what pays the order's intent
+     * Sync the merchant's incoming transactions on the intent's chain and record what pays the order
      *
      * What pays is the core's decision: every payment in the quoted asset on the tag counts
      * and they add up, so a top-up of a shortfall settles; a payment in another asset is the
@@ -207,7 +190,7 @@ class OrderPaymentService
      *     arrived: no transaction on the tag yet, only ones that delivered nothing
      *     measurable, or only ones in the other asset class - the core logs and skips those
      */
-    public function syncOrderTransactionWithXrpl(OrderInterface $order, bool $throttled = false): ?PaymentIntent
+    public function syncOrderTransaction(OrderInterface $order, bool $throttled = false): ?PaymentIntent
     {
         $intent = $this->readPaymentIntent($order);
 
@@ -219,13 +202,13 @@ class OrderPaymentService
             return $intent;
         }
 
-        $this->syncLedger($intent->destinationAccount, $intent->network, $throttled);
+        $this->syncLedger($intent->chain, $intent->destinationAccount, $intent->network, $throttled);
 
         return $this->matchOrder($order);
     }
 
     /**
-     * The "match" half of syncOrderTransactionWithXrpl()
+     * The "match" half of syncOrderTransaction()
      *
      * What the local transaction table holds for this order's tag, and whether it pays.
      * The cron syncs each receiving account once and then matches every open order against
@@ -237,7 +220,7 @@ class OrderPaymentService
      * first hit.
      *
      * @param OrderInterface $order
-     * @return PaymentIntent|null as syncOrderTransactionWithXrpl()
+     * @return PaymentIntent|null as syncOrderTransaction()
      */
     public function matchOrder(OrderInterface $order): ?PaymentIntent
     {
@@ -251,7 +234,7 @@ class OrderPaymentService
             return $intent;
         }
 
-        $fulfilledIntent = $this->syncService->findFulfillmentFor($intent)?->applyTo($intent);
+        $fulfilledIntent = $this->chains->sync($intent->chain)->findFulfillmentFor($intent)?->applyTo($intent);
 
         if ($fulfilledIntent === null) {
             return null;
@@ -268,33 +251,36 @@ class OrderPaymentService
     /**
      * Pull the account's transactions from the ledger into the local table
      *
-     * Throttled per receiving account and network, not per order: the sync fetches the whole
-     * account in one go and matching afterwards is local, so ten waiting customers inside
+     * Throttled per chain, receiving account and network, not per order: the sync fetches the
+     * whole account in one go and matching afterwards is local, so ten waiting customers inside
      * one window cost one node request. The mark is set before the request, not after a
      * successful one - a node that is down must not be hit harder than one that answers.
      *
      * A failed sync is logged, not thrown: the payment page must not go down with the node,
      * and matching still runs against what is stored.
      *
+     * @param string $chain
      * @param string $destinationAccount
      * @param string $network
      * @param bool $throttled
      * @return void
      */
-    public function syncLedger(string $destinationAccount, string $network, bool $throttled): void
+    public function syncLedger(string $chain, string $destinationAccount, string $network, bool $throttled): void
     {
         if ($throttled) {
-            if (!$this->syncThrottle->shouldSync($network, $destinationAccount)) {
+            $throttle = $this->chains->throttle($chain);
+            if (!$throttle->shouldSync($network, $destinationAccount)) {
                 return;
             }
 
-            $this->syncThrottle->markSynced($network, $destinationAccount);
+            $throttle->markSynced($network, $destinationAccount);
         }
 
         try {
-            $this->syncService->syncTransactions($destinationAccount, $network);
+            $this->chains->sync($chain)->syncTransactions($destinationAccount, $network);
         } catch (Exception $exception) {
-            $this->logger->warning('LedgerDirect: XRPL sync failed, matching against stored transactions', [
+            $this->logger->warning('LedgerDirect: ledger sync failed, matching against stored transactions', [
+                'chain' => $chain,
                 'destination_account' => $destinationAccount,
                 'network' => $network,
                 'exception' => $exception->getMessage(),
@@ -303,7 +289,7 @@ class OrderPaymentService
     }
 
     /**
-     * The payment record stored on the order, or null when the order was never prepared for XRPL
+     * The payment record stored on the order, or null when the order was never quoted
      *
      * Throws on a record that is not a readable schema v1 PaymentIntent: the module was never
      * released, so there is no legacy format to keep reading, and quietly ignoring an

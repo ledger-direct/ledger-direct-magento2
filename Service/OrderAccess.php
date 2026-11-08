@@ -2,6 +2,7 @@
 
 namespace Hardcastle\LedgerDirect\Service;
 
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\App\RequestInterface;
@@ -49,18 +50,26 @@ class OrderAccess
     private CheckoutSession $checkoutSession;
 
     /**
+     * @var PaymentMethods
+     */
+    private PaymentMethods $paymentMethods;
+
+    /**
      * @param OrderRepositoryInterface $orderRepository
      * @param CustomerSession $customerSession
      * @param CheckoutSession $checkoutSession
+     * @param PaymentMethods $paymentMethods
      */
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         CustomerSession $customerSession,
-        CheckoutSession $checkoutSession
+        CheckoutSession $checkoutSession,
+        PaymentMethods $paymentMethods
     ) {
         $this->orderRepository = $orderRepository;
         $this->customerSession = $customerSession;
         $this->checkoutSession = $checkoutSession;
+        $this->paymentMethods = $paymentMethods;
     }
 
     /**
@@ -85,7 +94,7 @@ class OrderAccess
 
         $payment = $order->getPayment();
 
-        if ($payment === null || !in_array($payment->getMethod(), OrderPaymentService::PAYMENT_METHODS, true)) {
+        if ($payment === null || !in_array($payment->getMethod(), $this->paymentMethods->codes(), true)) {
             return null;
         }
 

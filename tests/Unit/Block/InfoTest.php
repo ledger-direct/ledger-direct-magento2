@@ -14,6 +14,7 @@ use Magento\Quote\Model\Quote\Payment as QuotePayment;
 use Magento\Sales\Model\Order\Payment;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Hardcastle\LedgerDirect\Model\Explorer;
 
 /**
  * The merchant's view of a LedgerDirect payment: the rows the admin order view, the customer's
@@ -36,6 +37,7 @@ class InfoTest extends TestCase
             'orderPaymentService' => $this->orderPaymentService,
             'settlementPolicy' => new SettlementPolicy(),
             'localeDate' => $localeDate,
+            'explorer' => new Explorer(),
             'data' => ['is_secure_mode' => false],
         ]);
     }
@@ -71,6 +73,20 @@ class InfoTest extends TestCase
         $this->assertSame('HASH', $rows['Transaction']);
         $this->assertSame('CTID', $rows['CTID']);
         $this->assertSame('https://testnet.xrpl.org/transactions/HASH', $this->block->getExplorerUrl());
+    }
+
+    public function testAXahauOrderNamesItsChainAndLinksXahausExplorer(): void
+    {
+        $this->givenIntent(
+            PaymentIntent::quote('xahau-xah-payment', 'XAHAU', 'testnet', 'XAH', 'EUR', 'XAH/EUR', 0.0091, 109.89011, 'rMerchant', 7)
+                ->withFulfillment('HASH', 109.89011, 'CTID')
+        );
+
+        $rows = $this->block->getSpecificInformation();
+
+        $this->assertSame('XAH (XAHAU testnet)', $rows['Asset']);
+        $this->assertSame('Settled', $rows['Payment status']);
+        $this->assertSame('https://explorer.xahau-test.net/tx/HASH', $this->block->getExplorerUrl());
     }
 
     public function testASettledStablecoinOrderNamesTheIssuerAndLinksTheMainnetExplorer(): void

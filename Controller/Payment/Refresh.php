@@ -19,7 +19,7 @@ use Magento\Framework\Controller\Result\RedirectFactory;
  * Only while nothing has arrived: a payment on the tag, short or in the wrong asset, is
  * matched against the quote it was made for, and a refresh would re-quote an order that is
  * already partly paid. The destination account and tag stay the same either way (see
- * OrderPaymentService::prepareOrderPaymentForXrpl()).
+ * OrderPaymentService::prepareOrderPayment()).
  *
  * A POST, so Magento's form-key check applies; the form on the page carries the key.
  */
@@ -115,7 +115,7 @@ class Refresh implements HttpPostActionInterface
             return $backToPaymentPage;
         }
 
-        $this->orderPaymentService->prepareOrderPaymentForXrpl($order, true);
+        $this->orderPaymentService->prepareOrderPayment($order, true);
 
         return $backToPaymentPage;
     }

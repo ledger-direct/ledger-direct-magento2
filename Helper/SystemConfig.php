@@ -2,6 +2,7 @@
 
 namespace Hardcastle\LedgerDirect\Helper;
 
+use Hardcastle\LedgerDirect\Core\ChainCatalog;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Store\Model\ScopeInterface;
 
@@ -26,39 +27,67 @@ class SystemConfig extends AbstractHelper
     }
 
     /**
-     * Whether payments are configured to settle on the XRPL testnet
+     * Whether payments on a chain are configured to settle on its testnet
      *
+     * @param string $chain
      * @return bool
      */
-    public function isTest(): bool
+    public function isTest(string $chain = ChainCatalog::XRPL): bool
     {
-        $test = $this->getConfigValue('payment/ledger_direct/use_testnet') ?? true;
-
+        $test = $this->getConfigValue($this->chainGroup($chain) . '/use_testnet') ?? true;
         return (bool) $test;
     }
 
     /**
-     * The XRPL network payments settle on, in the core's vocabulary
+     * The network a chain's payments settle on, in the core's vocabulary
      *
+     * @param string $chain
      * @return string 'mainnet' | 'testnet'
      */
-    public function getNetwork(): string
+    public function getNetwork(string $chain = ChainCatalog::XRPL): string
     {
-        return $this->isTest() ? 'testnet' : 'mainnet';
+        return $this->isTest($chain) ? 'testnet' : 'mainnet';
     }
 
     /**
-     * Get the configured XRPL destination account for the active network
+     * The configured receiving account of a chain for its active network
      *
+     * @param string $chain
      * @return string
      */
-    public function getDestinationAccount(): string
+    public function getDestinationAccount(string $chain = ChainCatalog::XRPL): string
     {
-        if (!$this->isTest()) {
-            return (string) $this->getConfigValue('payment/ledger_direct/xrpl_mainnet_account');
-        }
+        return $this->getAccount($chain, $this->getNetwork($chain));
+    }
 
-        return (string) $this->getConfigValue('payment/ledger_direct/xrpl_testnet_account');
+    /**
+     * The configured receiving account of a chain on a network
+     *
+     * The XRPL keys predate the second chain and stay where they are, in the shared group;
+     * every other chain has a group of its own, named after it.
+     *
+     * @param string $chain
+     * @param string $network 'mainnet' | 'testnet'
+     * @return string
+     */
+    public function getAccount(string $chain, string $network): string
+    {
+        return trim((string) $this->getConfigValue(
+            $this->chainGroup($chain) . '/' . strtolower($chain) . '_' . $network . '_account'
+        ));
+    }
+
+    /**
+     * The configuration group a chain's network and accounts live in
+     *
+     * @param string $chain
+     * @return string e.g. payment/ledger_direct_xahau
+     */
+    private function chainGroup(string $chain): string
+    {
+        return $chain === ChainCatalog::XRPL
+            ? 'payment/ledger_direct'
+            : 'payment/ledger_direct_' . strtolower($chain);
     }
 
     /**

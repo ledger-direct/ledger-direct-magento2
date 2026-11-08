@@ -18,6 +18,7 @@ use Magento\Store\Api\Data\StoreInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Hardcastle\LedgerDirect\Model\Explorer;
 
 /**
  * What the template gets to see, per payment state: the numbers a customer types into a
@@ -67,7 +68,7 @@ class PaymentPageTest extends TestCase
         $storeManager = $this->createMock(StoreManagerInterface::class);
         $storeManager->method('getStore')->willReturn($this->store);
 
-        $this->viewModel = new PaymentPage($this->config, $this->scopeConfig, $priceCurrency, $urlBuilder, $assets, $storeManager);
+        $this->viewModel = new PaymentPage($this->config, $this->scopeConfig, $priceCurrency, $urlBuilder, $assets, $storeManager, new Explorer());
     }
 
     public function testAWaitingXrpOrderShowsTheRequestInDropsAndInTheQrRequest(): void
@@ -85,6 +86,8 @@ class PaymentPageTest extends TestCase
         self::assertStringStartsWith('data:image/svg+xml;base64,', $view['qr_data_uri']);
         self::assertSame('XRP', $view['asset']);
         self::assertSame('https://testnet.xrpl.org/transactions/', $view['explorer_base']);
+        self::assertSame('XRPL', $view['chain']);
+        self::assertStringNotContainsString('network=', $view['payment_uri'], 'XRPL requests are unchanged');
         self::assertSame(0, $view['paid_share']);
         self::assertSame('#1f5eff', $view['accent']);
     }
@@ -123,6 +126,31 @@ class PaymentPageTest extends TestCase
         self::assertStringContainsString('&amount=12.50&currency=5553444300000000000000000000000000000000&issuer=rHuGNhqTG32mfmAvWA8hUyWRLV3tCSwKQt', $view['payment_uri']);
         self::assertSame('https://livenet.xrpl.org/transactions/', $view['explorer_base']);
         self::assertFalse($view['is_testnet']);
+    }
+
+    /**
+     * A Xahau order is native like XRP (drops, no issuer), named by its chain, with Xahau's
+     * explorer and a payment request that names the network so Xaman offers to switch.
+     */
+    public function testAXahauOrderIsNamedByItsChain(): void
+    {
+        $intent = PaymentIntent::quote(
+            type: 'xahau-xah-payment', chain: 'XAHAU', network: 'testnet', baseAsset: 'XAH', quoteCurrency: 'EUR',
+            pairing: 'XAH/EUR', exchangeRate: 0.0091, amountRequested: 109.89011,
+            destinationAccount: self::ACCOUNT, destinationTag: 123456, expiry: self::NOW + 200,
+        );
+        $view = $this->viewModel->forBlock($this->block($intent, [
+            'type' => 'xahau-xah-payment', 'network' => 'testnet', 'amount_requested' => '109.89011',
+        ]));
+
+        self::assertSame('XAH', $view['asset']);
+        self::assertSame('XAHAU', $view['chain']);
+        self::assertSame('Xahau', $view['chain_label']);
+        self::assertSame('109890110', $view['amount_drops']);
+        self::assertNull($view['issuer']);
+        self::assertSame('https://explorer.xahau-test.net/tx/', $view['explorer_base']);
+        self::assertStringContainsString('&amount=109.89011', $view['payment_uri']);
+        self::assertStringContainsString('network=XAHAUTESTNET', $view['payment_uri']);
     }
 
     public function testTheRateIsAPlainDecimalAndTheOnlyFormattedNumber(): void

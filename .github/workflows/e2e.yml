@@ -1,8 +1,10 @@
-# End-to-end run against the XRPL testnet, on the try stack (dev/try): the shop a visitor gets with
-# `docker compose up`, built from this checkout, not a development shop. The harness
-# ledger-direct-e2e then drives the case catalogue PS-01…PS-11 against it with `--try`, the same
-# command that works locally. Real transactions on the testnet, paid from the CI treasury; the shop
-# keeps its own receiving account, which the harness restores after the run.
+# End-to-end run against the XRPL testnet and the Xahau testnet, on the try stack (dev/try): the shop
+# a visitor gets with `docker compose up`, built from this checkout, not a development shop. The
+# harness ledger-direct-e2e then drives the case catalogue PS-01…PS-11 against it, first on the XRP
+# Ledger with `--try`, the same command that works locally, then on Xahau (which the harness switches
+# on in the shop's configuration for its run). Real transactions on both testnets, paid from one CI
+# treasury per chain; after the XRPL run the shop is back on its own receiving account, the Xahau run
+# leaves this throwaway shop on the run's.
 #
 # Not a merge gate: the testnet and its faucet are not deterministic. It runs
 # - on a pushed version tag: the `testnet` cases (all but PS-10's 35-minute wait), before the
@@ -14,9 +16,10 @@
 # - by hand, with the cases to run.
 # The workflow is the same in every LedgerDirect plugin repository except for the target.
 #
-# Secrets (organisation-wide, shared by the plugin repos):
-#   LEDGERDIRECT_CI_XRPL_TREASURY_SEED / _ADDRESS   the CI payer wallet (XRP, RLUSD, USDC), separate from the local one
-#   DOCKERHUB_USERNAME / DOCKERHUB_TOKEN             pulls count against the organisation, not the runner's IP
+# Secrets (repository secrets, under the same names in every plugin repository that has them):
+#   LEDGERDIRECT_CI_XRPL_TREASURY_SEED / _ADDRESS    the CI payer wallet on the XRP Ledger (XRP, RLUSD, USDC), separate from the local one
+#   LEDGERDIRECT_CI_XAHAU_TREASURY_SEED / _ADDRESS   the CI payer wallet on Xahau (XAH); it also opens the run's receiving account
+#   DOCKERHUB_USERNAME / DOCKERHUB_TOKEN              pulls count against the organisation, not the runner's IP
 # The harness repository ledger-direct/ledger-direct-e2e is public; its checkout needs no token.
 name: E2E (testnet)
 
@@ -57,7 +60,7 @@ jobs:
   e2e:
     name: ld-e2e against the try stack
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     env:
       # Secrets are not available in step conditions; their presence is, through the environment.
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -132,12 +135,43 @@ jobs:
           CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'testnet' }}
         run: node dist/cli.js run --target "$TARGET" --try --cases "$CASES" --report out/report.json
 
-      - name: Upload the report
+      # Xahau: the treasury holds XAH alone and the faucet is its only source; a run spends about 700
+      # XAH on the 1-euro article and gets them back, so this rarely asks the faucet either.
+      - name: Check the Xahau treasury
+        id: xahau-treasury
+        if: ${{ !cancelled() }}
+        working-directory: e2e
+        env:
+          LEDGERDIRECT_TESTNET_XAHAU_TREASURY_SEED: ${{ secrets.LEDGERDIRECT_CI_XAHAU_TREASURY_SEED }}
+        run: node dist/cli.js --chain XAHAU wallet ensure --xrp 800
+
+      # The same shop, now on Xahau: `--try` knows the XRP Ledger only (it puts the stack's own XRPL
+      # account back), so the stack is named by its preset values. PS-04 is skipped on Xahau, which
+      # has no issued asset to pay a token order in. The XAH cap: about 110 XAH buy the 1-euro article.
+      # Only after the treasury check passed: a run on an empty treasury fails on its first payment.
+      - name: Run the case catalogue on Xahau
+        if: ${{ !cancelled() && steps.xahau-treasury.conclusion == 'success' }}
+        working-directory: e2e
+        env:
+          LEDGERDIRECT_TESTNET_XAHAU_TREASURY_SEED: ${{ secrets.LEDGERDIRECT_CI_XAHAU_TREASURY_SEED }}
+          LEDGERDIRECT_TESTNET_XAHAU_TREASURY_ADDRESS: ${{ secrets.LEDGERDIRECT_CI_XAHAU_TREASURY_ADDRESS }}
+          LD_E2E_MAGENTO_ADMIN_USER: demo
+          LD_E2E_MAGENTO_ADMIN_PASSWORD: demo-ledgerdirect-1
+          LD_E2E_MAX_PAYMENT: '250'
+          LD_E2E_RUN_BUDGET: XAH=1500
+          CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'testnet' }}
+        run: >
+          node dist/cli.js --chain XAHAU run --target "$TARGET" --base-url http://localhost:8088
+          --compose-dir ../dev/try --cases "$CASES" --report out/report-xahau.json
+
+      - name: Upload the reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ld-e2e-report
-          path: e2e/out/report.json
+          path: |
+            e2e/out/report.json
+            e2e/out/report-xahau.json
           if-no-files-found: ignore
 
       - name: Shop log

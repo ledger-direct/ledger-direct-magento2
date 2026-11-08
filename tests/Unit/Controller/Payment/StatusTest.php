@@ -92,7 +92,7 @@ class StatusTest extends TestCase
     public function testAWrongKeyIsRefusedWithoutAHint(): void
     {
         $this->orderAccess->method('authorisedOrder')->willReturn(null);
-        $this->orderPaymentService->expects($this->never())->method('syncOrderTransactionWithXrpl');
+        $this->orderPaymentService->expects($this->never())->method('syncOrderTransaction');
 
         $this->controller->execute();
 
@@ -207,7 +207,7 @@ class StatusTest extends TestCase
         $this->orderPaymentService->method('readPaymentIntent')->willReturn($this->xrpIntent(expiry: time() + 120));
         $this->orderPaymentService->method('isAwaitingPayment')->willReturn(false);
         $this->orderPaymentService->method('isAwaitingPaymentById')->willReturn(false);
-        $this->orderPaymentService->expects($this->never())->method('syncOrderTransactionWithXrpl');
+        $this->orderPaymentService->expects($this->never())->method('syncOrderTransaction');
 
         $this->controller->execute();
 
@@ -224,7 +224,7 @@ class StatusTest extends TestCase
         $this->orderPaymentService->method('readPaymentIntent')->willReturn($this->xrpIntent(expiry: time() + 120));
         $this->orderPaymentService->method('isAwaitingPayment')->willReturn(true);
         $this->orderPaymentService->method('isAwaitingPaymentById')->willReturn(true);
-        $this->orderPaymentService->method('syncOrderTransactionWithXrpl')->willThrowException(new \RuntimeException('db gone'));
+        $this->orderPaymentService->method('syncOrderTransaction')->willThrowException(new \RuntimeException('db gone'));
 
         $this->controller->execute();
 
@@ -238,7 +238,7 @@ class StatusTest extends TestCase
         $this->orderPaymentService->method('readPaymentIntent')->willReturn($stored);
         $this->orderPaymentService->method('isAwaitingPayment')->with($this->order)->willReturn(true);
         $this->orderPaymentService->method('isAwaitingPaymentById')->with(42)->willReturn($awaitingAfterwards);
-        $this->orderPaymentService->expects($this->once())->method('syncOrderTransactionWithXrpl')
+        $this->orderPaymentService->expects($this->once())->method('syncOrderTransaction')
             ->with($this->order, true)->willReturn($syncReturns);
     }
 

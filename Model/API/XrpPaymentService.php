@@ -56,7 +56,7 @@ class XrpPaymentService implements XrpPaymentServiceInterface
     {
         // Quotes an order that has no intent yet; a stored one is handed back as it is, even
         // expired - the page shows that, and only the refresh action re-quotes.
-        $intent = $this->orderPaymentService->prepareOrderPaymentForXrpl($order);
+        $intent = $this->orderPaymentService->prepareOrderPayment($order);
 
         $total = (float) $order->getTotalDue();
         $currencyCode = (string) $order->getOrderCurrencyCode();

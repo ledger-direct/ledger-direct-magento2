@@ -4,38 +4,37 @@ namespace Hardcastle\LedgerDirect\Port;
 
 use Hardcastle\LedgerDirect\Core\Port\ConfigProviderInterface;
 use Hardcastle\LedgerDirect\Helper\SystemConfig;
-use InvalidArgumentException;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 
 /**
  * Platform side of the core's {@see ConfigProviderInterface}: a thin facade over the
  * module's SystemConfig helper, which is where Magento's store configuration is read.
+ *
+ * Chain-generic: the chain names the configuration group the network and accounts are read
+ * from, and the asset names the payment method whose "Enabled" switch decides. A chain the
+ * module carries no payment methods for is answered with its testnet, no account and no asset,
+ * never with another chain's settings.
  */
 class MagentoConfigProvider implements ConfigProviderInterface
 {
-    public const CHAIN = 'XRPL';
-
-    /**
-     * Which payment method's "Enabled" flag decides whether an asset is accepted. There is
-     * no separate per-asset toggle: the payment method *is* the asset here, so switching a
-     * method off in the admin also stops the core from quoting in that asset.
-     */
-    private const PAYMENT_METHOD_BY_ASSET = [
-        'XRP' => 'xrp_payment',
-        'RLUSD' => 'xrpl_rlusd_payment',
-        'USDC' => 'xrpl_usdc_payment',
-    ];
-
     /**
      * @var SystemConfig
      */
     private SystemConfig $systemConfig;
 
     /**
-     * @param SystemConfig $systemConfig
+     * @var PaymentMethods
      */
-    public function __construct(SystemConfig $systemConfig)
+    private PaymentMethods $paymentMethods;
+
+    /**
+     * @param SystemConfig $systemConfig
+     * @param PaymentMethods $paymentMethods
+     */
+    public function __construct(SystemConfig $systemConfig, PaymentMethods $paymentMethods)
     {
         $this->systemConfig = $systemConfig;
+        $this->paymentMethods = $paymentMethods;
     }
 
     /**
@@ -43,9 +42,7 @@ class MagentoConfigProvider implements ConfigProviderInterface
      */
     public function getNetwork(string $chain): string
     {
-        $this->assertChain($chain);
-
-        return $this->systemConfig->getNetwork();
+        return $this->paymentMethods->supportsChain($chain) ? $this->systemConfig->getNetwork($chain) : 'testnet';
     }
 
     /**
@@ -53,20 +50,18 @@ class MagentoConfigProvider implements ConfigProviderInterface
      */
     public function getDestinationAccount(string $chain): string
     {
-        $this->assertChain($chain);
-
-        return $this->systemConfig->getDestinationAccount();
+        return $this->paymentMethods->supportsChain($chain) ? $this->systemConfig->getDestinationAccount($chain) : '';
     }
 
     /**
      * @inheritdoc
+     *
+     * There is no separate per-asset toggle: the payment method *is* the asset here, so switching
+     * a method off in the admin also stops the core from quoting in that asset.
      */
     public function isAssetEnabled(string $chain, string $baseAsset): bool
     {
-        $this->assertChain($chain);
-
-        $paymentMethod = self::PAYMENT_METHOD_BY_ASSET[strtoupper($baseAsset)] ?? null;
-
+        $paymentMethod = $this->paymentMethods->codeFor($chain, $baseAsset);
         return $paymentMethod !== null && $this->systemConfig->isPaymentMethodActive($paymentMethod);
     }
 
@@ -76,23 +71,5 @@ class MagentoConfigProvider implements ConfigProviderInterface
     public function getQuoteExpirySeconds(): int
     {
         return $this->systemConfig->getQuoteExpirySeconds();
-    }
-
-    /**
-     * Reject any chain but XRPL
-     *
-     * The module only speaks XRPL. Asking for another chain is a wiring mistake, not a
-     * configuration state, so it fails loudly rather than silently answering with XRPL's settings.
-     *
-     * @param string $chain
-     * @return void
-     */
-    private function assertChain(string $chain): void
-    {
-        if ($chain !== self::CHAIN) {
-            throw new InvalidArgumentException(
-                sprintf('LedgerDirect supports chain "%s" only, got "%s".', self::CHAIN, $chain)
-            );
-        }
     }
 }
