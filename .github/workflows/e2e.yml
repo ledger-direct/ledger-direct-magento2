@@ -138,6 +138,7 @@ jobs:
       # Xahau: the treasury holds XAH alone and the faucet is its only source; a run spends about 700
       # XAH on the 1-euro article and gets them back, so this rarely asks the faucet either.
       - name: Check the Xahau treasury
+        id: xahau-treasury
         if: ${{ !cancelled() }}
         working-directory: e2e
         env:
@@ -147,8 +148,9 @@ jobs:
       # The same shop, now on Xahau: `--try` knows the XRP Ledger only (it puts the stack's own XRPL
       # account back), so the stack is named by its preset values. PS-04 is skipped on Xahau, which
       # has no issued asset to pay a token order in. The XAH cap: about 110 XAH buy the 1-euro article.
+      # Only after the treasury check passed: a run on an empty treasury fails on its first payment.
       - name: Run the case catalogue on Xahau
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.xahau-treasury.conclusion == 'success' }}
         working-directory: e2e
         env:
           LEDGERDIRECT_TESTNET_XAHAU_TREASURY_SEED: ${{ secrets.LEDGERDIRECT_CI_XAHAU_TREASURY_SEED }}
