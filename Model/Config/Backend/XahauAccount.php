@@ -11,7 +11,6 @@ use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\Model\Context;
 use Magento\Framework\Model\ResourceModel\AbstractResource;
 use Magento\Framework\Registry;
-use Magento\Store\Model\ScopeInterface;
 
 /**
  * A Xahau receiving account on save: trimmed, and compared with the XRP Ledger's account on the
@@ -63,10 +62,12 @@ class XahauAccount extends Value
         $this->setValue($account);
 
         // The field is xahau_<network>_account; the XRPL counterpart is xrpl_<network>_account.
+        // Read in the scope being saved (default or a website), so an override is compared with its own.
         $network = str_contains((string) $this->getPath(), 'mainnet') ? 'mainnet' : 'testnet';
         $xrplAccount = trim((string) $this->_config->getValue(
             'payment/ledger_direct/xrpl_' . $network . '_account',
-            ScopeInterface::SCOPE_STORE
+            (string) ($this->getScope() ?: ScopeConfigInterface::SCOPE_TYPE_DEFAULT),
+            $this->getScopeId()
         ));
 
         if ($account !== '' && $account === $xrplAccount) {

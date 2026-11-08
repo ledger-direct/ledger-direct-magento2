@@ -28,9 +28,10 @@ class XahauAccountTest extends TestCase
         $context = $this->createMock(Context::class);
         $context->method('getEventDispatcher')->willReturn($this->createMock(\Magento\Framework\Event\ManagerInterface::class));
         $scopeConfig = $this->createMock(ScopeConfigInterface::class);
-        $scopeConfig->method('getValue')->willReturnCallback(fn (string $path) => match ($path) {
-            'payment/ledger_direct/xrpl_testnet_account' => 'rSameAddress',
-            'payment/ledger_direct/xrpl_mainnet_account' => 'rMainnetOnly',
+        // The XRPL account differs per scope: the website being saved has it, the default does not.
+        $scopeConfig->method('getValue')->willReturnCallback(fn (string $path, string $scope, $scopeId) => match ([$path, $scope, (int) $scopeId]) {
+            ['payment/ledger_direct/xrpl_testnet_account', 'websites', 2] => 'rSameAddress',
+            ['payment/ledger_direct/xrpl_mainnet_account', 'websites', 2] => 'rMainnetOnly',
             default => null,
         });
         $this->messages = $this->createMock(ManagerInterface::class);
@@ -48,6 +49,8 @@ class XahauAccountTest extends TestCase
         $this->messages->expects($this->once())->method('addWarningMessage')
             ->with($this->stringContains('rSameAddress'));
         $this->model->setPath('payment/ledger_direct_xahau/xahau_testnet_account');
+        $this->model->setScope('websites');
+        $this->model->setScopeId(2);
         $this->model->setValue(' rSameAddress ');
 
         $this->model->beforeSave();
@@ -59,12 +62,20 @@ class XahauAccountTest extends TestCase
     {
         $this->messages->expects($this->never())->method('addWarningMessage');
 
+        $this->model->setScope('websites');
+        $this->model->setScopeId(2);
         $this->model->setPath('payment/ledger_direct_xahau/xahau_mainnet_account');
         $this->model->setValue('rSameAddress');
         $this->model->beforeSave();
 
         $this->model->setPath('payment/ledger_direct_xahau/xahau_testnet_account');
         $this->model->setValue('');
+        $this->model->beforeSave();
+
+        // The default scope has no XRPL account: the same address there is no match.
+        $this->model->setScope('default');
+        $this->model->setScopeId(0);
+        $this->model->setValue('rSameAddress');
         $this->model->beforeSave();
     }
 }
