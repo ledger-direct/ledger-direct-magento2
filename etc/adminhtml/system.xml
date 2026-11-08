@@ -99,9 +99,11 @@
                 </field>
                 <field id="xahau_testnet_account" translate="label" type="text" sortOrder="3" showInDefault="1" showInWebsite="1">
                     <label>Account (Testnet)</label>
+                    <backend_model>Hardcastle\LedgerDirect\Model\Config\Backend\XahauAccount</backend_model>
                 </field>
                 <field id="xahau_mainnet_account" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
                     <label>Account (Mainnet)</label>
+                    <backend_model>Hardcastle\LedgerDirect\Model\Config\Backend\XahauAccount</backend_model>
                 </field>
             </group>
             <group id="xahau_xah_payment" translate="label" sortOrder="6" showInDefault="1" showInWebsite="1">
