@@ -18,6 +18,7 @@ use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Sales\Model\Order\Payment;
 use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\ResourceModel\Order as OrderResource;
 use Magento\Sales\Model\Service\InvoiceService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -78,7 +79,8 @@ class OrderSettlementServiceTest extends TestCase
             $this->invoiceSender,
             $this->logger,
             $lockManager,
-            $orderFactory
+            $orderFactory,
+            $this->createMock(OrderResource::class)
         );
     }
 
@@ -330,7 +332,6 @@ class OrderSettlementServiceTest extends TestCase
         $order->method('getStatus')->willReturn('processing');
         $order->method('getEmailSent')->willReturn(null);
         $order->method('getEntityId')->willReturn(42);
-        $order->method('load')->willReturnSelf();
         $this->currentOrder = $order;
 
         return $order;

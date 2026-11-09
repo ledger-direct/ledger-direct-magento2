@@ -13,6 +13,7 @@ use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
 use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\ResourceModel\Order as OrderResource;
 use Magento\Sales\Model\Service\InvoiceService;
 use Psr\Log\LoggerInterface;
 
@@ -84,6 +85,11 @@ class OrderSettlementService
     private OrderFactory $orderFactory;
 
     /**
+     * @var OrderResource
+     */
+    private OrderResource $orderResource;
+
+    /**
      * @param SettlementPolicy $settlementPolicy
      * @param InvoiceService $invoiceService
      * @param TransactionFactory $transactionFactory
@@ -92,6 +98,7 @@ class OrderSettlementService
      * @param LoggerInterface $logger
      * @param LockManagerInterface $lockManager
      * @param OrderFactory $orderFactory
+     * @param OrderResource $orderResource
      */
     public function __construct(
         SettlementPolicy $settlementPolicy,
@@ -101,7 +108,8 @@ class OrderSettlementService
         InvoiceSender $invoiceSender,
         LoggerInterface $logger,
         LockManagerInterface $lockManager,
-        OrderFactory $orderFactory
+        OrderFactory $orderFactory,
+        OrderResource $orderResource
     ) {
         $this->settlementPolicy = $settlementPolicy;
         $this->invoiceService = $invoiceService;
@@ -111,6 +119,7 @@ class OrderSettlementService
         $this->logger = $logger;
         $this->lockManager = $lockManager;
         $this->orderFactory = $orderFactory;
+        $this->orderResource = $orderResource;
     }
 
     /**
@@ -140,7 +149,10 @@ class OrderSettlementService
         }
 
         try {
-            return $this->settleCurrent($this->orderFactory->create()->load($orderId), $intent);
+            $currentOrder = $this->orderFactory->create();
+            $this->orderResource->load($currentOrder, $orderId);
+
+            return $this->settleCurrent($currentOrder, $intent);
         } finally {
             $this->lockManager->unlock($lock);
         }
