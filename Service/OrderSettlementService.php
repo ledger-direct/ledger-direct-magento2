@@ -6,11 +6,14 @@ use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
 use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Lock\LockManagerInterface;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
 use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 use Magento\Sales\Model\Order\Invoice;
+use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\ResourceModel\Order as OrderResource;
 use Magento\Sales\Model\Service\InvoiceService;
 use Psr\Log\LoggerInterface;
 
@@ -38,6 +41,8 @@ class OrderSettlementService
      * pending_payment - leaves an order with money on the ledger alone.
      */
     public const PAYMENT_INCOMPLETE_STATUS = 'ledger_direct_payment_incomplete';
+
+    private const LOCK_PREFIX = 'ledger_direct_settle_';
 
     /**
      * @var SettlementPolicy
@@ -70,12 +75,30 @@ class OrderSettlementService
     private LoggerInterface $logger;
 
     /**
+     * @var LockManagerInterface
+     */
+    private LockManagerInterface $lockManager;
+
+    /**
+     * @var OrderFactory
+     */
+    private OrderFactory $orderFactory;
+
+    /**
+     * @var OrderResource
+     */
+    private OrderResource $orderResource;
+
+    /**
      * @param SettlementPolicy $settlementPolicy
      * @param InvoiceService $invoiceService
      * @param TransactionFactory $transactionFactory
      * @param OrderSender $orderSender
      * @param InvoiceSender $invoiceSender
      * @param LoggerInterface $logger
+     * @param LockManagerInterface $lockManager
+     * @param OrderFactory $orderFactory
+     * @param OrderResource $orderResource
      */
     public function __construct(
         SettlementPolicy $settlementPolicy,
@@ -83,7 +106,10 @@ class OrderSettlementService
         TransactionFactory $transactionFactory,
         OrderSender $orderSender,
         InvoiceSender $invoiceSender,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        LockManagerInterface $lockManager,
+        OrderFactory $orderFactory,
+        OrderResource $orderResource
     ) {
         $this->settlementPolicy = $settlementPolicy;
         $this->invoiceService = $invoiceService;
@@ -91,6 +117,9 @@ class OrderSettlementService
         $this->orderSender = $orderSender;
         $this->invoiceSender = $invoiceSender;
         $this->logger = $logger;
+        $this->lockManager = $lockManager;
+        $this->orderFactory = $orderFactory;
+        $this->orderResource = $orderResource;
     }
 
     /**
@@ -104,6 +133,39 @@ class OrderSettlementService
      * @return SettlementResult
      */
     public function settle(OrderInterface $order, PaymentIntent $intent): SettlementResult
+    {
+        // One settlement per order at a time, decided on the order as the database has it now
+        // and not on the object the caller loaded earlier. Without the lock another run is
+        // settling this order: nothing to do, that run reports the result.
+        $orderId = (int) $order->getEntityId();
+        $lock = self::LOCK_PREFIX . $orderId;
+
+        if (!$this->lockManager->lock($lock, 0)) {
+            return new SettlementResult(
+                SettlementResult::IN_PROGRESS,
+                (string) $intent->amountPaidValue(),
+                $intent->amountRequestedValue()
+            );
+        }
+
+        try {
+            $currentOrder = $this->orderFactory->create();
+            $this->orderResource->load($currentOrder, $orderId);
+
+            return $this->settleCurrent($currentOrder, $intent);
+        } finally {
+            $this->lockManager->unlock($lock);
+        }
+    }
+
+    /**
+     * The decision and the booking, under the lock
+     *
+     * @param Order $order the order as read after taking the lock
+     * @param PaymentIntent $intent
+     * @return SettlementResult
+     */
+    private function settleCurrent(Order $order, PaymentIntent $intent): SettlementResult
     {
         $paid = (string) $intent->amountPaidValue();
         $requested = $intent->amountRequestedValue();

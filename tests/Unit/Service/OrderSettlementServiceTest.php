@@ -9,6 +9,7 @@ use Hardcastle\LedgerDirect\Model\Settlement\SettlementResult;
 use Hardcastle\LedgerDirect\Service\OrderSettlementService;
 use Magento\Framework\DB\Transaction;
 use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Lock\LockManagerInterface;
 use Magento\Payment\Model\MethodInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Config;
@@ -16,6 +17,8 @@ use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
 use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Sales\Model\Order\Payment;
+use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\ResourceModel\Order as OrderResource;
 use Magento\Sales\Model\Service\InvoiceService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -40,25 +43,102 @@ class OrderSettlementServiceTest extends TestCase
 
     private OrderSettlementService $service;
 
+    /** @var TransactionFactory|MockObject */
+    private $transactionFactory;
+
+    /** @var OrderResource|MockObject */
+    private $orderResource;
+
+    /** @var Order|MockObject the order as the database has it */
+    private $currentOrder;
+
     protected function setUp(): void
     {
         $this->invoiceService = $this->createMock(InvoiceService::class);
         $this->transaction = $this->createMock(Transaction::class);
         $this->transaction->method('addObject')->willReturnSelf();
-        $transactionFactory = $this->createMock(TransactionFactory::class);
-        $transactionFactory->method('create')->willReturn($this->transaction);
+        $this->transactionFactory = $this->createMock(TransactionFactory::class);
+        $this->transactionFactory->method('create')->willReturn($this->transaction);
         $this->orderSender = $this->createMock(OrderSender::class);
         $this->invoiceSender = $this->createMock(InvoiceSender::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
-        $this->service = new OrderSettlementService(
+        $this->orderResource = $this->createMock(OrderResource::class);
+        $lockManager = $this->createMock(LockManagerInterface::class);
+        $lockManager->method('lock')->willReturn(true);
+        $this->service = $this->serviceWith($lockManager);
+    }
+
+    private function serviceWith(LockManagerInterface $lockManager): OrderSettlementService
+    {
+        // The service re-reads the order under the lock; the order given last is what the database has.
+        $orderFactory = $this->createMock(OrderFactory::class);
+        $orderFactory->method('create')->willReturnCallback(fn () => $this->currentOrder);
+
+        return new OrderSettlementService(
             new SettlementPolicy(),
             $this->invoiceService,
-            $transactionFactory,
+            $this->transactionFactory,
             $this->orderSender,
             $this->invoiceSender,
-            $this->logger
+            $this->logger,
+            $lockManager,
+            $orderFactory,
+            $this->orderResource
         );
+    }
+
+    public function testOneSettlementAtATimeAndTheLockIsReleased(): void
+    {
+        $order = $this->givenOrder(canInvoice: true);
+        $order->method('setState')->willReturnSelf();
+        $this->invoiceService->method('prepareInvoice')->willReturn($this->createMock(Invoice::class));
+        $lockManager = $this->createMock(LockManagerInterface::class);
+        $lockManager->expects($this->once())->method('lock')->with('ledger_direct_settle_42', 0)->willReturn(true);
+        $lockManager->expects($this->once())->method('unlock')->with('ledger_direct_settle_42');
+
+        $this->assertTrue($this->serviceWith($lockManager)->settle($order, $this->paidIntent())->isSettled());
+    }
+
+    public function testTheLockIsReleasedWhenTheBookingFails(): void
+    {
+        $order = $this->givenOrder(canInvoice: true);
+        $this->invoiceService->method('prepareInvoice')->willThrowException(new \RuntimeException('boom'));
+        $lockManager = $this->createMock(LockManagerInterface::class);
+        $lockManager->method('lock')->willReturn(true);
+        $lockManager->expects($this->once())->method('unlock');
+
+        $this->expectException(\RuntimeException::class);
+        $this->serviceWith($lockManager)->settle($order, $this->paidIntent());
+    }
+
+    public function testAnOrderLockedByAnotherRunIsLeftToThatRun(): void
+    {
+        $order = $this->givenOrder(canInvoice: true);
+        $lockManager = $this->createMock(LockManagerInterface::class);
+        $lockManager->method('lock')->willReturn(false);
+        $lockManager->expects($this->never())->method('unlock');
+        $this->invoiceService->expects($this->never())->method('prepareInvoice');
+
+        $result = $this->serviceWith($lockManager)->settle($order, $this->paidIntent());
+
+        $this->assertSame(SettlementResult::IN_PROGRESS, $result->getStatus());
+        $this->assertFalse($result->isSettled());
+    }
+
+    public function testTheDecisionRestsOnTheOrderAsTheDatabaseHasItNow(): void
+    {
+        $loadedEarlier = $this->givenOrder(canInvoice: true);
+        $current = $this->givenOrder(canInvoice: false, totalDue: 0.0);
+        $this->orderResource->expects($this->once())->method('load')->with($current, 42);
+        $this->invoiceService->expects($this->never())->method('prepareInvoice');
+
+        $this->assertTrue($this->service->settle($loadedEarlier, $this->paidIntent())->isSettled());
+    }
+
+    private function paidIntent(): PaymentIntent
+    {
+        return $this->xrpIntent(39.0)->withFulfillment('HASH', 39.0, 'CTID');
     }
 
     public function testAFullPaymentIsInvoicedOfflineAndMovesTheOrderToTheSettledStatus(): void
@@ -256,6 +336,8 @@ class OrderSettlementServiceTest extends TestCase
         $order->method('getIncrementId')->willReturn('000000042');
         $order->method('getStatus')->willReturn('processing');
         $order->method('getEmailSent')->willReturn(null);
+        $order->method('getEntityId')->willReturn(42);
+        $this->currentOrder = $order;
 
         return $order;
     }

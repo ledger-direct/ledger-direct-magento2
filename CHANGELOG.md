@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- An order is settled exactly once. Overlapping checks of the same order could create a second invoice
+  and repeat the invoice email
+
 ## 1.2.0
 
 - Xahau: XAH on the [Xahau](https://xahau.network) network, a chain of its own that speaks the XRP
