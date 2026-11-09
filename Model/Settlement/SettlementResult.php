@@ -17,6 +17,11 @@ class SettlementResult
     public const NOT_PAYABLE = 'not_payable';
 
     /**
+     * Another run holds this order's settlement right now; it reports the result
+     */
+    public const IN_PROGRESS = 'in_progress';
+
+    /**
      * @var string
      */
     private string $status;
