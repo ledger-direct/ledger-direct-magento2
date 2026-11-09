@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.1
 
 - An order is settled exactly once. Overlapping checks of the same order could create a second invoice
   and repeat the invoice email
