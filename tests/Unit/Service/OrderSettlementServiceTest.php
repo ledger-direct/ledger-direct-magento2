@@ -46,6 +46,9 @@ class OrderSettlementServiceTest extends TestCase
     /** @var TransactionFactory|MockObject */
     private $transactionFactory;
 
+    /** @var OrderResource|MockObject */
+    private $orderResource;
+
     /** @var Order|MockObject the order as the database has it */
     private $currentOrder;
 
@@ -60,6 +63,7 @@ class OrderSettlementServiceTest extends TestCase
         $this->invoiceSender = $this->createMock(InvoiceSender::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
+        $this->orderResource = $this->createMock(OrderResource::class);
         $lockManager = $this->createMock(LockManagerInterface::class);
         $lockManager->method('lock')->willReturn(true);
         $this->service = $this->serviceWith($lockManager);
@@ -80,7 +84,7 @@ class OrderSettlementServiceTest extends TestCase
             $this->logger,
             $lockManager,
             $orderFactory,
-            $this->createMock(OrderResource::class)
+            $this->orderResource
         );
     }
 
@@ -125,7 +129,8 @@ class OrderSettlementServiceTest extends TestCase
     public function testTheDecisionRestsOnTheOrderAsTheDatabaseHasItNow(): void
     {
         $loadedEarlier = $this->givenOrder(canInvoice: true);
-        $this->givenOrder(canInvoice: false, totalDue: 0.0);
+        $current = $this->givenOrder(canInvoice: false, totalDue: 0.0);
+        $this->orderResource->expects($this->once())->method('load')->with($current, 42);
         $this->invoiceService->expects($this->never())->method('prepareInvoice');
 
         $this->assertTrue($this->service->settle($loadedEarlier, $this->paidIntent())->isSettled());

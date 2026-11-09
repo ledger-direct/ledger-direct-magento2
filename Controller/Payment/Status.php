@@ -144,7 +144,11 @@ class Status implements HttpGetActionInterface
         $payload = PaymentStatus::fromIntent($intent, $this->settlementPolicy)->toArray();
 
         // Read fresh, not from the object above: a settlement in this very request leaves it stale.
-        if (!$this->orderPaymentService->isAwaitingPaymentById((int) $order->getEntityId())) {
+        // A settled payment always moves the page on: its poll ends here, also while another run
+        // is still booking the order or a failed booking waits for the cron.
+        if ($payload['state'] === PaymentStatus::SETTLED
+            || !$this->orderPaymentService->isAwaitingPaymentById((int) $order->getEntityId())
+        ) {
             $payload['redirect'] = $this->paymentRedirect->target($order);
         }
 

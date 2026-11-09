@@ -197,6 +197,18 @@ class StatusTest extends TestCase
         $this->assertSame('https://shop.test/sales/guest/view', $this->payload['redirect']);
     }
 
+    public function testASettledPaymentMovesThePageOnWhileAnotherRunIsBooking(): void
+    {
+        $fulfilled = $this->xrpIntent(expiry: time() + 120)->withFulfillment('HASH', 50.0);
+        $this->givenAwaitingOrder($this->xrpIntent(expiry: time() + 120), syncReturns: $fulfilled, awaitingAfterwards: true);
+        $this->settlementService->method('settle')->willReturn(new SettlementResult(SettlementResult::IN_PROGRESS, '50', '50'));
+
+        $this->controller->execute();
+
+        $this->assertSame(PaymentStatus::SETTLED, $this->payload['state']);
+        $this->assertSame('https://shop.test/sales/guest/view', $this->payload['redirect']);
+    }
+
     /**
      * Closed by the merchant (PS-11): the contract state is still `waiting`, but the order no
      * longer waits, so the poll carries the redirect - and the ledger is not synced for it.
