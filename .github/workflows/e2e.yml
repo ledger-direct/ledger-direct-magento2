@@ -9,10 +9,12 @@
 # Not a merge gate: the testnet and its faucet are not deterministic. It runs
 # - on a pushed version tag: the `testnet` cases (all but PS-10's 35-minute wait), before the
 #   release is announced; a red run reports, it does not stop the release;
-# - weekly, on Monday, every case: PS-04 and PS-10 included. It tests the plugin's main branch and
-#   the harness's current main without a code change in between (a testnet reset, a new base image,
-#   a harness change). The four plugin repositories run an hour apart (Shopware 02:17, PrestaShop
-#   03:17, WooCommerce 04:17, Magento 05:17 UTC), so their runs do not share the treasury at once;
+# - weekly, on Monday: every case on the XRP Ledger, PS-04 and PS-10 included, and the `testnet`
+#   cases on Xahau (PS-10 does not depend on the chain, its wait would only hold the XAH). It tests
+#   the plugin's main branch and the harness's current main without a code change in between (a
+#   testnet reset, a new base image, a harness change). The four plugin repositories run an hour
+#   apart (Shopware 02:17, PrestaShop 03:17, WooCommerce 04:17, Magento 05:17 UTC), but GitHub can
+#   start a scheduled run hours late, so the Xahau treasury holds enough for two runs at once;
 # - by hand, with the cases to run.
 # The workflow is the same in every LedgerDirect plugin repository except for the target.
 #
@@ -159,7 +161,7 @@ jobs:
           LD_E2E_MAGENTO_ADMIN_PASSWORD: demo-ledgerdirect-1
           LD_E2E_MAX_PAYMENT: '250'
           LD_E2E_RUN_BUDGET: XAH=1500
-          CASES: ${{ github.event_name == 'schedule' && 'all' || inputs.cases || 'testnet' }}
+          CASES: ${{ inputs.cases || 'testnet' }}
         run: >
           node dist/cli.js --chain XAHAU run --target "$TARGET" --base-url http://localhost:8088
           --compose-dir ../dev/try --cases "$CASES" --report out/report-xahau.json

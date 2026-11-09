@@ -289,7 +289,7 @@ when it changes only documentation, tests, test tool settings or other workflows
 [`ledger-direct-e2e`](https://github.com/ledger-direct/ledger-direct-e2e), first on the XRPL testnet, then
 on the Xahau testnet (where the harness switches Xahau on in the shop and PS-04 is skipped, Xahau having
 no issued asset): on a version tag (every case but the 35-minute wait), every Monday at 05:17 UTC (every
-case) and by hand. One CI treasury per chain, from the repository secrets (`LEDGERDIRECT_CI_XRPL_TREASURY_*`,
+case on the XRPL testnet, on Xahau every case but that wait) and by hand. One CI treasury per chain, from the repository secrets (`LEDGERDIRECT_CI_XRPL_TREASURY_*`,
 `LEDGERDIRECT_CI_XAHAU_TREASURY_*`). It does not gate a merge: the testnets and their faucets are not
 deterministic.
 
