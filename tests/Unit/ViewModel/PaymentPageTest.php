@@ -183,6 +183,28 @@ class PaymentPageTest extends TestCase
     /**
      * @param array<string, mixed> $info the DTO's values that matter for the case
      */
+    /**
+     * The page for an order the core could not price carries the shop's frame and the way
+     * back to the payment page - and nothing that could be paid.
+     */
+    public function testThePriceUnavailablePageHasNoPaymentData(): void
+    {
+        $this->store->method('getName')->willReturn('Shop');
+        $block = $this->getMockBuilder(Template::class)->disableOriginalConstructor()->onlyMethods([])->getMock();
+        $block->setData('order_number', '000000042');
+        $block->setData('page_url', 'https://shop.test/ledger-direct/payment/index/id/42/key/K');
+
+        $view = $this->viewModel->forUnavailable($block);
+
+        self::assertSame('000000042', $view['order_number']);
+        self::assertSame('https://shop.test/ledger-direct/payment/index/id/42/key/K', $view['page_url']);
+        self::assertSame('Shop', $view['store_name']);
+        self::assertSame('#1f5eff', $view['accent']);
+        foreach (['amount', 'destination_account', 'destination_tag', 'payment_uri', 'rate_display', 'state'] as $key) {
+            self::assertArrayNotHasKey($key, $view);
+        }
+    }
+
     private function block(PaymentIntent $intent, array $info): Template
     {
         $dto = $this->createMock(XrpPaymentInterface::class);

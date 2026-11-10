@@ -113,6 +113,9 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                             <div>
                                 <p><strong><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.expiredTitle')) ?></strong> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.expiredRate')) ?></p>
                                 <p><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.expiredAlreadySent')) ?></p>
+                                <?php if ($v['requote_failed']): ?>
+                                    <p role="alert"><strong><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.requoteUnavailable')) ?></strong></p>
+                                <?php endif; ?>
                                 <form method="post" action="<?= $escaper->escapeUrl($v['refresh_url']) ?>">
                                     <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($v['form_key']) ?>">
                                     <input type="hidden" name="id" value="<?= (int) $v['order_id'] ?>">
