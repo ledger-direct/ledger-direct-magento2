@@ -1,0 +1,59 @@
+<?php
+/**
+ * Copyright (c) Alexander Busse | Hardcastle Technologies.
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+use Hardcastle\LedgerDirect\ViewModel\PaymentPage;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var Escaper $escaper */
+/** @var PaymentPage $viewModel */
+
+/*
+ * The payment page for an order that could not be quoted: the price oracles are down or
+ * disagree. No amount, no account, no tag - there is nothing to pay yet. The same frame
+ * and notice as PrestaShop's page without an intent; deliberately without data-ld-page,
+ * so @ledger-direct/payment-ui does not start polling a page that has no status to poll.
+ * "Try again" reloads this page, which quotes again.
+ */
+$viewModel = $block->getData('view_model');
+$v = $viewModel->forUnavailable($block);
+?>
+<div class="ld-page" style="--ld-accent: <?= $escaper->escapeHtmlAttr($v['accent']) ?>">
+
+    <header class="ld-top">
+        <a class="ld-shop" href="<?= $escaper->escapeUrl($v['home_url']) ?>">
+            <?php if ($v['logo']['url'] !== null): ?>
+                <span class="ld-shop-logo ld-shop-logo--image"><img src="<?= $escaper->escapeUrl($v['logo']['url']) ?>" alt="<?= $escaper->escapeHtmlAttr($v['store_name']) ?>" width="160" height="32"></span>
+            <?php else: ?>
+                <span class="ld-shop-logo" aria-hidden="true"><?= $escaper->escapeHtml($v['logo']['monogram']) ?></span>
+            <?php endif; ?>
+            <span><?= $escaper->escapeHtml($v['store_name']) ?></span>
+        </a>
+        <div class="ld-top-meta">
+            <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.orderLabel')) ?> <strong><?= $escaper->escapeHtml($v['order_number']) ?></strong>
+        </div>
+    </header>
+
+    <main class="ld-main">
+        <div class="ld-card">
+            <div class="ld-notice ld-notice--warn" role="status">
+                <svg class="ld-notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                <div>
+                    <p><strong><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.priceUnavailableTitle')) ?></strong></p>
+                    <p><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.priceUnavailableRetry')) ?></p>
+                    <a class="ld-btn ld-btn--primary" href="<?= $escaper->escapeUrl($v['page_url']) ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.priceUnavailableButton')) ?></a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="ld-foot">
+        <a href="<?= $escaper->escapeUrl($v['cart_url']) ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.backToCart')) ?></a>
+    </footer>
+</div>

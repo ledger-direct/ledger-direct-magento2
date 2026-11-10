@@ -4,6 +4,7 @@ namespace Hardcastle\LedgerDirect\Controller\Payment;
 
 use Hardcastle\LedgerDirect\Core\Payment\PaymentStatus;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
+use Hardcastle\LedgerDirect\Core\Price\PriceUnavailableException;
 use Hardcastle\LedgerDirect\Service\OrderAccess;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use InvalidArgumentException;
@@ -12,6 +13,7 @@ use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
+use Magento\Framework\Message\ManagerInterface;
 
 /**
  * A new quote for an expired one - the button under the "quote expired" notice.
@@ -22,9 +24,17 @@ use Magento\Framework\Controller\Result\RedirectFactory;
  * OrderPaymentService::prepareOrderPayment()).
  *
  * A POST, so Magento's form-key check applies; the form on the page carries the key.
+ *
+ * Without a price - the oracles down or disagreeing - nothing is written: the expired intent
+ * stays as it was, no stale rate stands in, and the payment page says to try again.
  */
 class Refresh implements HttpPostActionInterface
 {
+    /**
+     * Message group the payment page reads once to say that the new amount could not be priced
+     */
+    public const PRICE_UNAVAILABLE_GROUP = 'ledger_direct_price_unavailable';
+
     /**
      * @var RequestInterface
      */
@@ -56,12 +66,18 @@ class Refresh implements HttpPostActionInterface
     private SettlementPolicy $settlementPolicy;
 
     /**
+     * @var ManagerInterface
+     */
+    private ManagerInterface $messageManager;
+
+    /**
      * @param RequestInterface $request
      * @param RedirectFactory $redirectFactory
      * @param Session $customerSession
      * @param OrderAccess $orderAccess
      * @param OrderPaymentService $orderPaymentService
      * @param SettlementPolicy $settlementPolicy
+     * @param ManagerInterface $messageManager
      */
     public function __construct(
         RequestInterface $request,
@@ -69,7 +85,8 @@ class Refresh implements HttpPostActionInterface
         Session $customerSession,
         OrderAccess $orderAccess,
         OrderPaymentService $orderPaymentService,
-        SettlementPolicy $settlementPolicy
+        SettlementPolicy $settlementPolicy,
+        ManagerInterface $messageManager
     ) {
         $this->request = $request;
         $this->redirectFactory = $redirectFactory;
@@ -77,6 +94,7 @@ class Refresh implements HttpPostActionInterface
         $this->orderAccess = $orderAccess;
         $this->orderPaymentService = $orderPaymentService;
         $this->settlementPolicy = $settlementPolicy;
+        $this->messageManager = $messageManager;
     }
 
     /**
@@ -115,7 +133,14 @@ class Refresh implements HttpPostActionInterface
             return $backToPaymentPage;
         }
 
-        $this->orderPaymentService->prepareOrderPayment($order, true);
+        try {
+            $this->orderPaymentService->prepareOrderPayment($order, true);
+        } catch (PriceUnavailableException $exception) {
+            $this->messageManager->addErrorMessage(
+                __('LedgerDirect.paymentPage.requoteUnavailable'),
+                self::PRICE_UNAVAILABLE_GROUP
+            );
+        }
 
         return $backToPaymentPage;
     }

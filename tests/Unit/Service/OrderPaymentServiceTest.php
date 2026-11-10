@@ -9,6 +9,7 @@ use Hardcastle\LedgerDirect\Core\Payment\PaymentIntent;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
 use Hardcastle\LedgerDirect\Core\Port\XrplTransactionRepositoryInterface;
+use Hardcastle\LedgerDirect\Core\Price\OraclesDisagreeException;
 use Hardcastle\LedgerDirect\Core\Price\PriceService;
 use Hardcastle\LedgerDirect\Core\Xrpl\DestinationTagService;
 use Hardcastle\LedgerDirect\Core\Testing\InMemoryCache;
@@ -179,6 +180,34 @@ class OrderPaymentServiceTest extends TestCase
         $returned = $this->createService()->prepareOrderPayment($this->givenOrder('xrp_payment', $stored));
 
         $this->assertSame($stored->toArray(), $returned->toArray());
+    }
+
+    /**
+     * Core 0.11.1 fails closed when the oracles disagree. For a new order nothing is stored,
+     * and an expired quote stays exactly as it was - no stale rate takes its place.
+     */
+    public function testWithoutAPriceNothingIsStoredForANewOrder(): void
+    {
+        $this->orderRepository->expects($this->never())->method('save');
+
+        try {
+            $this->createService([], new StubHttpClient(2.5, coingeckoPrice: 5.0))
+                ->prepareOrderPayment($this->givenOrder('xrp_payment'));
+            $this->fail('expected the core to refuse a price');
+        } catch (OraclesDisagreeException $exception) {
+            $this->assertSame([], $this->writtenAdditionalData);
+        }
+    }
+
+    public function testWithoutAPriceAnExpiredQuoteIsKeptAsItIs(): void
+    {
+        $stored = $this->givenStoredIntent(expiry: time() - 1);
+        $this->orderRepository->expects($this->never())->method('save');
+
+        $this->expectException(OraclesDisagreeException::class);
+
+        $this->createService([], new StubHttpClient(2.5, coingeckoPrice: 5.0))
+            ->prepareOrderPayment($this->givenOrder('xrp_payment', $stored), true);
     }
 
     public function testPrepareNeverTouchesASettledPayment(): void
@@ -563,8 +592,8 @@ class OrderPaymentServiceTest extends TestCase
         $chains = new ChainServices(
             ['XRPL' => $xrplClient, 'XAHAU' => $xahauClient],
             [
-                'XRPL' => new SyncService($xrplClient, $this->transactionRepository, new NullLogger()),
-                'XAHAU' => new SyncService($xahauClient, $this->xahauRepository, new NullLogger()),
+                'XRPL' => new SyncService($xrplClient, $this->transactionRepository, new NullLogger(), $cache),
+                'XAHAU' => new SyncService($xahauClient, $this->xahauRepository, new NullLogger(), $cache, 'XAHAU'),
             ],
             [
                 'XRPL' => $throttle ?? new SyncThrottle($cache, new NullLogger()),

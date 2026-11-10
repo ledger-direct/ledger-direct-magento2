@@ -11,6 +11,7 @@ namespace Hardcastle\LedgerDirect\Controller\Payment;
 use Hardcastle\LedgerDirect\Api\XrpPaymentServiceInterface;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentStatus;
 use Hardcastle\LedgerDirect\Core\Payment\SettlementPolicy;
+use Hardcastle\LedgerDirect\Core\Price\PriceUnavailableException;
 use Hardcastle\LedgerDirect\Service\OrderAccess;
 use Hardcastle\LedgerDirect\Service\OrderPaymentService;
 use Hardcastle\LedgerDirect\Service\OrderSettlementService;
@@ -21,9 +22,11 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Data\Form\FormKey;
+use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
+use Magento\Sales\Api\Data\OrderInterface;
 
 /**
  * The payment page: amount, receiving account and destination tag, in one of the five
@@ -33,6 +36,10 @@ use Magento\Framework\View\Result\PageFactory;
  * request, see OrderAccess. A guest who has just placed the order arrives with the entity
  * id only and is sent once more to this page with the key, so the address bar carries the
  * URL that still works in an hour, in another browser.
+ *
+ * An order that has no quote yet is quoted here. Without a price - the oracles down or
+ * disagreeing - the page says so and offers to try again; nothing is stored and no stale
+ * rate stands in.
  */
 class Index implements HttpGetActionInterface
 {
@@ -97,6 +104,11 @@ class Index implements HttpGetActionInterface
     private PaymentRedirect $paymentRedirect;
 
     /**
+     * @var ManagerInterface
+     */
+    private ManagerInterface $messageManager;
+
+    /**
      * @param Session $customerSession
      * @param RequestInterface $request
      * @param PageFactory $pageFactory
@@ -109,6 +121,7 @@ class Index implements HttpGetActionInterface
      * @param OrderSettlementService $settlementService
      * @param SettlementPolicy $settlementPolicy
      * @param PaymentRedirect $paymentRedirect
+     * @param ManagerInterface $messageManager
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
@@ -123,7 +136,8 @@ class Index implements HttpGetActionInterface
         XrpPaymentServiceInterface $xrpPaymentService,
         OrderSettlementService $settlementService,
         SettlementPolicy $settlementPolicy,
-        PaymentRedirect $paymentRedirect
+        PaymentRedirect $paymentRedirect,
+        ManagerInterface $messageManager
     ) {
         $this->customerSession = $customerSession;
         $this->request = $request;
@@ -137,6 +151,7 @@ class Index implements HttpGetActionInterface
         $this->settlementService = $settlementService;
         $this->settlementPolicy = $settlementPolicy;
         $this->paymentRedirect = $paymentRedirect;
+        $this->messageManager = $messageManager;
     }
 
     /**
@@ -185,7 +200,17 @@ class Index implements HttpGetActionInterface
             return $this->redirectFactory->create()->setUrl($this->paymentRedirect->target($order));
         }
 
-        $paymentInfo = $this->xrpPaymentService->getPaymentDetails($order);
+        $pageUrl = $this->urlBuilder->getUrl('ledger-direct/payment/index', [
+            OrderAccess::ORDER_ID_PARAMETER => $orderId,
+            OrderAccess::KEY_PARAMETER => $key,
+        ]);
+
+        try {
+            $paymentInfo = $this->xrpPaymentService->getPaymentDetails($order);
+        } catch (PriceUnavailableException $exception) {
+            return $this->priceUnavailablePage($order, $pageUrl);
+        }
+
         $intent = $this->orderPaymentService->readPaymentIntent($order);
         $status = PaymentStatus::fromIntent($intent, $this->settlementPolicy);
 
@@ -203,13 +228,36 @@ class Index implements HttpGetActionInterface
             OrderAccess::KEY_PARAMETER => $key,
         ]));
         // The page's own URL with the key: the check form posts nothing, it reloads - a render is a sync.
-        $block->setData('page_url', $this->urlBuilder->getUrl('ledger-direct/payment/index', [
-            OrderAccess::ORDER_ID_PARAMETER => $orderId,
-            OrderAccess::KEY_PARAMETER => $key,
-        ]));
+        $block->setData('page_url', $pageUrl);
         $block->setData('refresh_url', $this->urlBuilder->getUrl('ledger-direct/payment/refresh'));
+        // A refresh that found no price comes back here once to say so; the expired quote stays.
+        $block->setData('requote_failed', $this->messageManager->getMessages(
+            true,
+            Refresh::PRICE_UNAVAILABLE_GROUP
+        )->getCount() > 0);
         // Where the success view sends the customer, the same target the status endpoint's redirect names.
         $block->setData('redirect_url', $this->paymentRedirect->target($order));
+
+        return $page;
+    }
+
+    /**
+     * The page for an order that could not be quoted: no amount, no account, only "try again"
+     *
+     * The retry is a reload of the payment page, which quotes again.
+     *
+     * @param OrderInterface $order
+     * @param string $pageUrl
+     * @return Page
+     */
+    private function priceUnavailablePage(OrderInterface $order, string $pageUrl): Page
+    {
+        $page = $this->pageFactory->create();
+        $page->getConfig()->getTitle()->set(__('LedgerDirect.paymentPage.pageTitle'));
+        $block = $page->getLayout()->getBlock('ledger-direct.payment.index');
+        $block->setTemplate('Hardcastle_LedgerDirect::payment/price-unavailable.phtml');
+        $block->setData('order_number', (string) $order->getIncrementId());
+        $block->setData('page_url', $pageUrl);
 
         return $page;
     }

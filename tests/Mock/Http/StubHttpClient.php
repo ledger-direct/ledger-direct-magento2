@@ -24,17 +24,25 @@ class StubHttpClient implements ClientInterface
 
     private int $rpcHttpStatus;
 
+    /** Coingecko's answer when it differs from Kraken's, to make the oracles disagree */
+    private ?float $coingeckoPrice;
+
     /** @var string[] every request URI seen, for assertions on what was (not) called */
     public array $requestedUris = [];
 
     /**
      * @param array<int, array<string, mixed>> $ledgerTransactions
      */
-    public function __construct(float $price = 2.5, array $ledgerTransactions = [], int $rpcHttpStatus = 200)
-    {
+    public function __construct(
+        float $price = 2.5,
+        array $ledgerTransactions = [],
+        int $rpcHttpStatus = 200,
+        ?float $coingeckoPrice = null
+    ) {
         $this->price = $price;
         $this->ledgerTransactions = $ledgerTransactions;
         $this->rpcHttpStatus = $rpcHttpStatus;
+        $this->coingeckoPrice = $coingeckoPrice;
     }
 
     public function sendRequest(RequestInterface $request): ResponseInterface
@@ -55,7 +63,7 @@ class StubHttpClient implements ClientInterface
             $baseId = (string) ($query['ids'] ?? '');
             $quoteId = (string) ($query['vs_currencies'] ?? '');
 
-            return self::json([$baseId => [$quoteId => $this->price]]);
+            return self::json([$baseId => [$quoteId => $this->coingeckoPrice ?? $this->price]]);
         }
 
         if ($request->getMethod() === 'POST') {

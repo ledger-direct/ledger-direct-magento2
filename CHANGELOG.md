@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Needs `hardcastle/ledger-direct-core` 0.11.1
+- When the price oracles disagree, there is no price, instead of a stale rate. The payment page then
+  says the payment details are temporarily unavailable and offers to try again; nothing is stored.
+  If the new amount for an expired quote cannot be priced, the quote stays as it was and the page
+  says to try again
+- After a testnet reset, such as the XRP Ledger testnet's on 2026-11-25, only the first sync of each
+  receiving account sends a failing request, as long as the shop's cache keeps the note of the reset;
+  before, every sync did. If that cache entry is cleared or evicted, or the account goes 30 days
+  without a sync, the next sync sends one more failing request
+
 ## 1.2.1
 
 - An order is settled exactly once. Overlapping checks of the same order could create a second invoice

@@ -184,7 +184,29 @@ class PaymentPage implements ArgumentInterface
             'cart_url' => $this->urlBuilder->getUrl('checkout/cart'),
             'access_key' => (string) $block->getData('access_key'),
             'form_key' => (string) $block->getData('form_key'),
+            'requote_failed' => (bool) $block->getData('requote_failed'),
             'order_id' => $info->getOrderId(),
+        ];
+    }
+
+    /**
+     * What the "price unavailable" page renders: the shop's frame and the way back, no payment data
+     *
+     * @param Template $block
+     * @return array<string, mixed>
+     */
+    public function forUnavailable(Template $block): array
+    {
+        $storeName = $this->storeName();
+
+        return [
+            'order_number' => (string) $block->getData('order_number'),
+            'page_url' => (string) $block->getData('page_url'),
+            'store_name' => $storeName,
+            'accent' => AccentColor::sanitize($this->config->getPaymentPageAccentColor()),
+            'logo' => $this->logo($storeName),
+            'home_url' => $this->urlBuilder->getUrl(''),
+            'cart_url' => $this->urlBuilder->getUrl('checkout/cart'),
         ];
     }
 
