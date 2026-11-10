@@ -49,9 +49,15 @@
             <argument name="streamFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
         </arguments>
     </type>
+    <!--
+        After a testnet reset the sync remembers the new epoch in the same PSR-16 cache, so only the
+        first sync per account sends the failing request; without a cache every sync would.
+    -->
     <type name="Hardcastle\LedgerDirect\Core\Xrpl\SyncService">
         <arguments>
             <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="cache" xsi:type="object">Hardcastle\LedgerDirect\Model\Cache\RateCache</argument>
+            <argument name="chain" xsi:type="string">XRPL</argument>
         </arguments>
     </type>
     <!--
@@ -96,6 +102,8 @@
             <argument name="xrplClient" xsi:type="object">Hardcastle\LedgerDirect\Xahau\Client</argument>
             <argument name="transactionRepository" xsi:type="object">Hardcastle\LedgerDirect\Xahau\TransactionRepository</argument>
             <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="cache" xsi:type="object">Hardcastle\LedgerDirect\Model\Cache\RateCache</argument>
+            <argument name="chain" xsi:type="string">XAHAU</argument>
         </arguments>
     </virtualType>
     <virtualType name="Hardcastle\LedgerDirect\Xahau\SyncThrottle" type="Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle">

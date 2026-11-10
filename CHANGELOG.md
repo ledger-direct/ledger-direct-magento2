@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Needs `hardcastle/ledger-direct-core` 0.11.1
+- When the price oracles disagree, there is no price, instead of a stale rate
+- After a testnet reset, such as the XRP Ledger testnet's on 2026-11-25, only the first sync of each
+  receiving account sends a failing request; before, every sync did
+
 ## 1.2.1
 
 - An order is settled exactly once. Overlapping checks of the same order could create a second invoice

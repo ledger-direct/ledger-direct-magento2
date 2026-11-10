@@ -563,8 +563,8 @@ class OrderPaymentServiceTest extends TestCase
         $chains = new ChainServices(
             ['XRPL' => $xrplClient, 'XAHAU' => $xahauClient],
             [
-                'XRPL' => new SyncService($xrplClient, $this->transactionRepository, new NullLogger()),
-                'XAHAU' => new SyncService($xahauClient, $this->xahauRepository, new NullLogger()),
+                'XRPL' => new SyncService($xrplClient, $this->transactionRepository, new NullLogger(), $cache),
+                'XAHAU' => new SyncService($xahauClient, $this->xahauRepository, new NullLogger(), $cache, 'XAHAU'),
             ],
             [
                 'XRPL' => $throttle ?? new SyncThrottle($cache, new NullLogger()),
