@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.2
 
 - Needs `hardcastle/ledger-direct-core` 0.11.1
 - When the price oracles disagree, there is no price, instead of a stale rate. The payment page then
