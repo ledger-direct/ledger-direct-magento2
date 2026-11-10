@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.3
+
+- `etc/module.xml` carries the release's version again (`setup_version`, last set for 1.1.3), which
+  the Adobe Commerce Marketplace checks against `composer.json`. No functional change; run
+  `bin/magento setup:upgrade` after the update as usual
+- The Marketplace user guide (`docs/marketplace/user-guide.pdf`) is rendered from the current README
+
 ## 1.2.2
 
 - Needs `hardcastle/ledger-direct-core` 0.11.1
