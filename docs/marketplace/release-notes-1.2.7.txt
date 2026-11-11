@@ -1,0 +1,28 @@
+LedgerDirect for Magento 2 — release notes 1.2.7
+
+Changes since 1.1.3, the last version on the Marketplace:
+
+- Xahau: XAH on the Xahau network as a second chain, paid by destination tag, with its own
+  configuration group and payment method (off by default) and its own tables (1.2.0)
+- An order is settled exactly once; overlapping checks could create a second invoice (1.2.1)
+- XRP has its own admin group with Enabled and Title, like RLUSD and USDC; the admin page Payment
+  Methods renders again in every scope (1.1.6)
+- The payment page works on Linux servers (case-sensitive class path), and
+  bin/magento setup:db:status reports the module up to date after setup:upgrade (1.1.4)
+- Core 0.11.1: no stale exchange rate when the price oracles disagree; the payment page then says the
+  payment details are temporarily unavailable and offers to try again, and an expired quote that
+  cannot be priced again stays as it was. After a testnet reset only the first sync per receiving
+  account sends a failing request (1.2.2)
+- etc/module.xml carries the release's version again (1.2.3)
+- Magento 2.4.9 and PHP 8.5: composer.json allows PHP 8.5, and the unit tests run on Magento
+  2.4.7, 2.4.8 and 2.4.9, each on the newest PHP it supports (1.2.4)
+- Installs with Composer on Magento 2.4.9, which ships symfony/console 7 (1.2.5)
+- A request for a new amount in the very second the quote expired now gets one (1.2.5)
+- Needs hardcastle/ledger-direct-core 0.11.2, which allows brick/math 1.0, as a fresh Magento
+  2.4.9 has it; the payment page and the admin's payment information escape all their output the
+  way the Magento coding standard checks it (1.2.6)
+- The payment page's notices for a partial payment and for a payment in the wrong token read as
+  sentences again in English and German, and the page fills the window without a white border
+  (1.2.7)
+
+Requires hardcastle/ledger-direct-core 0.11.2. Run bin/magento setup:upgrade after the update.

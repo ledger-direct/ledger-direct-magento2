@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.7
 
 - The payment page shows its notices for a partial payment and for a payment in the wrong token
   as sentences again, in English and German; it showed their translation keys. A test checks that
