@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Hardcastle\LedgerDirect\Tests\Unit;
 
 use Hardcastle\LedgerDirect\Core\Xrpl\Schema;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
 
@@ -17,6 +18,7 @@ class DbSchemaTest extends TestCase
     /**
      * @dataProvider chains
      */
+    #[DataProvider('chains')]
     public function testTheDeclaredTablesMatchTheCoreSchema(string $chain): void
     {
         $xml = new SimpleXMLElement((string) file_get_contents(dirname(__DIR__, 2) . '/etc/db_schema.xml'));

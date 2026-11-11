@@ -5,6 +5,7 @@ namespace Hardcastle\LedgerDirect\Tests\Unit\Model;
 
 use Hardcastle\LedgerDirect\Core\ChainCatalog;
 use Hardcastle\LedgerDirect\Model\PaymentMethods;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
 
@@ -66,6 +67,7 @@ class PaymentMethodsTest extends TestCase
      *
      * @dataProvider methodCodes
      */
+    #[DataProvider('methodCodes')]
     public function testEveryPaymentMethodIsWiredEverywhere(string $code): void
     {
         $dir = self::moduleDir();

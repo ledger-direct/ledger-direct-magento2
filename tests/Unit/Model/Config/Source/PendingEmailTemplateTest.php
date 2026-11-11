@@ -8,6 +8,7 @@ use Magento\Email\Model\ResourceModel\Template\Collection;
 use Magento\Email\Model\ResourceModel\Template\CollectionFactory;
 use Magento\Email\Model\Template\Config;
 use Magento\Framework\Registry;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -32,6 +33,7 @@ class PendingEmailTemplateTest extends TestCase
     /**
      * @dataProvider structurePaths
      */
+    #[DataProvider('structurePaths')]
     public function testTheDefaultIsTheModulesTemplate(string $structurePath): void
     {
         $collection = $this->createMock(Collection::class);

@@ -111,7 +111,11 @@ jobs:
         # Constraints, not exact tags: composer resolves the latest -pN patch of each release. Note
         # the 4-segment form (~2.4.7.0, not ~2.4.7): Magento's 2.4.7/2.4.8/2.4.9 are patch levels of
         # the same 2.4 minor line, and a 3-segment tilde would float straight past 2.4.8 to 2.4.9.
-        magento-version: ['~2.4.7.0', '~2.4.8.0']
+        # Each release on the newest PHP it supports, the version the Marketplace asks for.
+        include:
+          - { magento-version: '~2.4.7.0', php: '8.3' }
+          - { magento-version: '~2.4.8.0', php: '8.4' }
+          - { magento-version: '~2.4.9.0', php: '8.5' }
     # Magento Open Source comes from Mage-OS's public mirror (https://mirror.mage-os.org/). It needs
     # no credentials, so pull requests from forks run the tests too, and it is several times faster
     # than repo.magento.com. Its packages are Adobe's: a file-by-file comparison of 2.4.8-p5 from both
@@ -123,7 +127,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php }}
           tools: composer:v2
 
       - name: Composer cache directory
@@ -191,7 +195,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        magento-version: ['~2.4.7.0', '~2.4.8.0']
+        include:
+          - { magento-version: '~2.4.7.0', php: '8.3' }
+          - { magento-version: '~2.4.8.0', php: '8.4' }
+          - { magento-version: '~2.4.9.0', php: '8.5' }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -199,7 +206,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php }}
           tools: composer:v2
 
       - name: Check for repo.magento.com credentials

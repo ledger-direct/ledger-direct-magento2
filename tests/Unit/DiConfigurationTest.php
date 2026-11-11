@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Hardcastle\LedgerDirect\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -66,6 +67,7 @@ class DiConfigurationTest extends TestCase
     /**
      * @dataProvider moduleClassReferences
      */
+    #[DataProvider('moduleClassReferences')]
     public function testTheReferencedClassExistsUnderExactlyThisName(string $class, string $file): void
     {
         $this->assertTrue(

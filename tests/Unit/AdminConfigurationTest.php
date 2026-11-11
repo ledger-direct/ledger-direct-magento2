@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Hardcastle\LedgerDirect\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
 
@@ -53,6 +54,7 @@ class AdminConfigurationTest extends TestCase
     /**
      * @dataProvider paymentMethods
      */
+    #[DataProvider('paymentMethods')]
     public function testEveryPaymentMethodCanBeSwitchedAndNamedInTheAdmin(string $method): void
     {
         $groups = self::adminGroups();
@@ -106,6 +108,7 @@ class AdminConfigurationTest extends TestCase
     /**
      * @dataProvider chainGroups
      */
+    #[DataProvider('chainGroups')]
     public function testEveryChainGroupHasTheFieldsSystemConfigReads(string $group, string $prefix): void
     {
         $fields = [];
@@ -121,6 +124,7 @@ class AdminConfigurationTest extends TestCase
     /**
      * @dataProvider sharedFields
      */
+    #[DataProvider('sharedFields')]
     public function testEverySharedSettingIsRead(string $field): void
     {
         $path = 'payment/' . self::SHARED_GROUP . '/' . $field;
