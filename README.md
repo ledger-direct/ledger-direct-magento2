@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/ledger-direct/ledger-direct-magento2/actions/workflows/ci.yml/badge.svg)](https://github.com/ledger-direct/ledger-direct-magento2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Magento](https://img.shields.io/badge/Magento-2.4.7%20%7C%202.4.8-orange)
-![PHP](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4-777bb4)
+![Magento](https://img.shields.io/badge/Magento-2.4.7%20%7C%202.4.8%20%7C%202.4.9-orange)
+![PHP](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4%20%7C%208.5-777bb4)
 
 Accept XRP, RLUSD and USDC directly on the XRP Ledger, and XAH on [Xahau](https://xahau.network) — no
 payment processor, no custody, funds land in the merchant's own wallet.
@@ -108,8 +108,8 @@ from what is already stored. A guest order can poll too — the link carries the
 
 ## Requirements
 
-- Magento Open Source or Adobe Commerce 2.4.7 or 2.4.8
-- PHP 8.2, 8.3 or 8.4
+- Magento Open Source or Adobe Commerce 2.4.7, 2.4.8 or 2.4.9
+- PHP 8.2, 8.3, 8.4 or 8.5, as far as the Magento version allows it
 - A running Magento cron, for the settlement job
 - An XRP Ledger account. Accepting RLUSD or USDC additionally requires a **trustline** to the
   respective issuer on that account, or payments will fail on the ledger.
@@ -273,8 +273,8 @@ composer require hardcastle/ledger-direct-core:dev-master
 ### Continuous integration and release
 
 Every push and pull request runs `.github/workflows/ci.yml`: PHP syntax, the Magento 2 coding
-standard (`magento/magento-coding-standard`), and the PHPUnit suite inside a real Magento 2.4.7 and
-2.4.8 project. Magento Open Source comes from [Mage-OS's public mirror](https://mirror.mage-os.org/),
+standard (`magento/magento-coding-standard`), and the PHPUnit suite inside a real Magento 2.4.7,
+2.4.8 and 2.4.9 project, each on the newest PHP it supports (8.3, 8.4, 8.5). Magento Open Source comes from [Mage-OS's public mirror](https://mirror.mage-os.org/),
 which needs no access keys — pull requests from forks are tested too — and is several times faster
 than `repo.magento.com`; Composer's package cache is kept between runs. Once a week, and on demand,
 the same tests run against `repo.magento.com` itself (`MAGENTO_COMPOSER_AUTH` secret with Marketplace

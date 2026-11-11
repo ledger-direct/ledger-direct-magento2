@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Magento 2.4.9 and PHP 8.5: `composer.json` allows PHP 8.5, which the Adobe Commerce Marketplace
+  asks for when 2.4.9 is selected, and CI runs the unit tests on Magento 2.4.9 with PHP 8.5. No change
+  to the module's code
+
 ## 1.2.3
 
 - `etc/module.xml` carries the release's version again (`setup_version`, last set for 1.1.3), which
