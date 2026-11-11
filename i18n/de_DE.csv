@@ -59,6 +59,7 @@
 "LedgerDirect.paymentPage.network.XAHAU.testnet","Xahau Testnet"
 "LedgerDirect.paymentPage.orderLabel","Bestellung"
 "LedgerDirect.paymentPage.pageTitle","Zahlung abschließen"
+"LedgerDirect.paymentPage.partialArrived","%1 sind angekommen – danke. Es fehlen noch %2."
 "LedgerDirect.paymentPage.partialSendRest","Bitte senden Sie den Rest an dieselbe Adresse mit demselben Destination Tag."
 "LedgerDirect.paymentPage.poweredBy.XRPL","Zahlung direkt auf dem XRP Ledger, ohne Zwischenhändler."
 "LedgerDirect.paymentPage.poweredBy.XAHAU","Zahlung direkt im Xahau-Netzwerk, ohne Zwischenhändler."
@@ -102,3 +103,5 @@
 "LedgerDirect.paymentPage.walletNone","Keine Browser-Wallet gefunden. Nutzen Sie den QR-Code oder kopieren Sie die Angaben."
 "LedgerDirect.paymentPage.walletOr","oder"
 "LedgerDirect.paymentPage.walletSubmitted","Gesendet – wir prüfen den Eingang."
+"LedgerDirect.paymentPage.wrongAssetArrived","Eine Zahlung über %1 ist angekommen, diese Bestellung erwartet aber %2 des unten genannten Herausgebers. Sie kann deshalb nicht angerechnet werden."
+"LedgerDirect.paymentPage.wrongAssetSend","Bitte senden Sie %1 – oder schreiben Sie uns zur bereits geleisteten Zahlung."
