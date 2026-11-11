@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The payment page shows its notices for a partial payment and for a payment in the wrong token
+  as sentences again, in English and German; it showed their translation keys. A test checks that
+  every key the module prints has a translation in every language file
+
 ## 1.2.6
 
 - Needs `hardcastle/ledger-direct-core` 0.11.2, which allows `brick/math` 1.0. A fresh Magento 2.4.9
