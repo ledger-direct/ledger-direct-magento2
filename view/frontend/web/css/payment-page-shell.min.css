@@ -1,0 +1,2 @@
+/* The payment page uses Magento's empty layout without the theme's stylesheets, so nothing resets the browser's body margin; this does. */
+body.ld-body{margin:0}

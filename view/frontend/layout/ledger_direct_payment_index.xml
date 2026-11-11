@@ -3,7 +3,8 @@
     The payment page stands on its own: the empty layout, the theme's wrapper and
     stylesheets removed. Behaviour and design are @ledger-direct/payment-ui, shipped
     as built files under web/ (VERSION names the package tag). The files carry ".min."
-    in their name so Magento's own minifier leaves them alone; the wallet library
+    in their name so Magento's own minifier leaves them alone; payment-page-shell.min.css
+    is this module's own, the body reset the removed theme stylesheets would have given. The wallet library
     (wallets.min.js) is deliberately not on this page - the script fetches it by a
     native import() only when a customer opens the wallet list.
 -->
@@ -17,6 +18,7 @@
     <remove src="css/styles-s.css"/>
     <remove src="css/print.css"/>
     <css src="Hardcastle_LedgerDirect::css/payment-page.min.css" rel="stylesheet" type="text/css"/>
+    <css src="Hardcastle_LedgerDirect::css/payment-page-shell.min.css" rel="stylesheet" type="text/css"/>
     <script src="Hardcastle_LedgerDirect::js/ledger-direct-payment-ui/payment-page.min.js"/>
 </head>
 <body>
