@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.6
 
 - Needs `hardcastle/ledger-direct-core` 0.11.2, which allows `brick/math` 1.0. A fresh Magento 2.4.9
   has brick/math 1.0, and installing the module there failed
