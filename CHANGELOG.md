@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.5
 
 - Installs with Composer on Magento 2.4.9: `symfony/console` may be 6.4 or 7, as 2.4.9 ships 7.4. The
   three `ledger-direct:*` commands run unchanged on both. CI now also resolves the module as a
