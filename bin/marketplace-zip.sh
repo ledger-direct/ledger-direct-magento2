@@ -5,6 +5,11 @@
 # purpose — Packagist takes it from the git tag — but the Marketplace's technical review wants
 # the field in the submitted package.
 #
+# The package name changes too: the Marketplace accepts only packages whose vendor is the
+# seller profile's Vendor Name, `ledger-direct`, while Packagist has the module as
+# `hardcastle/ledger-direct-magento2`. The Marketplace copy is `ledger-direct/ledger-direct-magento2`
+# and replaces the Packagist name, so a shop cannot install the same module twice.
+#
 #   bin/marketplace-zip.sh 1.1.3        → build/Hardcastle_LedgerDirect-1.1.3.zip
 set -euo pipefail
 
@@ -33,7 +38,9 @@ php -r '
   // Development dependencies are not part of what a shop installs, and the review reads every
   // section: the coding standard is required with "*" there, which the review would flag.
   unset($json["require-dev"], $json["scripts"]);
-  $ordered = ["name" => $json["name"], "version" => $version] + $json;
+  $packagistName = $json["name"];
+  $json["replace"] = [$packagistName => "self.version"] + ($json["replace"] ?? []);
+  $ordered = ["name" => "ledger-direct/ledger-direct-magento2", "version" => $version] + $json;
   file_put_contents($file, json_encode($ordered, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
 ' "$build/$name/composer.json" "$tag"
 

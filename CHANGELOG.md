@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Installs with Composer on Magento 2.4.9: `symfony/console` may be 6.4 or 7, as 2.4.9 ships 7.4. The
+  three `ledger-direct:*` commands run unchanged on both. CI now also resolves the module as a
+  Composer package in each Magento release, which the unit tests under `app/code` do not
+- The Adobe Commerce Marketplace package is named `ledger-direct/ledger-direct-magento2`, after the
+  seller's vendor name, and replaces `hardcastle/ledger-direct-magento2`; Packagist keeps the
+  `hardcastle` name. `bin/marketplace-zip.sh` writes the name into the zip
+
 ## 1.2.4
 
 - Magento 2.4.9 and PHP 8.5: `composer.json` allows PHP 8.5, which the Adobe Commerce Marketplace
