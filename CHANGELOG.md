@@ -8,6 +8,9 @@
 - The Adobe Commerce Marketplace package is named `ledger-direct/ledger-direct-magento2`, after the
   seller's vendor name, and replaces `hardcastle/ledger-direct-magento2`; Packagist keeps the
   `hardcastle` name. `bin/marketplace-zip.sh` writes the name into the zip
+- A request for a new amount in the very second the quote expired kept the old quote, although the
+  page already showed it as expired: the module counted a quote as expired one second later than
+  the core does. Both now use the same boundary
 
 ## 1.2.4
 
