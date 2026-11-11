@@ -313,7 +313,9 @@ A release is a git tag, which Packagist picks up and Composer resolves as the mo
 The Adobe Commerce Marketplace wants the same code as a zip with `version` in its `composer.json`:
 `bin/marketplace-zip.sh <tag>` builds `build/Hardcastle_LedgerDirect-<tag>.zip` from the tag, writes
 the version into the copy, checks the fields the technical review requires and leaves tests and
-tooling out (`.gitattributes` export-ignore, the same rules Packagist applies). The listing's assets
+tooling out (`.gitattributes` export-ignore, the same rules Packagist applies). The Marketplace takes
+only packages under the seller's vendor name, so the copy is named `ledger-direct/ledger-direct-magento2`
+and replaces `hardcastle/ledger-direct-magento2`; module name and namespace stay the same. The listing's assets
 live in `docs/marketplace/`: the icon, the user guide (`bin/docs-pdf.sh` renders it from this README)
 and the release notes per version.
 

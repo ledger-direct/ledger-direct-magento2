@@ -29,7 +29,7 @@
         "magento/module-sales": ">=103.0.7",
         "magento/module-store": ">=101.1.7",
         "guzzlehttp/guzzle": "^7.4",
-        "symfony/console": "^6.4",
+        "symfony/console": "^6.4 || ^7.0",
         "bacon/bacon-qr-code": "^2.0 || ^3.0"
     },
     "require-dev": {

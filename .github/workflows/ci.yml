@@ -175,6 +175,15 @@ jobs:
           done
           exit 1
 
+      # app/code skips Composer, so the tests above never see the module's own requirements. A
+      # merchant installs it as a package: this resolves it as one against the project's lock file,
+      # so a constraint the Magento release cannot meet (symfony/console ^6.4 on 2.4.9) fails here.
+      - name: The module resolves as a Composer package
+        working-directory: magento
+        run: |
+          composer config repositories.module '{"type":"path","url":"../module","options":{"symlink":false}}'
+          composer require --dry-run --no-interaction --no-blocking "hardcastle/ledger-direct-magento2:*@dev"
+
       - name: Run unit tests
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
 
@@ -273,6 +282,15 @@ jobs:
             sleep 10
           done
           exit 1
+
+      - name: The module resolves as a Composer package
+        if: steps.auth.outputs.has_auth == 'true'
+        env:
+          COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
+        working-directory: magento
+        run: |
+          composer config repositories.module '{"type":"path","url":"../module","options":{"symlink":false}}'
+          composer require --dry-run --no-interaction --no-blocking "hardcastle/ledger-direct-magento2:*@dev"
 
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
