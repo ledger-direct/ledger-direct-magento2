@@ -1,9 +1,10 @@
 <?php
 /**
  * @var \Hardcastle\LedgerDirect\Block\Info $block
+ * @var \Magento\Framework\Escaper $escaper
  */
 $specificInfo = $block->getSpecificInformation();
-$title = $block->escapeHtml($block->getMethod()->getTitle());
+$title = $escaper->escapeHtml($block->getMethod()->getTitle());
 $explorerUrl = $block->getExplorerUrl();
 $transactionLabel = (string) __('Transaction');
 ?>
@@ -15,12 +16,12 @@ $transactionLabel = (string) __('Transaction');
             <caption class="table-caption"><?= /* @noEscape */ $title ?></caption>
             <?php foreach ($specificInfo as $label => $value): ?>
                 <tr>
-                    <th scope="row"><?= $block->escapeHtml($label) ?></th>
+                    <th scope="row"><?= $escaper->escapeHtml($label) ?></th>
                     <td>
                         <?php if ($label === $transactionLabel && $explorerUrl !== null): ?>
-                            <a href="<?= $block->escapeUrl($explorerUrl) ?>" target="_blank" rel="noopener"><?= $block->escapeHtml((string) $value) ?></a>
+                            <a href="<?= $escaper->escapeUrl($explorerUrl) ?>" target="_blank" rel="noopener"><?= $escaper->escapeHtml((string) $value) ?></a>
                         <?php else: ?>
-                            <?= /* @noEscape */ nl2br($block->escapeHtml(implode("\n", $block->getValueAsArray($value, true)))) ?>
+                            <?= /* @noEscape */ nl2br($escaper->escapeHtml(implode("\n", $block->getValueAsArray($value, true)))) ?>
                         <?php endif; ?>
                     </td>
                 </tr>

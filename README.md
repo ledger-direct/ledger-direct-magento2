@@ -141,7 +141,7 @@ its current patch release first.
 This also installs `hardcastle/ledger-direct-core` from Packagist. If you place the module under
 `app/code/Hardcastle/LedgerDirect` instead, Composer does not read the module's own `composer.json`;
 require its two dependencies at project level yourself
-(`composer require hardcastle/ledger-direct-core:^0.11.1 "bacon/bacon-qr-code:^2.0 || ^3.0"`, the
+(`composer require hardcastle/ledger-direct-core:^0.11.2 "bacon/bacon-qr-code:^2.0 || ^3.0"`, the
 QR-code library renders the payment page's code for browsers without JavaScript) and run the same
 three `bin/magento` commands.
 

@@ -40,7 +40,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
      data-ld-state="<?= $escaper->escapeHtmlAttr($state) ?>"
      data-ld-poll-url="<?= $escaper->escapeUrl($v['poll_url']) ?>"
      data-ld-chain="<?= $escaper->escapeHtmlAttr($v['chain']) ?>"
-     data-ld-asset="<?= $asset ?>"
+     data-ld-asset="<?= $escaper->escapeHtmlAttr($v['asset']) ?>"
      data-ld-network="<?= $escaper->escapeHtmlAttr($v['network']) ?>"
      data-ld-explorer-base="<?= $escaper->escapeUrl($v['explorer_base']) ?>"
      data-ld-quote-seconds="<?= (int) $v['quote_seconds'] ?>"
@@ -131,7 +131,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                         </p>
                         <div class="ld-amount">
                             <span class="ld-amount-value" data-ld-amount><?= $escaper->escapeHtml($v['amount_due']) ?></span>
-                            <span class="ld-amount-asset"><?= $asset ?></span>
+                            <span class="ld-amount-asset"><?= /* @noEscape */ $asset ?></span>
                             <button type="button" class="ld-copy" data-copy="amount" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyAmount')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
                         </div>
                         <p class="ld-fiat" data-ld-fiat>
@@ -166,7 +166,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                                 <li>
                                     <div class="ld-field-label"><span class="ld-step-no">3</span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepIssuer')) ?></div>
                                     <div class="ld-field">
-                                        <span class="ld-field-value"><?= $asset ?> · <span data-ld-issuer data-value="<?= $escaper->escapeHtmlAttr($v['issuer']) ?>"><?= $escaper->escapeHtml($v['issuer']) ?></span></span>
+                                        <span class="ld-field-value"><?= /* @noEscape */ $asset ?> · <span data-ld-issuer data-value="<?= $escaper->escapeHtmlAttr($v['issuer']) ?>"><?= $escaper->escapeHtml($v['issuer']) ?></span></span>
                                         <button type="button" class="ld-copy" data-copy="issuer" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyIssuer')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
                                     </div>
                                     <p class="ld-hint"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.issuerHint', $v['asset'])) ?></p>
