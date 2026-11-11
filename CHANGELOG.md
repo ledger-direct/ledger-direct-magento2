@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Needs `hardcastle/ledger-direct-core` 0.11.2, which allows `brick/math` 1.0. A fresh Magento 2.4.9
+  has brick/math 1.0, and installing the module there failed
+- The payment page and the admin's payment information escape their output the way the Magento
+  coding standard checks it, also where the value was escaped earlier. CI now sniffs the templates
+  too, and adds the module to a Magento that was installed on its own first, as a shop does
+
 ## 1.2.5
 
 - Installs with Composer on Magento 2.4.9: `symfony/console` may be 6.4 or 7, as 2.4.9 ships 7.4. The

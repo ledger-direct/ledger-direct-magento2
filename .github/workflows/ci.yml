@@ -98,6 +98,15 @@ jobs:
           --ignore=*/tests/*,*/dev/*
           module
 
+      # The Marketplace's technical review sniffs the templates too and fails on any error there
+      # (unescaped output). Their warnings are long lines, which it reports but does not fail on;
+      # -n leaves them out here as well.
+      - name: Run phpcs on templates (errors only)
+        run: >
+          phpcs-tools/vendor/bin/phpcs --standard=Magento2 --extensions=phtml -n
+          --ignore=*/tests/*,*/dev/*
+          module
+
   unit-tests:
     name: Unit tests (Magento ${{ matrix.magento-version }})
     needs: changes
@@ -154,13 +163,6 @@ jobs:
           mkdir -p magento/app/code/Hardcastle
           cp -r module magento/app/code/Hardcastle/LedgerDirect
 
-      # A module under app/code is not composer-managed, so its own requirements never reach the
-      # project's vendor/; they are required at project level - the same step a real installation
-      # performs, see README.
-      - name: Require the module's dependencies at project level
-        working-directory: magento
-        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.11.1" "bacon/bacon-qr-code:^2.0 || ^3.0"
-
       # --no-blocking: Composer 2.9+ refuses dependencies with known security advisories by
       # default. This job checks our code against Magento's classes, not the Magento build's CVEs.
       - name: composer install
@@ -175,14 +177,23 @@ jobs:
           done
           exit 1
 
-      # app/code skips Composer, so the tests above never see the module's own requirements. A
-      # merchant installs it as a package: this resolves it as one against the project's lock file,
-      # so a constraint the Magento release cannot meet (symfony/console ^6.4 on 2.4.9) fails here.
+      # Magento is installed on its own first, then the module is added to that lock file, as in a
+      # shop: a constraint the Magento release cannot meet without moving its own packages fails here
+      # (symfony/console ^6.4 on 2.4.9, a core that did not allow brick/math 1.0). Resolved together,
+      # Composer would quietly pick older versions instead. app/code skips Composer, so the module
+      # itself is only resolved (dry run); its dependencies are required for real, for the tests.
       - name: The module resolves as a Composer package
         working-directory: magento
         run: |
           composer config repositories.module '{"type":"path","url":"../module","options":{"symlink":false}}'
           composer require --dry-run --no-interaction --no-blocking "hardcastle/ledger-direct-magento2:*@dev"
+
+      # A module under app/code is not composer-managed, so its own requirements never reach the
+      # project's vendor/; they are required at project level - the same step a real installation
+      # performs, see README.
+      - name: Require the module's dependencies at project level
+        working-directory: magento
+        run: composer require --no-interaction --no-blocking "hardcastle/ledger-direct-core:^0.11.2" "bacon/bacon-qr-code:^2.0 || ^3.0"
 
       - name: Run unit tests
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
@@ -258,14 +269,6 @@ jobs:
           mkdir -p magento/app/code/Hardcastle
           cp -r module magento/app/code/Hardcastle/LedgerDirect
 
-      # A module under app/code is not composer-managed, so its own requirements never reach the
-      # project's vendor/; they are required at project level - the same step a real installation
-      # performs, see README.
-      - name: Require the module's dependencies at project level
-        if: steps.auth.outputs.has_auth == 'true'
-        working-directory: magento
-        run: composer require --no-interaction --no-update "hardcastle/ledger-direct-core:^0.11.1" "bacon/bacon-qr-code:^2.0 || ^3.0"
-
       # --no-blocking: Composer 2.9+ refuses dependencies with known security advisories by
       # default. This job checks our code against Magento's classes, not the Magento build's CVEs.
       - name: composer install
@@ -291,6 +294,13 @@ jobs:
         run: |
           composer config repositories.module '{"type":"path","url":"../module","options":{"symlink":false}}'
           composer require --dry-run --no-interaction --no-blocking "hardcastle/ledger-direct-magento2:*@dev"
+
+      - name: Require the module's dependencies at project level
+        if: steps.auth.outputs.has_auth == 'true'
+        env:
+          COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
+        working-directory: magento
+        run: composer require --no-interaction --no-blocking "hardcastle/ledger-direct-core:^0.11.2" "bacon/bacon-qr-code:^2.0 || ^3.0"
 
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
