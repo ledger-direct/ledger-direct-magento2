@@ -359,14 +359,17 @@ class OrderPaymentService
     }
 
     /**
-     * Whether the intent's quote has passed its expiry
+     * Whether the intent's quote has reached its expiry
+     *
+     * From the expiry second on, the same boundary as the core's PaymentStatus: the page shows
+     * "expired" in that second, so a refresh in it must quote again.
      *
      * @param PaymentIntent $intent
      * @return bool
      */
     private function isExpired(PaymentIntent $intent): bool
     {
-        return $intent->expiry !== null && $intent->expiry < time();
+        return $intent->expiry !== null && $intent->expiry <= time();
     }
 
     /**

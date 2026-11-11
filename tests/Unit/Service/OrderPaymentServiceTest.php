@@ -167,6 +167,27 @@ class OrderPaymentServiceTest extends TestCase
     }
 
     /**
+     * The quote counts as expired from its expiry second on, as the core's PaymentStatus says:
+     * the page shows `expired` in that second, so a refresh in it must quote again.
+     */
+    public function testPrepareRequotesInTheSecondTheQuoteExpires(): void
+    {
+        // The service reads the wall clock. Start early in a second, so the expiry written here
+        // and the service's check see the same one; otherwise `<` would pass this test as well.
+        while (fmod(microtime(true), 1.0) > 0.2) {
+            usleep(10000);
+        }
+        $stored = $this->givenStoredIntent(expiry: time());
+
+        $this->orderRepository->expects($this->once())->method('save');
+
+        $this->createService()->prepareOrderPayment($this->givenOrder('xrp_payment', $stored), true);
+
+        $intent = $this->writtenAdditionalData[0][OrderPaymentService::ADDITIONAL_DATA_KEY];
+        $this->assertGreaterThan(time(), $intent['expiry']);
+    }
+
+    /**
      * Rendering the page must not re-quote by itself: the customer has to see that the quote
      * ran out and ask for a new amount, or the page would never show `expired` and the
      * amount would change under them on every reload.
