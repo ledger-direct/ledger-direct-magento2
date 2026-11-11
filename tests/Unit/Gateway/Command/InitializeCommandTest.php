@@ -7,6 +7,7 @@ use Hardcastle\LedgerDirect\Gateway\Command\InitializeCommand;
 use Magento\Framework\DataObject;
 use Magento\Payment\Gateway\Data\PaymentDataObjectInterface;
 use Magento\Sales\Model\Order;
+use Magento\Sales\Model\Order\Config as OrderConfig;
 use Magento\Sales\Model\Order\Payment;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -20,9 +21,7 @@ class InitializeCommandTest extends TestCase
 {
     public function testExecuteReportsPendingPaymentThroughTheStateObject(): void
     {
-        $orderConfig = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['getStateDefaultStatus'])
-            ->getMock();
+        $orderConfig = $this->createMock(OrderConfig::class);
         $orderConfig->method('getStateDefaultStatus')
             ->with(Order::STATE_PENDING_PAYMENT)
             ->willReturn('pending_payment');
