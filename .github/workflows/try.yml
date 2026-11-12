@@ -116,7 +116,10 @@ jobs:
 
       # The storefront the way a prospect sees it, in a real browser: home page, cart, guest
       # checkout with each LedgerDirect method, payment page. GitHub's runners ship Chrome.
-      - name: Browser walk (XRP, RLUSD, USDC)
+      # XAH is walked like the other assets, on purpose: the step checks that the try shop takes XAH
+      # out of the box. While the Xahau testnet or its faucet does not answer, the shop starts
+      # without XAH and this step fails; rerun it once Xahau answers.
+      - name: Browser walk (XRP, RLUSD, USDC, XAH)
         working-directory: dev/try/browser
         env:
           CHROME: /usr/bin/google-chrome
