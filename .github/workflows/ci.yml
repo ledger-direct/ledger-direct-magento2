@@ -35,7 +35,7 @@ jobs:
       docs_only: ${{ steps.changes.outputs.docs_only }}
       runtime: ${{ steps.changes.outputs.runtime }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # pull_request: the merge commit and both parents; push: the pushed range
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
@@ -46,9 +46,9 @@ jobs:
     name: PHP lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
 
@@ -67,11 +67,11 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: module
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
           tools: composer:v2
@@ -130,11 +130,11 @@ jobs:
     # than repo.magento.com. Its packages are Adobe's: a file-by-file comparison of 2.4.8-p5 from both
     # found the 51,398 code files under vendor/magento identical. unit-tests-adobe cross-checks weekly.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: module
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           tools: composer:v2
@@ -145,7 +145,7 @@ jobs:
 
       # Package archives only, never vendor/: a cache hit saves the download, the install still
       # resolves from scratch against the current patch release.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ steps.cache-dir.outputs.dir }}
           key: composer-mirror-${{ matrix.magento-version }}-${{ hashFiles('module/composer.json') }}
@@ -220,11 +220,11 @@ jobs:
           - { magento-version: '~2.4.8.0', php: '8.4' }
           - { magento-version: '~2.4.9.0', php: '8.5' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: module
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           tools: composer:v2
@@ -246,7 +246,7 @@ jobs:
 
       # Package archives only, never vendor/: a cache hit saves the download, the install still
       # resolves from scratch against the current patch release.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         if: steps.auth.outputs.has_auth == 'true'
         with:
           path: ${{ steps.cache-dir.outputs.dir }}
@@ -314,7 +314,7 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Compare the ruleset on GitHub with the file
         env:
           GH_TOKEN: ${{ github.token }}
