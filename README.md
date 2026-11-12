@@ -21,8 +21,8 @@ Project website: https://www.ledger-direct.com
 
 ## Try it in five minutes
 
-A complete Magento shop with the module, on the XRP Ledger **testnet** — no Magento account, no
-access keys, no real money. You need Docker and about 3 GB of disk.
+A complete Magento shop with the module, on the XRP Ledger and Xahau **testnets** — no Magento
+account, no access keys, no real money. You need Docker and about 3 GB of disk.
 
 ```
 git clone https://github.com/ledger-direct/ledger-direct-magento2.git
@@ -32,21 +32,24 @@ docker compose up -d --wait        # first start installs the shop: about a minu
 
 1. Open http://localhost:8088/: the home page explains the demo and offers three hand-painted
    **miniatures** (2–4 EUR). Put one in the cart and check out as a guest with *Pay with XRP*,
-   *RLUSD* or *USDC*. Their pictures and texts are not under the MIT licence; see
+   *RLUSD*, *USDC* or *XAH*. Their pictures and texts are not under the MIT licence; see
    [`dev/try/catalog/NOTICE.md`](dev/try/catalog/NOTICE.md).
 2. The payment page shows the amount, the receiving account and the destination tag. Pay it from a
    testnet wallet — [Xaman](https://xaman.app/) in testnet mode or [Crossmark](https://crossmark.io/)
    — funded from the [XRP Testnet faucet](https://xrpl.org/resources/dev-tools/xrp-faucets); RLUSD
    and USDC come from the [RLUSD faucet](https://tryrlusd.com/) and the
-   [Circle faucet](https://faucet.circle.com/). Send the amount exactly as shown, **with the
-   destination tag**, or connect the wallet with the buttons on the page.
+   [Circle faucet](https://faucet.circle.com/), XAH from the [Xahau testnet
+   faucet](https://xahau-test.net/) (Xaman on the Xahau testnet). Send the amount exactly as shown,
+   **with the destination tag**, or connect the wallet with the buttons on the page.
 3. The page notices the payment within seconds and moves on to the order; the order is invoiced and
    *Processing* in the admin at http://localhost:8088/admin (demo login `demo` /
    `demo-ledgerdirect-1` — a local demo login, never reuse it).
 
 On its first start the shop creates its own testnet wallet from the faucet and sets the trust lines
 to the RLUSD and USDC issuers on it, so all three assets can be paid right away (`docker compose logs
-phpfpm` names the address). The wallet's seed stays in the stack's volume, testnet only. When the
+phpfpm` names the address). For XAH it creates a Xahau testnet account of its own and has the Xahau
+faucet fund it: one account per chain, since the same address is a different account on each. The
+wallets' seeds stay in the stack's volume, testnet only. When the
 testnet has been reset, the next start notices and creates a new wallet. To receive into an address
 of your own instead — it then needs the trust lines itself:
 
@@ -55,6 +58,9 @@ LD_TESTNET_ACCOUNT=r... docker compose up -d --wait
 ```
 
 Setting `LD_TESTNET_ACCOUNT` later works too: the next `up` applies it to the existing shop.
+It sets the XRP Ledger account only; XAH keeps going to the shop's own Xahau account, and every start
+sets it again. If the Xahau testnet or its faucet does not answer, the XAH settings stay as they were
+(on a fresh shop: XAH off) and the next `up` tries again.
 `LD_TRY_PORT` moves the shop off port 8088. `docker compose down` stops the stack and keeps the shop
 and its orders; `docker compose down -v` resets everything, and the next `up` installs a fresh shop. `docker compose up --build` builds the image from your checkout instead of
 pulling the published one. Magento Open Source comes from

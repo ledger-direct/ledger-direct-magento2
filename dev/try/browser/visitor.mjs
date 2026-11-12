@@ -3,7 +3,7 @@
 // of every step goes to the output folder; exits non-zero on the first failure.
 //
 //   npm install
-//   CHROME=/path/to/chrome node visitor.mjs [base url] [screenshot dir] [xrp_payment|xrpl_rlusd_payment|xrpl_usdc_payment]
+//   CHROME=/path/to/chrome node visitor.mjs [base url] [screenshot dir] [xrp_payment|xrpl_rlusd_payment|xrpl_usdc_payment|xahau_xah_payment]
 import puppeteer from 'puppeteer-core';
 import { readFileSync } from 'node:fs';
 // The article to buy: the first miniature of the catalogue, found on the home page by its URL key —

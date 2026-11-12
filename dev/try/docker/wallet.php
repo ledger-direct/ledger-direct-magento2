@@ -8,6 +8,8 @@
  *   wallet.php create <file>           a fresh, funded account from the testnet faucet
  *   wallet.php exists <file>           exit 3 if the account is gone (the testnet was reset)
  *   wallet.php trust  <file> <json>    TrustSet for each LimitAmount in the JSON array, once each
+ *   wallet.php xahau  <file>           the shop's own Xahau testnet account: made here, funded by the Xahau
+ *                                      faucet; exit 4 while it is not on the Xahau testnet (yet)
  */
 declare(strict_types=1);
 
@@ -20,6 +22,16 @@ use Hardcastle\XRPL_PHP\Wallet\Wallet;
 
 [$script, $command, $file] = $argv + [null, null, null];
 $client = new JsonRpcClient('testnet', null, null, 20.0);
+
+/** The Xahau testnet and its faucet, which funds a given address with 1000 XAH. */
+const XAHAU_RPC = 'https://xahau-test.net';
+const XAHAU_FAUCET = 'https://xahau-test.net/accounts';
+// XAH is optional for the shop's start: the whole 'xahau' command stays within about two minutes
+// (10 s per RPC call, 30 s for the faucet, 60 s for the account to appear), far inside the image's
+// 600 s start period, so a slow Xahau testnet never holds up the rest of the shop.
+const XAHAU_RPC_TIMEOUT = 10.0;
+const XAHAU_FAUCET_TIMEOUT = 30;
+const XAHAU_APPEAR_SECONDS = 60;
 
 function out(string $message): void
 {
@@ -122,7 +134,49 @@ switch ($command) {
         }
         exit(0);
 
+    case 'xahau':
+        // An account of its own on Xahau, not the XRP Ledger one: the same r-address is a different
+        // account on each chain, and a payment sent on the wrong chain must not reach the shop
+        // (one account per chain). The seed is made here and never leaves the volume; the faucet
+        // gets the address only. After a Xahau testnet reset the same address is funded again.
+        if (!is_file($file)) {
+            $generated = Wallet::generate();
+            save($file, ['address' => $generated->getAddress(), 'seed' => $generated->getSeed()]);
+        }
+        $address = load($file)['address'];
+        $xahau = new JsonRpcClient(XAHAU_RPC, null, null, XAHAU_RPC_TIMEOUT);
+        $exists = accountExists($xahau, $address);
+        if ($exists === null) {
+            out('the Xahau testnet does not answer');
+            exit(4);
+        }
+        if ($exists === true) {
+            exit(0);
+        }
+        // The faucet answers a refusal with 200 and an "error" field (it rate-limits per address and IP).
+        try {
+            $answer = json_decode((string) (new GuzzleHttp\Client(['timeout' => XAHAU_FAUCET_TIMEOUT]))->post(XAHAU_FAUCET, [
+                'json' => ['destination' => $address],
+                'http_errors' => false,
+            ])->getBody(), true);
+        } catch (Throwable $unreachable) {
+            $answer = null;
+        }
+        if (!is_array($answer) || isset($answer['error'])) {
+            out('the Xahau testnet faucet did not fund the account' . (isset($answer['error']) ? ': ' . $answer['error'] : ''));
+            exit(4);
+        }
+        $deadline = time() + XAHAU_APPEAR_SECONDS;
+        while (accountExists($xahau, $address) !== true) {
+            if (time() >= $deadline) {
+                out('the account did not appear on the Xahau testnet');
+                exit(4);
+            }
+            sleep(2);
+        }
+        exit(0);
+
     default:
-        fwrite(STDERR, "usage: wallet.php create|exists|trust <file> [json]\n");
+        fwrite(STDERR, "usage: wallet.php create|exists|trust|xahau <file> [json]\n");
         exit(2);
 }
