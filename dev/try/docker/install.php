@@ -8,6 +8,9 @@
  *       trust lines to the RLUSD and USDC issuers of the core's StablecoinRegistry, and created anew
  *       when the testnet was reset (see wallet.php)
  *     - XRP always; RLUSD and USDC when the account has the trust lines
+ *     - XAH on the Xahau testnet, to the shop's own Xahau account (one account per chain), made on the
+ *       first start and funded from the Xahau faucet; when the Xahau testnet does not answer, XAH stays
+ *       as it was and the next start tries again
  *     - free shipping, so an order costs exactly the article; outgoing mail off (no mail server)
  *
  *   install.php catalog   when the image brings a new catalogue: the category "LedgerDirect demo" with
@@ -38,6 +41,7 @@ require '/var/www/html/app/bootstrap.php';
 
 const ACCOUNT_FILE = '/var/www/html/var/.ledger-direct-try-account';
 const WALLET_FILE = '/var/www/html/var/.ledger-direct-try-wallet.json';
+const XAHAU_WALLET_FILE = '/var/www/html/var/.ledger-direct-try-wallet-xahau.json';
 const WALLET = '/usr/local/share/ledger-direct/wallet.php';
 const ADDRESS = '/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/';
 const SKU = 'ledger-direct-demo';
@@ -87,6 +91,20 @@ function ownWallet(): array
     return [$address, $trusted];
 }
 
+/**
+ * The shop's own Xahau testnet account, separate from the XRP Ledger one: the same r-address is a
+ * different account on each chain (one account per chain, the core's INVARIANTS.md "Xahau"). null while
+ * it is not on the Xahau testnet; the next start tries again.
+ */
+function xahauAccount(): ?string
+{
+    if (wallet('xahau', XAHAU_WALLET_FILE) !== 0) {
+        return null;
+    }
+
+    return json_decode((string) file_get_contents(XAHAU_WALLET_FILE), true)['address'];
+}
+
 function configure($om): void
 {
     $own = trim((string) getenv('LD_TESTNET_ACCOUNT'));
@@ -100,18 +118,26 @@ function configure($om): void
     }
     file_put_contents(ACCOUNT_FILE, $account);
 
+    // XAH out of the box, so a visitor pays with their wallet without configuring anything. While the
+    // Xahau testnet account is not ready, the XAH settings stay as they were.
+    $xahau = xahauAccount();
+    if ($xahau === null) {
+        out('the Xahau testnet account is not ready; XAH stays as it was, the next start tries again');
+    }
+    $xah = $xahau === null ? [] : [
+        'payment/ledger_direct_xahau/xahau_testnet_account' => $xahau,
+        'payment/xahau_xah_payment/active' => 1,
+    ];
+
     $config = $om->get(WriterInterface::class);
-    foreach ([
+    foreach ($xah + [
         'payment/ledger_direct/use_testnet' => 1,
         'payment/ledger_direct/xrpl_testnet_account' => $account,
         'payment/ledger_direct/quote_expiry' => 300,
         'payment/xrp_payment/active' => 1,
         'payment/xrpl_rlusd_payment/active' => $stablecoins ? 1 : 0,
         'payment/xrpl_usdc_payment/active' => $stablecoins ? 1 : 0,
-        // Xahau stays off, on its testnet: whoever switches the XAH method on in the admin pays on the
-        // Xahau testnet, with an account they enter there.
         'payment/ledger_direct_xahau/use_testnet' => 1,
-        'payment/xahau_xah_payment/active' => 0,
         'carriers/flatrate/active' => 0,
         'carriers/freeshipping/active' => 1,
         'carriers/freeshipping/free_shipping_subtotal' => 0,
@@ -121,7 +147,7 @@ function configure($om): void
         // Magento's own demo banner stays off: the payment page leaves Magento's styles out, where it
         // would show as bare text; the home page and the payment page say "testnet" themselves.
         'design/head/demonotice' => 0,
-        'design/header/welcome' => 'LedgerDirect demo shop on the XRP Ledger testnet',
+        'design/header/welcome' => 'LedgerDirect demo shop on the XRP Ledger and Xahau testnets',
         'payment/checkmo/active' => 0,
     ] as $path => $value) {
         $config->save($path, $value);
@@ -129,7 +155,8 @@ function configure($om): void
     $om->get(TypeListInterface::class)->cleanType('config');
 
     out("receiving account {$account} (" . ($own !== '' ? 'yours' : "the shop's own testnet wallet") . '); XRP'
-        . ($stablecoins ? ', RLUSD and USDC' : ' only'));
+        . ($stablecoins ? ', RLUSD and USDC' : ' only')
+        . ($xahau !== null ? "; XAH to the shop's Xahau testnet account {$xahau}" : ''));
 }
 
 function catalog($om): void

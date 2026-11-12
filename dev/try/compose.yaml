@@ -1,4 +1,4 @@
-# LedgerDirect for Magento 2 — try it in five minutes, on the XRP Ledger testnet.
+# LedgerDirect for Magento 2 — try it in five minutes, on the XRP Ledger and Xahau testnets.
 #
 #   docker compose up -d --wait          # first start installs the shop, about a minute
 #   open http://localhost:8088/
@@ -9,6 +9,8 @@
 #   LD_TRY_PORT          host port of the shop (default 8088, bound to 127.0.0.1 only)
 #   LD_TESTNET_ACCOUNT   your testnet receiving address (it needs the RLUSD and USDC trust lines).
 #                        Without it the shop creates its own testnet wallet with those trust lines.
+#                        XAH always goes to the shop's own Xahau testnet account, made on the first
+#                        start and funded from the Xahau faucet: one account per chain.
 #   LD_TRY_IMAGE         the shop image (default: the published one; `--build` builds this checkout)
 #
 # The services are named as the end-to-end harness expects (phpfpm). Nothing but the shop is
