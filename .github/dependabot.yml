@@ -15,3 +15,7 @@ updates:
     directory: /dev/try
     schedule:
       interval: weekly
+    ignore:
+      # The try image stays on PHP 8.3; a new PHP minor is a decision of its own, not an update.
+      - dependency-name: php
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
