@@ -58,8 +58,9 @@ LD_TESTNET_ACCOUNT=r... docker compose up -d --wait
 ```
 
 Setting `LD_TESTNET_ACCOUNT` later works too: the next `up` applies it to the existing shop.
-It sets the XRP Ledger account only; XAH keeps going to the shop's own Xahau account. If the Xahau
-testnet or its faucet does not answer, the shop starts without XAH and the next `up` tries again.
+It sets the XRP Ledger account only; XAH keeps going to the shop's own Xahau account, and every start
+sets it again. If the Xahau testnet or its faucet does not answer, the XAH settings stay as they were
+(on a fresh shop: XAH off) and the next `up` tries again.
 `LD_TRY_PORT` moves the shop off port 8088. `docker compose down` stops the stack and keeps the shop
 and its orders; `docker compose down -v` resets everything, and the next `up` installs a fresh shop. `docker compose up --build` builds the image from your checkout instead of
 pulling the published one. Magento Open Source comes from
