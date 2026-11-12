@@ -59,10 +59,12 @@ RUN --mount=type=cache,target=/var/cache/composer \
 # The shop's testnet wallet tool (hardcastle/xrpl_php), in a vendor/ of its own: it runs as a separate
 # process, so its dependencies never meet Magento's. It resolves from Packagist without a lock file,
 # so releases younger than a week are held back (Composer 2.11 cooldown). Magento's own install above
-# cannot: the mirror publishes no release times.
+# cannot: the mirror publishes no release times. `composer install` has no --no-cooldown; a single
+# build skips the cooldown with --build-arg COMPOSER_COOLDOWN=0.
+ARG COMPOSER_COOLDOWN="7 days"
 COPY dev/try/wallet/composer.json /opt/ledger-direct/wallet/composer.json
 RUN --mount=type=cache,target=/var/cache/composer \
-    COMPOSER_POLICY_COOLDOWN_PERIOD="7 days" \
+    COMPOSER_POLICY_COOLDOWN_PERIOD="${COMPOSER_COOLDOWN}" \
     composer install --no-interaction --no-progress --no-dev --working-dir=/opt/ledger-direct/wallet
 
 FROM base AS runtime
