@@ -28,6 +28,30 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Every external action is referenced by a full commit SHA, with its version as a comment: a tag
+  # can be moved to other code, a commit cannot. Dependabot keeps the SHAs current.
+  pinned:
+    name: Actions pinned to commit SHAs
+    needs: changes
+    # Fail-safe as for the other jobs: a failed `changes` job leaves docs_only empty, and the check
+    # runs. A documentation-only change cannot touch a workflow or an action.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Every external action is pinned to a full commit SHA
+        run: |
+          # The key is spelled apart, so this file does not match its own pattern.
+          key=uses
+          unpinned=$(grep -rnoE "${key}:\s*[^ #]+" .github/ | grep -v "${key}: \./" | grep -vE '@[0-9a-f]{40}$' || true)
+          if [ -n "$unpinned" ]; then
+            echo "::error::Actions not pinned to a full commit SHA (owner/action@<sha> # vX.Y.Z):"
+            echo "$unpinned"
+            exit 1
+          fi
+
   changes:
     name: What changed
     runs-on: ubuntu-latest
@@ -35,8 +59,9 @@ jobs:
       docs_only: ${{ steps.changes.outputs.docs_only }}
       runtime: ${{ steps.changes.outputs.runtime }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           # pull_request: the merge commit and both parents; push: the pushed range
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
       - id: changes
@@ -46,9 +71,11 @@ jobs:
     name: PHP lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
 
@@ -67,11 +94,12 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: module
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
           tools: composer:v2
@@ -130,11 +158,12 @@ jobs:
     # than repo.magento.com. Its packages are Adobe's: a file-by-file comparison of 2.4.8-p5 from both
     # found the 51,398 code files under vendor/magento identical. unit-tests-adobe cross-checks weekly.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: module
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           tools: composer:v2
@@ -145,7 +174,7 @@ jobs:
 
       # Package archives only, never vendor/: a cache hit saves the download, the install still
       # resolves from scratch against the current patch release.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ steps.cache-dir.outputs.dir }}
           key: composer-mirror-${{ matrix.magento-version }}-${{ hashFiles('module/composer.json') }}
@@ -220,11 +249,12 @@ jobs:
           - { magento-version: '~2.4.8.0', php: '8.4' }
           - { magento-version: '~2.4.9.0', php: '8.5' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: module
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           tools: composer:v2
@@ -246,7 +276,7 @@ jobs:
 
       # Package archives only, never vendor/: a cache hit saves the download, the install still
       # resolves from scratch against the current patch release.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         if: steps.auth.outputs.has_auth == 'true'
         with:
           path: ${{ steps.cache-dir.outputs.dir }}
@@ -306,7 +336,8 @@ jobs:
         if: steps.auth.outputs.has_auth == 'true'
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
 
-  # Weekly and on demand: the ruleset GitHub enforces on main is the one in .github/rulesets/main.json.
+  # Weekly and on demand: the rulesets GitHub enforces on main and on tags are the ones in
+  # .github/rulesets/main.json and tags.json.
   # Not part of "CI passed": a pull request that changes the file differs from GitHub until the
   # ruleset is applied after the merge.
   ruleset:
@@ -314,11 +345,18 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Compare the ruleset on GitHub with the file
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Compare the rulesets on GitHub with the files
         env:
           GH_TOKEN: ${{ github.token }}
-        run: .github/rulesets/check.sh "${{ github.repository }}" .github/rulesets/main.json
+        # Both files are checked, also when the first differs.
+        run: |
+          rc=0
+          .github/rulesets/check.sh "$GITHUB_REPOSITORY" .github/rulesets/main.json || rc=1
+          .github/rulesets/check.sh "$GITHUB_REPOSITORY" .github/rulesets/tags.json || rc=1
+          exit $rc
 
   # The one check a merge into main requires. Its name is in .github/rulesets/main.json: renaming the
   # job blocks every merge until the ruleset on GitHub is changed too. A job's own name changes with its matrix and shows
@@ -328,7 +366,7 @@ jobs:
   # The repo.magento.com cross-check is left out: it never runs on a pull request.
   passed:
     name: CI passed
-    needs: [changes, lint, coding-standard, unit-tests]
+    needs: [changes, lint, coding-standard, unit-tests, pinned]
     if: always()
     runs-on: ubuntu-latest
     # Reads this run's job list, nothing else.
