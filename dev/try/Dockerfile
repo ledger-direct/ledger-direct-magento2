@@ -14,14 +14,12 @@
 # Build from the repository root:
 #   docker build -f dev/try/Dockerfile -t try-magento .
 
-ARG PHP_IMAGE=php:8.3.36-cli-bookworm
-ARG COMPOSER_IMAGE=composer:2.11.1
-ARG EXTENSION_INSTALLER=mlocati/php-extension-installer@sha256:35821db0661308f64aa18483bb3af56bedc3b40090ff441ed961327d1ccbceb8
+# Base images by tag and digest, written out in the FROM lines: Dependabot (docker) keeps them
+# current only there.
+FROM composer:2.11.1@sha256:8de2184c6de224f4689e8f80ed5f5edaf0030b6b8b7839a22a2bcb6722ac87d0 AS composer
+FROM mlocati/php-extension-installer:2.13.1@sha256:35821db0661308f64aa18483bb3af56bedc3b40090ff441ed961327d1ccbceb8 AS extension-installer
 
-FROM ${COMPOSER_IMAGE} AS composer
-FROM ${EXTENSION_INSTALLER} AS extension-installer
-
-FROM ${PHP_IMAGE} AS base
+FROM php:8.3.36-cli-bookworm@sha256:232331112d3a7c5b98edeeddc3b85f610172f99352c0635fe6b3e166e47062cb AS base
 COPY --from=extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 # The PHP extensions Magento requires beyond what the official image builds in, plus gmp for the
