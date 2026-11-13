@@ -6,6 +6,10 @@
   Xaman button now names its network on the XRP Ledger too, as it already did on Xahau. Before,
   Xaman paid on whichever network the wallet had open, so an XRP payment scanned with a Xahau
   account opened a XAH payment of the same amount
+- The payment page uses @ledger-direct/payment-ui 0.4.0 instead of 0.3.1: the wallet library is
+  xrpl-connect 1.0.0 with xrpl 5 instead of the release candidate 1.0.0-rc.2. Among its changes, the
+  Xaman wallet submits the payment to the ledger under its own control, and wallet availability
+  checks time out instead of hanging. The page script and the stylesheet are unchanged
 
 ## 1.2.7
 
