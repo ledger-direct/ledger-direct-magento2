@@ -331,7 +331,9 @@ and the release notes per version.
 
 ## Translations
 
-English and German, as `i18n/en_US.csv` and `i18n/de_DE.csv`.
+English, German, French, Dutch, Spanish and Portuguese (Portugal), as `i18n/en_US.csv`, `de_DE.csv`,
+`fr_FR.csv`, `nl_NL.csv`, `es_ES.csv` and `pt_PT.csv`. The payment methods' default titles are
+translated as well; a title set in the configuration (per store view) is shown as it is.
 
 ## License
 
