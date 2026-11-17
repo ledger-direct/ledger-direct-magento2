@@ -9,6 +9,7 @@ use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
 use Magento\Backend\Block\Template\Context;
 use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Framework\Data\Form\Element\AbstractElement;
+use Magento\Framework\Escaper;
 
 /**
  * What the saved receiving account of a chain lacks, in that chain's configuration group
@@ -40,20 +41,28 @@ class ReceivingAccountCheck extends Field
     private MagentoConfigProvider $config;
 
     /**
+     * @var Escaper
+     */
+    private Escaper $escaper;
+
+    /**
      * @param Context $context
      * @param ChainServices $chains
      * @param MagentoConfigProvider $config
+     * @param Escaper $escaper
      * @param array $data
      */
     public function __construct(
         Context $context,
         ChainServices $chains,
         MagentoConfigProvider $config,
+        Escaper $escaper,
         array $data = []
     ) {
         parent::__construct($context, $data);
         $this->chains = $chains;
         $this->config = $config;
+        $this->escaper = $escaper;
     }
 
     /**
@@ -74,8 +83,8 @@ class ReceivingAccountCheck extends Field
             return '';
         }
 
-        return '<tr id="row_' . $this->escapeHtmlAttr($element->getHtmlId()) . '">'
-            . '<td class="label">' . $this->escapeHtml(__('Receiving account')) . '</td>'
+        return '<tr id="row_' . $this->escaper->escapeHtmlAttr($element->getHtmlId()) . '">'
+            . '<td class="label">' . $this->escaper->escapeHtml(__('Receiving account')) . '</td>'
             . '<td class="value" colspan="3">' . $html . '</td></tr>';
     }
 
@@ -133,7 +142,7 @@ class ReceivingAccountCheck extends Field
     private function message(string $kind, string $text): string
     {
         return '<div class="message message-' . $kind . ' ' . $kind . '"><div>'
-            . $this->escapeHtml($text) . '</div></div>';
+            . $this->escaper->escapeHtml($text) . '</div></div>';
     }
 
     /**
