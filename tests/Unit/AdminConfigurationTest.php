@@ -91,6 +91,11 @@ class AdminConfigurationTest extends TestCase
             if (in_array($id, ['use_testnet', 'xrpl_testnet_account', 'xrpl_mainnet_account'], true)) {
                 continue;
             }
+            // A field without an input type that only renders (the receiving-account check) shows
+            // something and stores nothing: it is no setting for code to read.
+            if (!isset($field['type']) && isset($field->frontend_model)) {
+                continue;
+            }
             yield $id => [$id];
         }
     }

@@ -4,6 +4,8 @@
 
     <event name="payment_method_is_active">
         <observer name="toggle_payment_method" instance="Hardcastle\LedgerDirect\Observer\PaymentMethodIsActive" />
+        <!-- A method whose asset the receiving account cannot take (no trustline, …) is not offered. -->
+        <observer name="ledger_direct_receiving_account" instance="Hardcastle\LedgerDirect\Observer\ReceivingAccountAvailability" />
     </event>
     <event name="payment_method_assign_data">
         <observer name="ledger_direct_data_assign" instance="Hardcastle\LedgerDirect\Observer\DataAssign" />
