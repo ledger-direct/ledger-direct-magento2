@@ -4,8 +4,9 @@ namespace Hardcastle\LedgerDirect\Block\Adminhtml\System\Config;
 
 use Hardcastle\LedgerDirect\Core\Account\Finding;
 use Hardcastle\LedgerDirect\Core\ChainCatalog;
+use Hardcastle\LedgerDirect\Helper\SystemConfig;
 use Hardcastle\LedgerDirect\Model\ChainServices;
-use Hardcastle\LedgerDirect\Port\MagentoConfigProvider;
+use Hardcastle\LedgerDirect\Model\PaymentMethods;
 use Magento\Backend\Block\Template\Context;
 use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Framework\Data\Form\Element\AbstractElement;
@@ -18,7 +19,8 @@ use Magento\Framework\Escaper;
  * offered in the checkout, an account that is not activated takes no small orders yet, deposit
  * authorization lets only pre-authorized senders pay. The settings stay as they are; this only
  * explains. Read afresh from the ledger on every visit, so the result of a save shows at once.
- * Stores nothing.
+ * The account is the one of the scope the form shows (a website's or store view's override, else
+ * the default). Stores nothing.
  */
 class ReceivingAccountCheck extends Field
 {
@@ -36,9 +38,14 @@ class ReceivingAccountCheck extends Field
     private ChainServices $chains;
 
     /**
-     * @var MagentoConfigProvider
+     * @var SystemConfig
      */
-    private MagentoConfigProvider $config;
+    private SystemConfig $config;
+
+    /**
+     * @var PaymentMethods
+     */
+    private PaymentMethods $paymentMethods;
 
     /**
      * @var Escaper
@@ -48,21 +55,49 @@ class ReceivingAccountCheck extends Field
     /**
      * @param Context $context
      * @param ChainServices $chains
-     * @param MagentoConfigProvider $config
+     * @param SystemConfig $config
+     * @param PaymentMethods $paymentMethods
      * @param Escaper $escaper
      * @param array $data
      */
     public function __construct(
         Context $context,
         ChainServices $chains,
-        MagentoConfigProvider $config,
+        SystemConfig $config,
+        PaymentMethods $paymentMethods,
         Escaper $escaper,
         array $data = []
     ) {
         parent::__construct($context, $data);
         $this->chains = $chains;
         $this->config = $config;
+        $this->paymentMethods = $paymentMethods;
         $this->escaper = $escaper;
+    }
+
+    /**
+     * The store whose configuration the form shows
+     *
+     * The store view chosen, a chosen website's default store, or null for the default scope
+     * (Magento then reads the default values).
+     *
+     * @return int|null
+     */
+    private function scopeStoreId(): ?int
+    {
+        $store = $this->getRequest()->getParam('store');
+        if ($store !== null && $store !== '') {
+            return (int) $store;
+        }
+
+        $website = $this->getRequest()->getParam('website');
+        if ($website !== null && $website !== '') {
+            $default = $this->_storeManager->getWebsite((int) $website)->getDefaultStore();
+
+            return $default !== null ? (int) $default->getId() : null;
+        }
+
+        return null;
     }
 
     /**
@@ -96,14 +131,16 @@ class ReceivingAccountCheck extends Field
      */
     private function messages(string $chain): string
     {
-        $account = $this->config->getDestinationAccount($chain);
+        $storeId = $this->scopeStoreId();
+        $account = $this->config->getDestinationAccount($chain, $storeId);
         if ($account === '') {
             return '';
         }
 
         $assets = [];
         foreach (ChainCatalog::chain($chain)->assets as $asset) {
-            if ($this->config->isAssetEnabled($chain, $asset->code)) {
+            $code = $this->paymentMethods->codeFor($chain, $asset->code);
+            if ($code !== null && $this->config->isPaymentMethodActive($code, $storeId)) {
                 $assets[] = $asset->code;
             }
         }
@@ -111,7 +148,7 @@ class ReceivingAccountCheck extends Field
             return '';
         }
 
-        $network = $this->config->getNetwork($chain);
+        $network = $this->config->getNetwork($chain, $storeId);
         $native = ChainCatalog::chain($chain)->nativeAsset;
         $assessment = $this->chains->accountCheck($chain)->assess($account, $network, $assets);
 

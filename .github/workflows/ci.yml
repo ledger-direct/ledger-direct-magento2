@@ -222,7 +222,7 @@ jobs:
       # performs, see README.
       - name: Require the module's dependencies at project level
         working-directory: magento
-        run: composer require --no-interaction --no-blocking "hardcastle/ledger-direct-core:^0.11.2" "bacon/bacon-qr-code:^2.0 || ^3.0"
+        run: composer require --no-interaction --no-blocking "hardcastle/ledger-direct-core:^0.12.0" "bacon/bacon-qr-code:^2.0 || ^3.0"
 
       - name: Run unit tests
         run: magento/vendor/bin/phpunit -c magento/app/code/Hardcastle/LedgerDirect/tests/phpunit.xml.dist
@@ -330,7 +330,7 @@ jobs:
         env:
           COMPOSER_AUTH: ${{ secrets.MAGENTO_COMPOSER_AUTH }}
         working-directory: magento
-        run: composer require --no-interaction --no-blocking "hardcastle/ledger-direct-core:^0.11.2" "bacon/bacon-qr-code:^2.0 || ^3.0"
+        run: composer require --no-interaction --no-blocking "hardcastle/ledger-direct-core:^0.12.0" "bacon/bacon-qr-code:^2.0 || ^3.0"
 
       - name: Run unit tests
         if: steps.auth.outputs.has_auth == 'true'
