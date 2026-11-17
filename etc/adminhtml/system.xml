@@ -13,6 +13,11 @@
                 <field id="xrpl_mainnet_account" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
                     <label>Account (Mainnet)</label>
                 </field>
+                <!-- What the saved account lacks (trustlines, activation, deposit authorization); stores nothing. -->
+                <field id="xrpl_account_check" translate="label" sortOrder="4" showInDefault="1" showInWebsite="1">
+                    <label>Receiving account</label>
+                    <frontend_model>Hardcastle\LedgerDirect\Block\Adminhtml\System\Config\ReceivingAccountCheck</frontend_model>
+                </field>
                 <field id="quote_expiry" translate="label comment" type="text" sortOrder="5" showInDefault="1" showInWebsite="1" canRestore="1">
                     <label>Quote validity (seconds)</label>
                     <comment>How long the exchange rate quoted on the payment page stays valid before it is refreshed.</comment>
@@ -104,6 +109,11 @@
                 <field id="xahau_mainnet_account" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1">
                     <label>Account (Mainnet)</label>
                     <backend_model>Hardcastle\LedgerDirect\Model\Config\Backend\XahauAccount</backend_model>
+                </field>
+                <!-- What the saved account lacks (activation, deposit authorization); stores nothing. -->
+                <field id="xahau_account_check" translate="label" sortOrder="4" showInDefault="1" showInWebsite="1">
+                    <label>Receiving account</label>
+                    <frontend_model>Hardcastle\LedgerDirect\Block\Adminhtml\System\Config\ReceivingAccountCheck</frontend_model>
                 </field>
             </group>
             <group id="xahau_xah_payment" translate="label" sortOrder="6" showInDefault="1" showInWebsite="1">

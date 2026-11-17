@@ -30,11 +30,12 @@ class SystemConfig extends AbstractHelper
      * Whether payments on a chain are configured to settle on its testnet
      *
      * @param string $chain
+     * @param int|string|null $storeId the current store when null
      * @return bool
      */
-    public function isTest(string $chain = ChainCatalog::XRPL): bool
+    public function isTest(string $chain = ChainCatalog::XRPL, $storeId = null): bool
     {
-        $test = $this->getConfigValue($this->chainGroup($chain) . '/use_testnet') ?? true;
+        $test = $this->getConfigValue($this->chainGroup($chain) . '/use_testnet', $storeId) ?? true;
         return (bool) $test;
     }
 
@@ -42,22 +43,24 @@ class SystemConfig extends AbstractHelper
      * The network a chain's payments settle on, in the core's vocabulary
      *
      * @param string $chain
+     * @param int|string|null $storeId the current store when null
      * @return string 'mainnet' | 'testnet'
      */
-    public function getNetwork(string $chain = ChainCatalog::XRPL): string
+    public function getNetwork(string $chain = ChainCatalog::XRPL, $storeId = null): string
     {
-        return $this->isTest($chain) ? 'testnet' : 'mainnet';
+        return $this->isTest($chain, $storeId) ? 'testnet' : 'mainnet';
     }
 
     /**
      * The configured receiving account of a chain for its active network
      *
      * @param string $chain
+     * @param int|string|null $storeId the current store when null
      * @return string
      */
-    public function getDestinationAccount(string $chain = ChainCatalog::XRPL): string
+    public function getDestinationAccount(string $chain = ChainCatalog::XRPL, $storeId = null): string
     {
-        return $this->getAccount($chain, $this->getNetwork($chain));
+        return $this->getAccount($chain, $this->getNetwork($chain, $storeId), $storeId);
     }
 
     /**
@@ -68,12 +71,14 @@ class SystemConfig extends AbstractHelper
      *
      * @param string $chain
      * @param string $network 'mainnet' | 'testnet'
+     * @param int|string|null $storeId the current store when null
      * @return string
      */
-    public function getAccount(string $chain, string $network): string
+    public function getAccount(string $chain, string $network, $storeId = null): string
     {
         return trim((string) $this->getConfigValue(
-            $this->chainGroup($chain) . '/' . strtolower($chain) . '_' . $network . '_account'
+            $this->chainGroup($chain) . '/' . strtolower($chain) . '_' . $network . '_account',
+            $storeId
         ));
     }
 
@@ -94,13 +99,15 @@ class SystemConfig extends AbstractHelper
      * Whether the given payment method is switched on in the admin configuration
      *
      * @param string $paymentMethodCode e.g. xrp_payment
+     * @param int|string|null $storeId the current store when null
      * @return bool
      */
-    public function isPaymentMethodActive(string $paymentMethodCode): bool
+    public function isPaymentMethodActive(string $paymentMethodCode, $storeId = null): bool
     {
         return $this->scopeConfig->isSetFlag(
             'payment/' . $paymentMethodCode . '/active',
-            ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE,
+            $storeId
         );
     }
 

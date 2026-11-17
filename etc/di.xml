@@ -119,8 +119,31 @@
             <argument name="chain" xsi:type="string">XAHAU</argument>
         </arguments>
     </virtualType>
+    <!--
+        Whether the receiving account can take each asset (core 0.12, INVARIANTS.md "Receiving
+        account"): the checkout leaves out what it cannot, the configuration says what it lacks.
+        Cached in the rate cache's store, so a checkout does not ask the node each time.
+    -->
+    <type name="Hardcastle\LedgerDirect\Core\Xrpl\AccountInspector">
+        <arguments>
+            <argument name="client" xsi:type="object">Hardcastle\LedgerDirect\Core\Xrpl\XrplClient</argument>
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
+            <argument name="cache" xsi:type="object">Hardcastle\LedgerDirect\Model\Cache\RateCache</argument>
+            <argument name="chain" xsi:type="string">XRPL</argument>
+        </arguments>
+    </type>
+    <virtualType name="Hardcastle\LedgerDirect\Xahau\AccountInspector" type="Hardcastle\LedgerDirect\Core\Xrpl\AccountInspector">
+        <arguments>
+            <argument name="client" xsi:type="object">Hardcastle\LedgerDirect\Xahau\Client</argument>
+            <argument name="chain" xsi:type="string">XAHAU</argument>
+        </arguments>
+    </virtualType>
     <type name="Hardcastle\LedgerDirect\Model\ChainServices">
         <arguments>
+            <argument name="accountChecks" xsi:type="array">
+                <item name="XRPL" xsi:type="object">Hardcastle\LedgerDirect\Core\Xrpl\AccountInspector</item>
+                <item name="XAHAU" xsi:type="object">Hardcastle\LedgerDirect\Xahau\AccountInspector</item>
+            </argument>
             <argument name="clients" xsi:type="array">
                 <item name="XRPL" xsi:type="object">Hardcastle\LedgerDirect\Core\Xrpl\XrplClient</item>
                 <item name="XAHAU" xsi:type="object">Hardcastle\LedgerDirect\Xahau\Client</item>

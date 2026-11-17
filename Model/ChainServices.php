@@ -2,6 +2,7 @@
 
 namespace Hardcastle\LedgerDirect\Model;
 
+use Hardcastle\LedgerDirect\Core\Account\ReceivingAccountCheck;
 use Hardcastle\LedgerDirect\Core\Payment\PaymentIntentService;
 use Hardcastle\LedgerDirect\Core\Xrpl\SyncService;
 use Hardcastle\LedgerDirect\Core\Xrpl\SyncThrottle;
@@ -39,21 +40,29 @@ class ChainServices
     private array $intentServices;
 
     /**
+     * @var array<string, ReceivingAccountCheck>
+     */
+    private array $accountChecks;
+
+    /**
      * @param XrplClient[] $clients by chain
      * @param SyncService[] $syncServices by chain
      * @param SyncThrottle[] $throttles by chain
      * @param PaymentIntentService[] $intentServices by chain
+     * @param ReceivingAccountCheck[] $accountChecks by chain
      */
     public function __construct(
         array $clients,
         array $syncServices,
         array $throttles,
-        array $intentServices
+        array $intentServices,
+        array $accountChecks = []
     ) {
         $this->clients = $clients;
         $this->syncServices = $syncServices;
         $this->throttles = $throttles;
         $this->intentServices = $intentServices;
+        $this->accountChecks = $accountChecks;
     }
 
     /**
@@ -108,6 +117,18 @@ class ChainServices
     public function intents(string $chain): PaymentIntentService
     {
         return $this->intentServices[$chain] ?? $this->unknown($chain);
+    }
+
+    /**
+     * Whether the receiving account of a chain can take an asset (core 0.12, INVARIANTS.md
+     * "Receiving account"): the checkout asks offers(), the configuration assess()
+     *
+     * @param string $chain
+     * @return ReceivingAccountCheck
+     */
+    public function accountCheck(string $chain): ReceivingAccountCheck
+    {
+        return $this->accountChecks[$chain] ?? $this->unknown($chain);
     }
 
     /**
