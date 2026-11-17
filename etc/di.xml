@@ -219,6 +219,11 @@
             <argument name="methodCode" xsi:type="string">xrp_payment</argument>
         </arguments>
     </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrpTitleValueHandler" type="Hardcastle\LedgerDirect\Gateway\Config\TitleValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrpConfig</argument>
+        </arguments>
+    </virtualType>
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrpConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
         <arguments>
             <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrpConfig</argument>
@@ -228,6 +233,7 @@
         <arguments>
             <argument name="handlers" xsi:type="array">
                 <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrpConfigValueHandler</item>
+                <item name="title" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrpTitleValueHandler</item>
             </argument>
         </arguments>
     </virtualType>
@@ -235,6 +241,11 @@
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfig" type="Magento\Payment\Gateway\Config\Config">
         <arguments>
             <argument name="methodCode" xsi:type="string">xrpl_rlusd_payment</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdTitleValueHandler" type="Hardcastle\LedgerDirect\Gateway\Config\TitleValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfig</argument>
         </arguments>
     </virtualType>
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
@@ -246,6 +257,7 @@
         <arguments>
             <argument name="handlers" xsi:type="array">
                 <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdConfigValueHandler</item>
+                <item name="title" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplRlusdTitleValueHandler</item>
             </argument>
         </arguments>
     </virtualType>
@@ -253,6 +265,11 @@
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfig" type="Magento\Payment\Gateway\Config\Config">
         <arguments>
             <argument name="methodCode" xsi:type="string">xrpl_usdc_payment</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcTitleValueHandler" type="Hardcastle\LedgerDirect\Gateway\Config\TitleValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfig</argument>
         </arguments>
     </virtualType>
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
@@ -264,6 +281,7 @@
         <arguments>
             <argument name="handlers" xsi:type="array">
                 <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcConfigValueHandler</item>
+                <item name="title" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XrplUsdcTitleValueHandler</item>
             </argument>
         </arguments>
     </virtualType>
@@ -271,6 +289,11 @@
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfig" type="Magento\Payment\Gateway\Config\Config">
         <arguments>
             <argument name="methodCode" xsi:type="string">xahau_xah_payment</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XahauXahTitleValueHandler" type="Hardcastle\LedgerDirect\Gateway\Config\TitleValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfig</argument>
         </arguments>
     </virtualType>
     <virtualType name="Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
@@ -282,6 +305,7 @@
         <arguments>
             <argument name="handlers" xsi:type="array">
                 <item name="default" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XahauXahConfigValueHandler</item>
+                <item name="title" xsi:type="string">Hardcastle\LedgerDirect\Gateway\Config\XahauXahTitleValueHandler</item>
             </argument>
         </arguments>
     </virtualType>

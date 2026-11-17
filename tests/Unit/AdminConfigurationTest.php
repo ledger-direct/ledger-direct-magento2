@@ -147,4 +147,19 @@ class AdminConfigurationTest extends TestCase
 
         $this->assertNotEmpty($readers, "$path is offered in the admin, but no module code reads it");
     }
+
+    /**
+     * A field that may be set per store view is shown there only if its group is too: Magento
+     * checks the group's visibility first. Without it the store-view title was unreachable.
+     */
+    public function testAFieldShownPerStoreViewSitsInAGroupShownThere(): void
+    {
+        foreach (self::adminGroups() as $id => $group) {
+            foreach ($group->field as $field) {
+                if ((string) $field['showInStore'] === '1') {
+                    $this->assertSame('1', (string) $group['showInStore'], "group $id hides its store-view field " . $field['id']);
+                }
+            }
+        }
+    }
 }
