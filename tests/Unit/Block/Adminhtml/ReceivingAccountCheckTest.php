@@ -82,12 +82,13 @@ class ReceivingAccountCheckTest extends TestCase
 
     private function element(string $field): AbstractElement
     {
+        // getFieldConfig() is a magic getter of the element's data: set as data, not mocked
+        // (addMethods() is gone in PHPUnit 12, which Magento 2.4.9 ships).
         $element = $this->getMockBuilder(AbstractElement::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['getHtmlId'])
-            ->addMethods(['getFieldConfig'])
-            ->getMockForAbstractClass();
-        $element->method('getFieldConfig')->willReturn(['id' => $field]);
+            ->getMock();
+        $element->setData('field_config', ['id' => $field]);
         $element->method('getHtmlId')->willReturn('payment_ledger_direct_' . $field);
 
         return $element;
