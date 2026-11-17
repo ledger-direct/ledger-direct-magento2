@@ -65,7 +65,7 @@
                     <comment>The project id from cloud.walletconnect.com, if you want to offer WalletConnect wallets. Public, like the Xaman key.</comment>
                 </field>
             </group>
-            <group id="xrp_payment" translate="label" sortOrder="2" showInDefault="1" showInWebsite="1">
+            <group id="xrp_payment" translate="label" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Ledger Direct - XRP (XRPL)</label>
                 <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" canRestore="1">
                     <label>Enabled</label>
@@ -75,7 +75,7 @@
                     <label>Title</label>
                 </field>
             </group>
-            <group id="xrpl_rlusd_payment" translate="label" sortOrder="3" showInDefault="1" showInWebsite="1">
+            <group id="xrpl_rlusd_payment" translate="label" sortOrder="3" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Ledger Direct - RLUSD (XRPL)</label>
                 <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" canRestore="1">
                     <label>Enabled</label>
@@ -85,7 +85,7 @@
                     <label>Title</label>
                 </field>
             </group>
-            <group id="xrpl_usdc_payment" translate="label" sortOrder="4" showInDefault="1" showInWebsite="1">
+            <group id="xrpl_usdc_payment" translate="label" sortOrder="4" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Ledger Direct - USDC (XRPL)</label>
                 <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" canRestore="1">
                     <label>Enabled</label>
@@ -116,7 +116,7 @@
                     <frontend_model>Hardcastle\LedgerDirect\Block\Adminhtml\System\Config\ReceivingAccountCheck</frontend_model>
                 </field>
             </group>
-            <group id="xahau_xah_payment" translate="label" sortOrder="6" showInDefault="1" showInWebsite="1">
+            <group id="xahau_xah_payment" translate="label" sortOrder="6" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Ledger Direct - XAH (Xahau)</label>
                 <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" canRestore="1">
                     <label>Enabled</label>
