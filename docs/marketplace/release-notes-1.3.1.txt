@@ -1,4 +1,4 @@
-LedgerDirect for Magento 2 — release notes 1.3.0
+LedgerDirect for Magento 2 — release notes 1.3.1
 
 Changes since 1.2.8:
 
@@ -13,5 +13,8 @@ Changes since 1.2.8:
   the logo options and parts of the email, English about 40 phrases
 - The default payment method titles are translated per store view; a title the merchant set is
   shown as set. The title can be set per store view
+
+(1.3.0 was tagged before its release commit and carries setup_version 1.2.8; 1.3.1 is
+the same module with its version in place.)
 
 Requires hardcastle/ledger-direct-core 0.12.0. Run bin/magento setup:upgrade after the update.

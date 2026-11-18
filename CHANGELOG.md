@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+- The tag 1.3.0 was set on the commit before the release commit, so 1.3.0 carries `setup_version`
+  1.2.8 in `etc/module.xml` and no changelog section of its own; its code is complete. 1.3.1 is the
+  same module with the version in place
+
 ## 1.3.0
 
 - Needs `hardcastle/ledger-direct-core` 0.12.0. The checkout offers only what the receiving account
