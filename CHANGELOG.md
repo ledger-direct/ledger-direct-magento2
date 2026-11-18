@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.3.1
+
+- The tag 1.3.0 was set on the commit before the release commit, so 1.3.0 carries `setup_version`
+  1.2.8 in `etc/module.xml` and no changelog section of its own; its code is complete. 1.3.1 is the
+  same module with the version in place
+
+## 1.3.0
+
+- Needs `hardcastle/ledger-direct-core` 0.12.0. The checkout offers only what the receiving account
+  can take. A token the account cannot receive (no trust line, frozen, full) is not offered, so no
+  order exists that nobody can pay. An account that is not activated yet keeps the native asset, and
+  the configuration warns. When the node cannot be reached, tokens are left out and the native asset
+  stays
+- The XRPL and the Xahau group of the configuration show what the saved receiving account lacks,
+  read afresh on every visit
+- Every text of the module in six languages: English, German, French, Dutch, Spanish and European
+  Portuguese. French, Dutch, Spanish and Portuguese are new; German lacked the admin configuration,
+  the logo options and parts of the email, English about 40 phrases. The terms follow the
+  LedgerDirect glossary (German: "Herausgeber" for issuer, "Kasse" for checkout, "Kurs"; "Place
+  Order" becomes "Zahlungspflichtig bestellen" in shops without a Magento language pack)
+- The default payment method titles ("Pay with XRP | Ledger Direct") are translated per store view;
+  a title the merchant set is shown as set. The title can be set per store view
+
 ## 1.2.8
 
 - Needs `hardcastle/ledger-direct-core` 0.11.3. The payment request in the QR code and behind the
