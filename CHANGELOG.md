@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- The payment page uses @ledger-direct/payment-ui 0.4.2 instead of 0.4.0, which fixes partial
+  payments in the wallet flow: after a partial payment, a wallet button opens the payment for the
+  rest instead of reloading the page again and again; an XRP payment whose amount changed while the
+  wallet was connecting reloads instead of signing the old amount; a page that turned paid or
+  expired meanwhile signs nothing; and an older status answer arriving late no longer turns the page
+  back. After payment the page goes to the order confirmation once: clicking the button while the
+  countdown ran out opened the success page twice, and the second request, after Magento had
+  cleared the checkout session, ended in the empty cart. The wallet script and the stylesheet are
+  unchanged
+
 ## 1.3.1
 
 - The tag 1.3.0 was set on the commit before the release commit, so 1.3.0 carries `setup_version`
