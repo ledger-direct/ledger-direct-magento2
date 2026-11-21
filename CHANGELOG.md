@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.2
 
 - The payment page uses @ledger-direct/payment-ui 0.4.2 instead of 0.4.0, which fixes partial
   payments in the wallet flow: after a partial payment, a wallet button opens the payment for the
