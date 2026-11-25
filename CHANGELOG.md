@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- The payment page uses @ledger-direct/payment-ui 0.5.0 instead of 0.4.2. Joey Wallet's browser
+  extension is offered in the wallet list when it is installed; it connects on the page's network,
+  pays nothing on another, and a connection Joey ends (access revoked, account gone, network switched)
+  is forgotten, so the next click asks Joey again. A wallet error (another network, a wallet that does
+  not respond, a failed payment) now shows as a warning box instead of grey text under the hint, where
+  it went unseen. The wallet script is unchanged; the page script and the stylesheet change.
+
 ## 1.3.3
 
 - The tag 1.3.2 was set on the commit before the release commit, so it carries version 1.3.1;
