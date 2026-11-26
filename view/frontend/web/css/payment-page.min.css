@@ -155,8 +155,9 @@
 .ld-qr-box svg, .ld-qr-box img { display: block; width: 216px; height: 216px; }
 .ld-qr-box.is-void svg { filter: blur(6px); opacity: .35; }
 .ld-qr-void { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; color: #5d6672; font-size: .9rem; padding: 1rem; }
-.ld-qr-caption { margin: 0 auto; max-width: 280px; font-size: .88rem; color: var(--ld-muted); }
-.ld-or { display: flex; align-items: center; gap: .75rem; margin: 1.25rem 0; color: var(--ld-muted); font-size: .85rem; }
+/* .ld-page p sets every paragraph's margin to 0; the caption needs its auto margins back to sit under the code */
+.ld-page .ld-qr-caption { margin: 0 auto; max-width: 280px; font-size: .88rem; color: var(--ld-muted); }
+.ld-or { display: flex; align-items: center; gap: .75rem; margin: 1.25rem 0; color: var(--ld-muted); font-size: 1rem; font-weight: 500; }
 .ld-or::before, .ld-or::after { content: ""; flex: 1; height: 1px; background: var(--ld-border); }
 .ld-wallets { margin-top: .6rem; display: grid; gap: .4rem; text-align: left; }
 .ld-wallet { display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid var(--ld-border); border-radius: 10px; background: var(--ld-surface); font: inherit; color: var(--ld-text); cursor: pointer; width: 100%; }
@@ -165,7 +166,18 @@
 .ld-wallet-dot { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: .8rem; background: var(--ld-border); }
 .ld-wallet small { margin-left: auto; color: var(--ld-muted); }
 /* A wallet error is set apart from the hint above it (wallets.js marks it). */
-[data-ld-wallet-message][data-ld-wallet-error] { margin-top: .6rem; padding: .6rem .75rem; border: 1px solid var(--ld-warn-border); border-left: 4px solid var(--ld-warn); border-radius: 10px; background: var(--ld-warn-bg); color: var(--ld-text); font-size: .9rem; font-weight: 500; text-align: left; }
+/* WalletConnect connects a wallet app on another device: its own button, above the browser wallets, on every width */
+.ld-page [data-ld-wallet-connect] { margin-bottom: .6rem; }
+/* One field as a QR code (address or tag), in a dialog next to its copy button */
+.ld-copy--qr { padding: .35rem .45rem; }
+.ld-qr-dialog { max-width: min(92vw, 340px); padding: 1.25rem; border: 1px solid var(--ld-border); border-radius: 14px; background: var(--ld-surface); color: var(--ld-text); text-align: center; }
+.ld-qr-dialog::backdrop { background: rgb(0 0 0 / .55); }
+.ld-page .ld-qr-dialog-title { margin: 0 0 1rem; font-weight: 600; }
+.ld-qr-dialog .ld-qr-box { margin: 0 auto .75rem; }
+.ld-qr-dialog-value { display: block; margin: 0 0 1rem; font-family: var(--ld-mono); font-size: .9rem; overflow-wrap: anywhere; }
+/* The wallet's sentence under the buttons: centred like them, with room above */
+.ld-page [data-ld-wallet-message] { margin-top: .9rem; text-align: center; }
+.ld-page [data-ld-wallet-message][data-ld-wallet-error] { margin-top: .6rem; padding: .6rem .75rem; border: 1px solid var(--ld-warn-border); border-left: 4px solid var(--ld-warn); border-radius: 10px; background: var(--ld-warn-bg); color: var(--ld-text); font-size: .9rem; font-weight: 500; text-align: left; }
 .ld-details { margin: 1.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--ld-border); display: grid; grid-template-columns: auto 1fr; gap: .35rem 1rem; font-size: .88rem; }
 .ld-details dt { color: var(--ld-muted); }
 .ld-details dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
