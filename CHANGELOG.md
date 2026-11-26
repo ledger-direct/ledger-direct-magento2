@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- The payment page uses @ledger-direct/payment-ui 0.6.0 instead of 0.5.0.
+  - **WalletConnect works and has its own button.** With a WalletConnect project id, "Pay with a wallet app
+    (WalletConnect)" sits above "Pay with a browser wallet", on every screen width, and opens WalletConnect's
+    dialog with the code to scan. Before, the click showed nothing to scan. The wallet app is told the shop's
+    name instead of the host name (the icon is the site's /favicon.ico). The phone's "Open in wallet app" button is Xaman's alone now;
+    before, it opened WalletConnect when no Xaman key was set.
+  - **Address and destination tag as QR codes of their own,** in a dialog next to their copy buttons, for
+    wallets whose scanner fills one field at a time (Joey Wallet reads no payment request).
+  - The QR heading reads "Scan with Xaman", and so does the start of the XRPL caption. The caption is centred
+    under the code, the "or" between the alternatives is larger, the wallet message is centred.
+  - The wallet script is unchanged; the page script and the stylesheet change.
+
 - The payment page uses @ledger-direct/payment-ui 0.5.0 instead of 0.4.2. Joey Wallet's browser
   extension is offered in the wallet list when it is installed; it connects on the page's network,
   pays nothing on another, and a connection Joey ends (access revoked, account gone, network switched)

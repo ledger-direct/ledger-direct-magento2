@@ -30,6 +30,7 @@ $state = (string) $v['state'];
 $asset = $escaper->escapeHtml($v['asset']);
 $hasWalletApp = $v['xaman_key'] !== '' || $v['wc_project'] !== '';
 $copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+$qrIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>';
 $infoIcon = '<svg class="ld-notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
 $copyLabels = '<span data-ld-copy-label="idle">' . $escaper->escapeHtml(__('LedgerDirect.paymentPage.copy')) . '</span>'
     . '<span data-ld-copy-label="done" hidden>' . $escaper->escapeHtml(__('LedgerDirect.paymentPage.copied')) . '</span>';
@@ -51,7 +52,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
      <?php if ($v['amount_drops'] !== null): ?>data-ld-amount-drops="<?= $escaper->escapeHtmlAttr($v['amount_drops']) ?>"<?php endif; ?>
      <?php if ($v['currency'] !== null): ?>data-ld-currency="<?= $escaper->escapeHtmlAttr($v['currency']) ?>" data-ld-issuer="<?= $escaper->escapeHtmlAttr((string) $v['issuer']) ?>"<?php endif; ?>
      <?php if ($v['xaman_key'] !== ''): ?>data-ld-xaman-key="<?= $escaper->escapeHtmlAttr($v['xaman_key']) ?>"<?php endif; ?>
-     <?php if ($v['wc_project'] !== ''): ?>data-ld-wc-project="<?= $escaper->escapeHtmlAttr($v['wc_project']) ?>"<?php endif; ?>
+     <?php if ($v['wc_project'] !== ''): ?>data-ld-wc-project="<?= $escaper->escapeHtmlAttr($v['wc_project']) ?>" data-ld-shop-name="<?= $escaper->escapeHtmlAttr($v['store_name']) ?>"<?php endif; ?>
      style="--ld-accent: <?= $escaper->escapeHtmlAttr($v['accent']) ?>">
 
     <header class="ld-top">
@@ -151,6 +152,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                                 <div class="ld-field-label"><span class="ld-step-no">1</span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepAccount')) ?></div>
                                 <div class="ld-field">
                                     <span class="ld-field-value" data-ld-account data-value="<?= $escaper->escapeHtmlAttr($v['destination_account']) ?>"><?= $escaper->escapeHtml($v['destination_account']) ?></span>
+                                    <button type="button" class="ld-copy ld-copy--qr" data-ld-qr-show="account" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.qrShowAccount')) ?>"><?= /* @noEscape */ $qrIcon ?></button>
                                     <button type="button" class="ld-copy" data-copy="account" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyAccount')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
                                 </div>
                             </li>
@@ -158,6 +160,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                                 <div class="ld-field-label"><span class="ld-step-no">2</span> <?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepTag')) ?> <span class="ld-badge ld-badge--required"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.requiredBadge')) ?></span></div>
                                 <div class="ld-field ld-field--key">
                                     <span class="ld-field-value" data-ld-tag data-value="<?= (int) $v['destination_tag'] ?>"><?= (int) $v['destination_tag'] ?></span>
+                                    <button type="button" class="ld-copy ld-copy--qr" data-ld-qr-show="tag" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.qrShowTag')) ?>"><?= /* @noEscape */ $qrIcon ?></button>
                                     <button type="button" class="ld-copy" data-copy="tag" aria-label="<?= $escaper->escapeHtmlAttr(__('LedgerDirect.paymentPage.copyTag')) ?>"><?= /* @noEscape */ $copyIcon . $copyLabels ?></button>
                                 </div>
                                 <p class="ld-hint"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.tagHint')) ?></p>
@@ -173,6 +176,15 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                                 </li>
                             <?php endif; ?>
                         </ol>
+
+                        <?php /* One field as a QR code, opened by the buttons next to the copy buttons. */ ?>
+                        <dialog class="ld-qr-dialog" data-ld-qr-dialog>
+                            <p class="ld-qr-dialog-title" data-ld-qr-dialog-title="account"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepAccount')) ?></p>
+                            <p class="ld-qr-dialog-title" data-ld-qr-dialog-title="tag" hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.stepTag')) ?></p>
+                            <div class="ld-qr-box"><div data-ld-qr-dialog-code></div></div>
+                            <code class="ld-qr-dialog-value" data-ld-qr-dialog-value></code>
+                            <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-qr-dialog-close><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.qrDialogClose')) ?></button>
+                        </dialog>
 
                         <details class="ld-exchange">
                             <summary><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.exchangeSummary')) ?></summary>
@@ -194,6 +206,10 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                         <?php /* Browser wallets, loaded only on click. Every sentence the module can show is rendered here. */ ?>
                         <div data-ld-wallet-section <?= $hasWalletApp ? 'data-ld-wallet-mobile' : '' ?> <?= $state === 'expired' ? 'hidden' : '' ?>>
                             <div class="ld-or"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletOr')) ?></div>
+                            <?php if ($v['wc_project'] !== ''): ?>
+                                <?php /* WalletConnect connects a wallet app, usually on a phone: its own button, on every width. */ ?>
+                                <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-wallet-connect><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletConnectButton')) ?></button>
+                            <?php endif; ?>
                             <div data-ld-wallet-desktop>
                                 <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-wallet-toggle aria-expanded="false" aria-controls="ld-wallets">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 13h2M2 10h20"/></svg>
@@ -206,8 +222,8 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
                                     <p class="ld-hint" data-ld-wallet-status="hint" hidden><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletHint')) ?></p>
                                 </div>
                             </div>
-                            <?php if ($hasWalletApp): ?>
-                                <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-wallet-app data-ld-wallet-id="<?= $v['xaman_key'] !== '' ? 'xaman' : 'walletconnect' ?>"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletAppButton')) ?></button>
+                            <?php if ($v['xaman_key'] !== ''): ?>
+                                <button type="button" class="ld-btn ld-btn--secondary ld-btn--block" data-ld-wallet-app data-ld-wallet-id="xaman"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletAppButton')) ?></button>
                             <?php endif; ?>
                             <p class="ld-hint" data-ld-wallet-message aria-live="polite" hidden></p>
                             <span hidden data-ld-wallet-text="found"><?= $escaper->escapeHtml(__('LedgerDirect.paymentPage.walletFound')) ?></span>
