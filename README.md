@@ -171,7 +171,7 @@ Stores → Configuration → Sales → Payment Methods → Ledger Direct / XRPL:
 | Send payment instructions email, sender, template | The email with the link to the payment page, sent right after the order is placed. On by default. |
 | Payment page: logo | What the payment page shows in its header: the store logo, an uploaded picture (PNG, JPG, SVG or WebP, at most 160 by 32 pixels), or the first letter of the store name. |
 | Payment page: accent colour | The one colour of the payment page — buttons, countdown bar, destination tag — with white text on it, so it must be dark enough (contrast 4.5:1). Default `#1f5eff`; a lighter colour is refused on save. |
-| Payment page: Xaman API key, WalletConnect project id | Public identifiers, optional. With the Xaman key, customers on a phone get an "Open in wallet app" button. With the WalletConnect project id, every customer gets a "Pay with a wallet app (WalletConnect)" button: it shows a code to scan with a wallet app such as Joey Wallet, and the app is told the store's name. Never the API secret. |
+| Payment page: Xaman API key, WalletConnect project id | Public identifiers, optional. With the Xaman key, customers on a phone get an "Open in wallet app" button. With the WalletConnect project id, every customer paying on the XRP Ledger gets a "Pay with a wallet app (WalletConnect)" button (the wallet section is the XRP Ledger's: none on Xahau, and none once the amount has expired): it shows a code to scan with a wallet app such as Joey Wallet, and the app is told the store's name. Never the API secret. |
 
 Each asset is a payment method of its own, with its *Enabled* switch and the title the checkout
 shows, in the groups *Ledger Direct – XRP (XRPL)*, *Ledger Direct – RLUSD (XRPL)* and
