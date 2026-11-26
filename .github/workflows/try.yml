@@ -128,6 +128,12 @@ jobs:
           mkdir -p screenshots
           for method in xrp_payment xrpl_rlusd_payment xrpl_usdc_payment xahau_xah_payment; do
             echo "== $method"
+            # Shortly after a testnet reset the stablecoin issuers may not be back, and the shop
+            # leaves RLUSD and USDC off: reset.mjs decides from the shop's log and the testnet
+            # whether that is the case (a warning, the walk skipped) or not (the walk runs).
+            if [ "$method" = xrpl_rlusd_payment ] || [ "$method" = xrpl_usdc_payment ]; then
+              if (cd .. && docker compose logs --no-color phpfpm) | node reset.mjs; then continue; fi
+            fi
             node visitor.mjs http://localhost:8088 screenshots "$method"
           done
 
