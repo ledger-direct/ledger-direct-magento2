@@ -171,7 +171,7 @@ Stores → Configuration → Sales → Payment Methods → Ledger Direct / XRPL:
 | Send payment instructions email, sender, template | The email with the link to the payment page, sent right after the order is placed. On by default. |
 | Payment page: logo | What the payment page shows in its header: the store logo, an uploaded picture (PNG, JPG, SVG or WebP, at most 160 by 32 pixels), or the first letter of the store name. |
 | Payment page: accent colour | The one colour of the payment page — buttons, countdown bar, destination tag — with white text on it, so it must be dark enough (contrast 4.5:1). Default `#1f5eff`; a lighter colour is refused on save. |
-| Payment page: Xaman API key, WalletConnect project id | Public identifiers, optional. With the Xaman key, customers on a phone get an "Open in wallet app" button. With the WalletConnect project id, every customer paying on the XRP Ledger gets a "Pay with a wallet app (WalletConnect)" button (the wallet section is the XRP Ledger's: none on Xahau, and none once the amount has expired): it shows a code to scan with a wallet app such as Joey Wallet, and the app is told the store's name. Never the API secret. |
+| Payment page: Xaman API key, WalletConnect project id | Public identifiers, optional. With the Xaman key, customers on a phone get an "Open in wallet app" button. With the WalletConnect project id, every customer paying on the XRP Ledger gets a "Pay with a wallet app (WalletConnect)" button (the wallet section is the XRP Ledger's: none on Xahau, and none once the amount has expired): it shows a code to scan with a wallet app such as Joey Wallet, and the app is told the store's name. Never the API secret. Setup: [Setting up WalletConnect](#setting-up-walletconnect). |
 
 Each asset is a payment method of its own, with its *Enabled* switch and the title the checkout
 shows, in the groups *Ledger Direct – XRP (XRPL)*, *Ledger Direct – RLUSD (XRPL)* and
@@ -194,6 +194,32 @@ The cron job `ledger_direct_settle_pending_orders` runs every five minutes with 
 makes one node request per receiving account and network, then matches every open order against
 the stored transactions. Without it, a customer who closes the payment page before their
 transaction confirms is only settled the next time someone visits their payment page.
+
+### Setting up WalletConnect
+
+With a WalletConnect project ID, XRP Ledger payment pages show "Pay with a wallet app (WalletConnect)" above the
+browser wallets. The customer scans the code in WalletConnect's dialog with a wallet app on the phone, and the app
+signs the payment. The project ID is your shop's own: LedgerDirect does not ship one, and every shop needs its own.
+It comes from Reown, the company behind WalletConnect.
+
+1. Sign in at [dashboard.reown.com](https://dashboard.reown.com), or create an account there.
+2. Create a project with **New Project** and give it your shop's name.
+3. Copy the project's **Project ID**, paste it into **Payment page: WalletConnect project id** in Stores →
+   Configuration → Sales → Payment Methods → Ledger Direct / XRPL and click **Save Config**. With several websites on
+   different domains, either put every domain on the project's allowlist (step 4), or switch **Scope** to the
+   website, clear **Use Default** next to the field and enter that website's own project ID.
+4. In the project, open **Configuration**, go to **Domain**, click **+ Domain**, enter your shop's address as scheme
+   and host (`https://shop.example.com`, a port only if the shop uses one) and click **Allowlist**. Add every other
+   address the payment page is served from, such as a staging shop. Reown then refuses requests from other origins
+   ("Invalid App Configuration"), so other sites cannot use your project ID; only `localhost` is always allowed, and
+   while the list is empty, every origin is. A change to the list takes up to 15 minutes to apply.
+5. Check it, at least 15 minutes after the last change to the allowlist: place an order, open the payment page and
+   click **Pay with a wallet app (WalletConnect)**. A dialog with a code opens; scan it with a wallet app that
+   supports the XRP Ledger over WalletConnect, such as Joey Wallet. The app shows your shop's name and its icon.
+
+The project ID is public, like the Xaman API key: it is in the page source of every payment page. Without one, the
+WalletConnect button is not shown; the Xaman code, the address and destination tag, and the browser wallets work as
+before.
 
 ## Test payments
 

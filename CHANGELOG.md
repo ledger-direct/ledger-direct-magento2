@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The setting "Payment page: WalletConnect project id" explains where the ID comes from (dashboard.reown.com, no longer
+  cloud.walletconnect.com) and links to the new README section "Setting up WalletConnect": account, project, domain
+  allowlist and a check, step by step. Every shop needs its own project ID.
+
 - The payment page uses @ledger-direct/payment-ui 0.6.0 instead of 0.5.0.
   - **WalletConnect works and has its own button.** With a WalletConnect project id, "Pay with a wallet app
     (WalletConnect)" sits above "Pay with a browser wallet", on every screen width, and opens WalletConnect's
