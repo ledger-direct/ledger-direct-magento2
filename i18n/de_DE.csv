@@ -146,7 +146,7 @@
 "Payment page: Xaman API key","Zahlungsseite: Xaman-API-Schlüssel"
 "The public API key of your Xaman developer app (apps.xaman.dev). With it, customers on a phone get an ""Open in wallet app"" button. Never the API secret.","Der öffentliche API-Key Ihrer Xaman-Entwickler-App (apps.xaman.dev). Damit erhalten Kunden auf dem Smartphone die Schaltfläche ""In Wallet-App öffnen"". Niemals das API-Secret."
 "Payment page: WalletConnect project id","Zahlungsseite: WalletConnect-Projekt-ID"
-"The project id from cloud.walletconnect.com, if you want to offer WalletConnect wallets. Public, like the Xaman key.","Die Projekt-ID von cloud.walletconnect.com, wenn Sie WalletConnect-Wallets anbieten wollen. Öffentlich, wie der Xaman-Key."
+"Your shop's own project ID from dashboard.reown.com (WalletConnect), if you want to offer wallet apps over WalletConnect. Public, not a secret; allow only your shop's domain there. Step by step: https://github.com/ledger-direct/ledger-direct-magento2#setting-up-walletconnect","Die eigene Projekt-ID Ihres Shops von dashboard.reown.com (WalletConnect), wenn Sie Wallet-Apps über WalletConnect anbieten wollen. Öffentlich, kein Geheimnis; lassen Sie dort nur die Domain Ihres Shops zu. Schritt für Schritt: https://github.com/ledger-direct/ledger-direct-magento2#setting-up-walletconnect"
 "Ledger Direct - XRP (XRPL)","Ledger Direct - XRP (XRPL)"
 "Ledger Direct - RLUSD (XRPL)","Ledger Direct - RLUSD (XRPL)"
 "Ledger Direct - USDC (XRPL)","Ledger Direct - USDC (XRPL)"
