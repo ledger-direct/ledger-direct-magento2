@@ -1,0 +1,19 @@
+LedgerDirect for Magento 2 — release notes 1.4.0
+
+Changes since 1.3.3:
+
+- WalletConnect works and has its own button: with a WalletConnect project id, "Pay with a wallet
+  app (WalletConnect)" sits above "Pay with a browser wallet" and opens WalletConnect's dialog with
+  the code to scan. The wallet app shows the store's name and favicon (the one configured under
+  Content → Design → Configuration, else the theme's) instead of the host name. The phone's "Open
+  in wallet app" button is Xaman's alone now
+- The WalletConnect setting says where the project ID comes from (dashboard.reown.com) and links to
+  the README section "Setting up WalletConnect". Every store needs its own project ID
+- The receiving address and the destination tag can be shown as QR codes of their own, for wallets
+  whose scanner fills one field at a time
+- Joey Wallet's browser extension is offered in the wallet list when it is installed. A wallet error
+  shows as a warning box instead of grey text under the hint
+
+Requires hardcastle/ledger-direct-core 0.12.0. Run bin/magento setup:upgrade after the update, and
+in production mode bin/magento setup:static-content:deploy, so the new payment page script is
+served.
