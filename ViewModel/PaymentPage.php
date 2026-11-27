@@ -176,6 +176,7 @@ class PaymentPage implements ArgumentInterface
             'logo' => $this->logo($storeName),
             'xaman_key' => $this->config->getXamanApiKey(),
             'wc_project' => $this->config->getWalletConnectProjectId(),
+            'shop_icon' => $this->storeFaviconUrl(),
             'poll_url' => (string) $block->getData('poll_url'),
             'refresh_url' => (string) $block->getData('refresh_url'),
             'page_url' => (string) $block->getData('page_url'),
@@ -304,6 +305,31 @@ class PaymentPage implements ArgumentInterface
 
         try {
             return $this->assetRepository->getUrl('images/logo.svg');
+        } catch (\Throwable $exception) {
+            return null;
+        }
+    }
+
+    /**
+     * The store's favicon, which a WalletConnect wallet shows next to the shop's name: the uploaded one from
+     * design/head/shortcut_icon (below media/favicon, Magento's upload directory), else the theme's, the same
+     * fallback Magento's page head uses
+     *
+     * @return string|null
+     */
+    private function storeFaviconUrl(): ?string
+    {
+        $configured = (string) $this->scopeConfig->getValue(
+            'design/head/shortcut_icon',
+            ScopeInterface::SCOPE_STORE
+        );
+
+        if ($configured !== '') {
+            return $this->mediaUrl('favicon/' . $configured);
+        }
+
+        try {
+            return $this->assetRepository->getUrl('Magento_Theme::favicon.ico');
         } catch (\Throwable $exception) {
             return null;
         }
