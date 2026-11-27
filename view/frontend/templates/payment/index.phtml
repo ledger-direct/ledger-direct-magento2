@@ -52,7 +52,7 @@ $walletsSrc = $block->getViewFileUrl('Hardcastle_LedgerDirect::js/ledger-direct-
      <?php if ($v['amount_drops'] !== null): ?>data-ld-amount-drops="<?= $escaper->escapeHtmlAttr($v['amount_drops']) ?>"<?php endif; ?>
      <?php if ($v['currency'] !== null): ?>data-ld-currency="<?= $escaper->escapeHtmlAttr($v['currency']) ?>" data-ld-issuer="<?= $escaper->escapeHtmlAttr((string) $v['issuer']) ?>"<?php endif; ?>
      <?php if ($v['xaman_key'] !== ''): ?>data-ld-xaman-key="<?= $escaper->escapeHtmlAttr($v['xaman_key']) ?>"<?php endif; ?>
-     <?php if ($v['wc_project'] !== ''): ?>data-ld-wc-project="<?= $escaper->escapeHtmlAttr($v['wc_project']) ?>" data-ld-shop-name="<?= $escaper->escapeHtmlAttr($v['store_name']) ?>"<?php endif; ?>
+     <?php if ($v['wc_project'] !== ''): ?>data-ld-wc-project="<?= $escaper->escapeHtmlAttr($v['wc_project']) ?>" data-ld-shop-name="<?= $escaper->escapeHtmlAttr($v['store_name']) ?>"<?php if ($v['shop_icon'] !== null): ?> data-ld-shop-icon="<?= $escaper->escapeUrl($v['shop_icon']) ?>"<?php endif; ?><?php endif; ?>
      style="--ld-accent: <?= $escaper->escapeHtmlAttr($v['accent']) ?>">
 
     <header class="ld-top">

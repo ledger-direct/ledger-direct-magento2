@@ -62,7 +62,7 @@ class PaymentPageTest extends TestCase
         $urlBuilder->method('getBaseUrl')->willReturn('https://shop.test/media/');
 
         $assets = $this->createMock(Repository::class);
-        $assets->method('getUrl')->willReturn('https://shop.test/static/images/logo.svg');
+        $assets->method('getUrl')->willReturnCallback(fn ($id) => 'https://shop.test/static/' . str_replace('::', '/', $id));
 
         $this->store = $this->createMock(StoreInterface::class);
         $storeManager = $this->createMock(StoreManagerInterface::class);
@@ -168,6 +168,34 @@ class PaymentPageTest extends TestCase
         self::assertSame('https://shop.test/static/images/logo.svg', $view['logo']['url']);
         self::assertSame('Ö', $view['logo']['monogram']);
         self::assertSame('·', $this->viewModel->monogram('  '));
+    }
+
+    public function testTheWalletIsToldTheConfiguredFaviconElseTheThemes(): void
+    {
+        $view = $this->viewModel->forBlock($this->block($this->xrpIntent(1.0, self::NOW + 200), ['amount_requested' => '1']));
+        self::assertSame('https://shop.test/static/Magento_Theme/favicon.ico', $view['shop_icon']);
+
+        $scopeConfig = $this->createMock(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')->willReturnCallback(
+            fn ($path) => $path === 'design/head/shortcut_icon' ? 'stores/1/shop.png' : ''
+        );
+        $urlBuilder = $this->createMock(UrlInterface::class);
+        $urlBuilder->method('getUrl')->willReturnCallback(fn ($path) => 'https://shop.test/' . $path);
+        $urlBuilder->method('getBaseUrl')->willReturn('https://shop.test/media/');
+        $storeManager = $this->createMock(StoreManagerInterface::class);
+        $storeManager->method('getStore')->willReturn($this->store);
+        $viewModel = new PaymentPage(
+            $this->config,
+            $scopeConfig,
+            $this->createMock(PriceCurrencyInterface::class),
+            $urlBuilder,
+            $this->createMock(Repository::class),
+            $storeManager,
+            new Explorer()
+        );
+
+        $view = $viewModel->forBlock($this->block($this->xrpIntent(1.0, self::NOW + 200), ['amount_requested' => '1']));
+        self::assertSame('https://shop.test/media/favicon/stores/1/shop.png', $view['shop_icon']);
     }
 
     private function xrpIntent(float $amount, ?int $expiry): PaymentIntent

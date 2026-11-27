@@ -215,7 +215,8 @@ It comes from Reown, the company behind WalletConnect.
    while the list is empty, every origin is. A change to the list takes up to 15 minutes to apply.
 5. Check it, at least 15 minutes after the last change to the allowlist: place an order, open the payment page and
    click **Pay with a wallet app (WalletConnect)**. A dialog with a code opens; scan it with a wallet app that
-   supports the XRP Ledger over WalletConnect, such as Joey Wallet. The app shows your shop's name and its icon.
+   supports the XRP Ledger over WalletConnect, such as Joey Wallet. The app shows your shop's name and favicon
+   (the one set under Content → Design → Configuration, else the theme's).
 
 The project ID is public, like the Xaman API key: it is in the page source of every payment page. Without one, the
 WalletConnect button is not shown; the Xaman code, the address and destination tag, and the browser wallets work as

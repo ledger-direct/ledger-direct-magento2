@@ -10,7 +10,8 @@
   - **WalletConnect works and has its own button.** With a WalletConnect project id, "Pay with a wallet app
     (WalletConnect)" sits above "Pay with a browser wallet", on every screen width, and opens WalletConnect's
     dialog with the code to scan. Before, the click showed nothing to scan. The wallet app is told the shop's
-    name instead of the host name (the icon is the site's /favicon.ico). The phone's "Open in wallet app" button is Xaman's alone now;
+    name and favicon instead of the host name: the favicon configured under Content → Design → Configuration,
+    else the theme's. The phone's "Open in wallet app" button is Xaman's alone now;
     before, it opened WalletConnect when no Xaman key was set.
   - **Address and destination tag as QR codes of their own,** in a dialog next to their copy buttons, for
     wallets whose scanner fills one field at a time (Joey Wallet reads no payment request).
