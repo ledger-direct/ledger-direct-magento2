@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 - The setting "Payment page: WalletConnect project id" explains where the ID comes from (dashboard.reown.com, no longer
   cloud.walletconnect.com) and links to the new README section "Setting up WalletConnect": account, project, domain
