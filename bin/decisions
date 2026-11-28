@@ -1,0 +1,293 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Reads the LedgerDirect decision register for this repository.
+ *
+ * Copied from templates/bin-decisions of ledger-direct/ledger-direct-decisions; change it there,
+ * not here. It needs PHP 8.2+ and git, nothing else.
+ *
+ * The register is private. It is cloned into .decisions/ (which must be ignored by git) and
+ * updated on every run. Without access the script says so and exits with code 3: then the
+ * cross-repo decisions are unknown in this session, and docs/adr/ is all there is.
+ */
+
+const SOURCE = 'https://github.com/ledger-direct/ledger-direct-decisions.git';
+const CLONE_DIR = '.decisions';
+const SNAPSHOT = 'docs/adr/APPLICABLE.md';
+
+const HELP = <<<'TXT'
+Usage: bin/decisions [--rules] [--path <path>]...
+       bin/decisions --write | --check
+
+Prints the binding decisions for this repository: the accepted ADRs of the decision register
+that apply to it. Proposed ADRs bind nobody and are not shown.
+
+  --rules          also print the MUST / MUST NOT / SHOULD lines of each ADR
+  --path <path>    only ADRs that apply to this path (repeatable)
+  --write          write docs/adr/APPLICABLE.md: the accepted ADRs with visibility: public that
+                   apply to this repository, each with id, title, summary and its MUST and
+                   MUST NOT lines. The file is local: git has to ignore it, and it is never
+                   committed. Decisions are not published in the code repositories.
+  --check          exit 1 when docs/adr/APPLICABLE.md is not what --write would write
+
+  --offline        do not update .decisions/, read the copy from an earlier run
+  --repo <name>    repository name, if it is not the name in the origin URL
+  --source <url>   where the register is cloned from (or LD_DECISIONS_SOURCE)
+
+Exit codes: 0 fine, 1 the snapshot is out of date (--check), 2 wrong use or wrong setup,
+3 the register cannot be reached.
+
+TXT;
+
+/**
+ * @param list<string> $command
+ * @return array{0: int, 1: string, 2: string} exit code, stdout, stderr
+ */
+function run(array $command, ?string $cwd = null): array
+{
+    // Git must fail instead of asking: this runs where nobody can answer. Stored credentials
+    // (credential helpers, an ssh agent) keep working; prompts on the terminal, through an
+    // askpass program or by ssh do not.
+    $environment = ['GIT_TERMINAL_PROMPT' => '0', 'GIT_ASKPASS' => 'false', 'SSH_ASKPASS' => 'false'] + getenv();
+    $environment['GIT_SSH_COMMAND'] ??= 'ssh -o BatchMode=yes';
+
+    // An argument list, no shell. Errors go to a file, so that a child that writes much to one
+    // stream cannot block while the other one is being read.
+    $errors = tempnam(sys_get_temp_dir(), 'decisions');
+    if ($errors === false) {
+        return [127, '', 'cannot create a temporary file'];
+    }
+    $process = proc_open(
+        $command,
+        [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['file', $errors, 'w']],
+        $pipes,
+        $cwd,
+        $environment
+    );
+    if (!is_resource($process)) {
+        @unlink($errors);
+
+        return [127, '', 'cannot start ' . $command[0]];
+    }
+    $out = (string) stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    $code = proc_close($process);
+    $err = (string) file_get_contents($errors);
+    @unlink($errors);
+
+    return [$code, $out, $err];
+}
+
+function fail(int $code, string $message): never
+{
+    fwrite(STDERR, $message . "\n");
+    exit($code);
+}
+
+/** The last line git said, without anything that looks like credentials in a URL. */
+function reason(string $stderr): string
+{
+    $lines = array_values(array_filter(array_map('trim', explode("\n", $stderr))));
+    $last = $lines === [] ? 'git gave no reason' : $lines[count($lines) - 1];
+
+    return (string) preg_replace('~(https?://)[^/@\s]+@~', '$1', $last);
+}
+
+$options = ['rules' => false, 'write' => false, 'check' => false, 'offline' => false, 'help' => false];
+$values = ['repo' => null, 'source' => null];
+$paths = [];
+for ($i = 1, $n = count($argv); $i < $n; $i++) {
+    $name = str_starts_with($argv[$i], '--') ? substr($argv[$i], 2) : null;
+    if ($name !== null && array_key_exists($name, $options)) {
+        $options[$name] = true;
+    } elseif ($name !== null && ($name === 'path' || array_key_exists($name, $values)) && isset($argv[$i + 1])) {
+        $name === 'path' ? $paths[] = $argv[++$i] : $values[$name] = $argv[++$i];
+    } else {
+        fail(2, "unknown or incomplete option: {$argv[$i]}\n\n" . HELP);
+    }
+}
+if ($options['help']) {
+    echo HELP;
+    exit(0);
+}
+if ($options['write'] && $options['check']) {
+    fail(2, '--write and --check exclude each other');
+}
+
+[$code, $top] = run(['git', '-C', __DIR__, 'rev-parse', '--show-toplevel']);
+if ($code !== 0) {
+    fail(2, 'bin/decisions has to live in a git repository');
+}
+$root = trim($top);
+
+$repo = $values['repo'];
+if ($repo === null) {
+    [, $url] = run(['git', '-C', $root, 'remote', 'get-url', 'origin']);
+    $repo = preg_replace('~\.git$~', '', basename(trim($url)));
+}
+if (!is_string($repo) || !preg_match('~^[A-Za-z0-9._-]+$~', $repo)) {
+    fail(2, 'cannot tell the repository name from the origin URL; pass --repo <name>');
+}
+
+// The clone holds the private register. It must never be committed into this repository.
+if (run(['git', '-C', $root, 'check-ignore', '--quiet', CLONE_DIR . '/'])[0] !== 0) {
+    fail(2, CLONE_DIR . '/ is not ignored by git. Add "/' . CLONE_DIR . '/" to .gitignore first: the register is private.');
+}
+
+$source = $values['source'] ?? (getenv('LD_DECISIONS_SOURCE') ?: SOURCE);
+if (is_dir($source)) {
+    // A local checkout as source: as an absolute path, because git reads it from inside the clone.
+    $source = (string) realpath($source);
+}
+$clone = $root . '/' . CLONE_DIR;
+$cloned = is_dir($clone . '/.git');
+
+if ($options['offline']) {
+    if (!$cloned) {
+        fail(3, 'There is no copy of the decision register in ' . CLONE_DIR . '/ to read offline.');
+    }
+} else {
+    if ($cloned) {
+        [$code, , $err] = run(['git', '-C', $clone, 'remote', 'set-url', 'origin', $source]);
+        if ($code !== 0) {
+            fail(2, CLONE_DIR . '/ is not a clone this script made (' . reason($err) . '). Remove it and run again.');
+        }
+        [$code, , $err] = run(['git', '-C', $clone, 'pull', '--quiet', '--ff-only']);
+    } else {
+        [$code, , $err] = run(['git', 'clone', '--quiet', '--origin', 'origin', '--depth', '1', $source, $clone]);
+    }
+    if ($code !== 0) {
+        fail(3, "The decision register is not reachable from here.\n"
+            . '  ' . reason($err) . "\n"
+            . "Cross-repo decisions cannot be read in this session. Say so, rely on docs/adr/ only,\n"
+            . 'and do not guess what the register decides.'
+            . ($cloned ? "\n(" . CLONE_DIR . '/ holds a copy from an earlier run; --offline reads it, and it may be out of date.)' : ''));
+    }
+}
+
+/**
+ * What bin/relevant of the register answers. A warning from it means it skipped an ADR it could
+ * not read: the answer is then incomplete. That is passed on when decisions are printed, and it
+ * is an error ($complete) when a snapshot is to be built from the answer.
+ *
+ * @param list<string> $arguments
+ */
+function relevant(string $clone, string $repo, array $arguments, bool $complete = false): string
+{
+    [$code, $out, $err] = run([PHP_BINARY, $clone . '/bin/relevant', $repo, ...$arguments]);
+    if ($code !== 0) {
+        fail(2, "bin/relevant of the register failed:\n" . trim($err . $out));
+    }
+    if (trim($err) !== '') {
+        if ($complete) {
+            fail(2, "The register did not read all of its ADRs, so the list would be incomplete:\n  " . trim($err));
+        }
+        fwrite(STDERR, 'The register says: ' . trim($err) . "\n");
+    }
+
+    return $out;
+}
+
+/** The snapshot: accepted, public, applies to this repository. No date and no commit in it, so
+ *  that "is it current" is a comparison of two texts. */
+function snapshot(string $clone, string $repo): string
+{
+    $data = json_decode(relevant($clone, $repo, ['--public', '--binding', '--json'], true), true);
+    $adrs = is_array($data) && is_array($data['accepted'] ?? null) ? $data['accepted'] : null;
+    if ($adrs === null) {
+        fail(2, 'bin/relevant of the register answered with something that is not its JSON');
+    }
+
+    $out = "# Decisions that apply to this repository\n\n"
+        . "<!-- GENERATED by bin/decisions --write. Do not edit; run it again. -->\n\n"
+        . "The binding cross-repo decisions for `$repo`: the accepted ADRs of the LedgerDirect decision\n"
+        . "register that apply to this repository and are marked public there. Each entry gives the id, the\n"
+        . "title, the summary and the MUST and MUST NOT rules of the ADR; the full text, with reasons and\n"
+        . "rejected options, is in the register, which is private. An entry that names paths applies to\n"
+        . "those paths only, every other entry to the whole repository. Decisions that are not listed here\n"
+        . "may apply all the same (the internal ones do), so this file is the minimum, not the whole.\n\n"
+        . "This is a local snapshot: git ignores it, and it is not committed or passed on. `bin/decisions`\n"
+        . "reads the register itself and says when this file is out of date; `bin/decisions --write` renews\n"
+        . "it.\n\n"
+        . count($adrs) . " decision(s).\n";
+
+    foreach ($adrs as $adr) {
+        // The register selects; its two conditions are checked again here, should the file ever travel.
+        if (($adr['status'] ?? null) !== 'accepted' || ($adr['visibility'] ?? null) !== 'public') {
+            fail(2, 'The register returned ' . (is_string($adr['id'] ?? null) ? $adr['id'] : 'an ADR')
+                . ' for the snapshot although it is not both accepted and public. Nothing was written.');
+        }
+        $rules = array_values(array_filter(
+            is_array($adr['rules'] ?? null) ? $adr['rules'] : [],
+            static fn (mixed $rule): bool => is_string($rule) && preg_match('/\bMUST\b/', $rule) === 1
+        ));
+        $out .= "\n## {$adr['id']} {$adr['title']}\n\n{$adr['summary']}\n";
+        $limited = array_values(array_filter(is_array($adr['paths'] ?? null) ? $adr['paths'] : [], 'is_string'));
+        if ($limited !== []) {
+            $out .= "\nApplies only to: " . implode(', ', array_map(static fn (string $glob): string => "`$glob`", $limited)) . "\n";
+        }
+        if ($rules !== []) {
+            $out .= "\n" . implode("\n", array_map(static fn (string $rule): string => "- $rule", $rules)) . "\n";
+        }
+    }
+
+    return $out;
+}
+
+$file = $root . '/' . SNAPSHOT;
+$current = is_file($file) ? (string) file_get_contents($file) : null;
+
+if ($options['write'] || $options['check']) {
+    $snapshot = snapshot($clone, $repo);
+    if ($options['check']) {
+        if ($current !== $snapshot) {
+            fail(1, SNAPSHOT . ' is out of date. Run bin/decisions --write.');
+        }
+        echo SNAPSHOT . " is current.\n";
+        exit(0);
+    }
+    // The code repositories are public and the decisions are not: the snapshot is a local file.
+    // A tracked file counts as not ignored, so one that was committed once is refused as well.
+    if (run(['git', '-C', $root, 'check-ignore', '--quiet', SNAPSHOT])[0] !== 0) {
+        fail(2, SNAPSHOT . ' is not ignored by git. Add "/' . SNAPSHOT . '" to .gitignore first (and take the'
+            . ' file out of git if it is tracked): decisions are not published. Nothing was written.');
+    }
+    // Written beside the file and moved into place: a failed write leaves the old snapshot whole.
+    $temporary = $file . '.' . getmypid() . '.tmp';
+    if ((!is_dir(dirname($file)) && !@mkdir(dirname($file), 0777, true))
+        || @file_put_contents($temporary, $snapshot) !== strlen($snapshot)
+        || !@rename($temporary, $file)
+    ) {
+        @unlink($temporary);
+        fail(2, 'Cannot write ' . SNAPSHOT . '; the file, if there was one, is unchanged.');
+    }
+    echo 'Wrote ' . SNAPSHOT . ($current === $snapshot ? ' (unchanged).' : ', a local file that git ignores.') . "\n";
+    exit(0);
+}
+
+$arguments = ['--binding'];
+if ($options['rules']) {
+    $arguments[] = '--rules';
+}
+foreach ($paths as $path) {
+    array_push($arguments, '--path', $path);
+}
+echo relevant($clone, $repo, $arguments);
+
+[, $state] = run(['git', '-C', $clone, 'log', '-1', '--format=%h of %cs']);
+echo "\nRegister: " . preg_replace('~(https?://)[^/@\s]+@~', '$1', $source) . ', ' . (trim($state) ?: 'unknown state')
+    . ($options['offline'] ? ' (offline copy, not updated)' : '') . ".\n"
+    . 'Read an ADR in full under ' . CLONE_DIR . "/adr/ before you rely on its line here.\n";
+
+// The snapshot is optional and local. One that exists is checked; a missing one is not remarked on.
+if ($current === null) {
+    exit(0);
+}
+if (trim(run([PHP_BINARY, $clone . '/bin/relevant', $repo, '--public', '--binding', '--json'])[2]) !== '') {
+    echo "\nNote: whether " . SNAPSHOT . " is current cannot be told while the register skips ADRs.\n";
+} elseif ($current !== snapshot($clone, $repo)) {
+    echo "\nNote: " . SNAPSHOT . " is out of date. Run bin/decisions --write.\n";
+}
