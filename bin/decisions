@@ -185,8 +185,9 @@ if (is_dir($source)) {
 }
 $clone = $root . '/' . CLONE_DIR;
 $cloned = is_dir($clone . '/.git');
-// Where the copy in .decisions/ came from.
-$origin = $cloned ? trim(run(['git', '-C', $clone, 'remote', 'get-url', 'origin'])[1]) : '';
+// Where the copy in .decisions/ came from: the URL as it was given, before git rewrites it
+// (url.<base>.insteadOf), because that is what the source of this run is compared with.
+$origin = $cloned ? trim(run(['git', '-C', $clone, 'config', '--get', 'remote.origin.url'])[1]) : '';
 
 if ($options['offline']) {
     if (!$cloned) {
