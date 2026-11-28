@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 const SOURCE = 'https://github.com/ledger-direct/ledger-direct-decisions.git';
 const CLONE_DIR = '.decisions';
-const SNAPSHOT = 'docs/adr/APPLICABLE.md';
+const SNAPSHOT = CLONE_DIR . '/APPLICABLE.md';
 
 const HELP = <<<'TXT'
 Usage: bin/decisions [--rules] [--path <path>]...
@@ -27,11 +27,12 @@ that apply to it. Proposed ADRs bind nobody and are not shown.
 
   --rules          also print the MUST / MUST NOT / SHOULD lines of each ADR
   --path <path>    only ADRs that apply to this path (repeatable)
-  --write          write docs/adr/APPLICABLE.md: the accepted ADRs with visibility: public that
-                   apply to this repository, each with id, title, summary and its MUST and
-                   MUST NOT lines. The file is local: git has to ignore it, and it is never
-                   committed. Decisions are not published in the code repositories.
-  --check          exit 1 when docs/adr/APPLICABLE.md is not what --write would write
+  --write          write .decisions/APPLICABLE.md: the accepted ADRs with visibility: public
+                   that apply to this repository, each with id, title, summary and its MUST and
+                   MUST NOT lines. The file is local, like all of .decisions/: git ignores it
+                   and it is never committed. Decisions are not published in the code
+                   repositories.
+  --check          exit 1 when .decisions/APPLICABLE.md is not what --write would write
 
   --offline        do not update .decisions/, read the copy from an earlier run
   --repo <name>    repository name, if it is not the name in the origin URL
@@ -43,6 +44,39 @@ Exit codes: 0 fine, 1 the snapshot is out of date (--check), 2 wrong use or wron
 TXT;
 
 /**
+ * The ssh command for git: the one that is configured (GIT_SSH_COMMAND, else core.sshCommand,
+ * else plain ssh), so that its key and proxy options keep working, and told not to ask when it
+ * is OpenSSH. A command of another kind is passed on as it is.
+ */
+function ssh_command(): string
+{
+    static $command = null;
+    if ($command === null) {
+        $command = getenv('GIT_SSH_COMMAND') ?: '';
+        if ($command === '') {
+            // Asked outside of any repository: the user's and the system's configuration.
+            $process = proc_open(
+                ['git', 'config', '--get', 'core.sshCommand'],
+                [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['file', '/dev/null', 'w']],
+                $pipes,
+                sys_get_temp_dir()
+            );
+            if (is_resource($process)) {
+                $command = trim((string) stream_get_contents($pipes[1]));
+                fclose($pipes[1]);
+                proc_close($process);
+            }
+        }
+        $command = $command !== '' ? $command : 'ssh';
+        if (preg_match('~^(\S*/)?ssh(\s|$)~', $command) === 1 && !str_contains($command, 'BatchMode')) {
+            $command .= ' -o BatchMode=yes';
+        }
+    }
+
+    return $command;
+}
+
+/**
  * @param list<string> $command
  * @return array{0: int, 1: string, 2: string} exit code, stdout, stderr
  */
@@ -52,7 +86,7 @@ function run(array $command, ?string $cwd = null): array
     // (credential helpers, an ssh agent) keep working; prompts on the terminal, through an
     // askpass program or by ssh do not.
     $environment = ['GIT_TERMINAL_PROMPT' => '0', 'GIT_ASKPASS' => 'false', 'SSH_ASKPASS' => 'false'] + getenv();
-    $environment['GIT_SSH_COMMAND'] ??= 'ssh -o BatchMode=yes';
+    $environment['GIT_SSH_COMMAND'] = ssh_command();
 
     // An argument list, no shell. Errors go to a file, so that a child that writes much to one
     // stream cannot block while the other one is being read.
@@ -87,13 +121,18 @@ function fail(int $code, string $message): never
     exit($code);
 }
 
+/** A text with URLs in it, without what can carry credentials: user info, query, fragment. */
+function shown(string $text): string
+{
+    return (string) preg_replace(['~(\b[a-z][a-z0-9+.-]*://)[^/@\s]+@~i', '~(\b[a-z][a-z0-9+.-]*://[^\s?#]+)[?#]\S*~i'], '$1', $text);
+}
+
 /** The last line git said, without anything that looks like credentials in a URL. */
 function reason(string $stderr): string
 {
     $lines = array_values(array_filter(array_map('trim', explode("\n", $stderr))));
-    $last = $lines === [] ? 'git gave no reason' : $lines[count($lines) - 1];
 
-    return (string) preg_replace('~(https?://)[^/@\s]+@~', '$1', $last);
+    return shown($lines === [] ? 'git gave no reason' : $lines[count($lines) - 1]);
 }
 
 $options = ['rules' => false, 'write' => false, 'check' => false, 'offline' => false, 'help' => false];
@@ -103,7 +142,9 @@ for ($i = 1, $n = count($argv); $i < $n; $i++) {
     $name = str_starts_with($argv[$i], '--') ? substr($argv[$i], 2) : null;
     if ($name !== null && array_key_exists($name, $options)) {
         $options[$name] = true;
-    } elseif ($name !== null && ($name === 'path' || array_key_exists($name, $values)) && isset($argv[$i + 1])) {
+    } elseif ($name !== null && ($name === 'path' || array_key_exists($name, $values))
+        && isset($argv[$i + 1]) && !str_starts_with($argv[$i + 1], '--')
+    ) {
         $name === 'path' ? $paths[] = $argv[++$i] : $values[$name] = $argv[++$i];
     } else {
         fail(2, "unknown or incomplete option: {$argv[$i]}\n\n" . HELP);
@@ -144,16 +185,22 @@ if (is_dir($source)) {
 }
 $clone = $root . '/' . CLONE_DIR;
 $cloned = is_dir($clone . '/.git');
+// Where the copy in .decisions/ came from.
+$origin = $cloned ? trim(run(['git', '-C', $clone, 'remote', 'get-url', 'origin'])[1]) : '';
 
 if ($options['offline']) {
     if (!$cloned) {
         fail(3, 'There is no copy of the decision register in ' . CLONE_DIR . '/ to read offline.');
     }
+    $source = $origin !== '' ? $origin : $source;
 } else {
     if ($cloned) {
-        [$code, , $err] = run(['git', '-C', $clone, 'remote', 'set-url', 'origin', $source]);
-        if ($code !== 0) {
-            fail(2, CLONE_DIR . '/ is not a clone this script made (' . reason($err) . '). Remove it and run again.');
+        // A copy is never switched to another source: its history may not fit, and what would be
+        // read afterwards could be the old register under the new name.
+        if ($origin !== $source) {
+            fail(2, CLONE_DIR . '/ holds a copy of ' . ($origin !== '' ? shown($origin) : 'an unknown source')
+                . ', and the register is now to be read from ' . shown($source) . ".\n"
+                . 'Remove ' . CLONE_DIR . '/ and run again.');
         }
         [$code, , $err] = run(['git', '-C', $clone, 'pull', '--quiet', '--ff-only']);
     } else {
@@ -166,6 +213,21 @@ if ($options['offline']) {
             . 'and do not guess what the register decides.'
             . ($cloned ? "\n(" . CLONE_DIR . '/ holds a copy from an earlier run; --offline reads it, and it may be out of date.)' : ''));
     }
+}
+
+// The checkout may lie where a web server serves files (a shop's module or plugin directory).
+// Apache is told here not to serve the copy; nginx set-ups for shops deny dot directories anyway.
+// Neither file belongs to the register, so the copy's own git leaves them alone.
+$deny = "# Written by bin/decisions: this directory holds a private repository and is never served.\n"
+    . "<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n"
+    . "<IfModule !mod_authz_core.c>\n    Order deny,allow\n    Deny from all\n</IfModule>\n";
+if (!is_file($clone . '/.htaccess') && @file_put_contents($clone . '/.htaccess', $deny) === false) {
+    fwrite(STDERR, 'Warning: cannot write ' . CLONE_DIR . "/.htaccess; make sure no web server serves this directory.\n");
+}
+$exclude = $clone . '/.git/info/exclude';
+if (!str_contains((string) @file_get_contents($exclude), '/APPLICABLE.md')) {
+    @mkdir(dirname($exclude), 0777, true);
+    @file_put_contents($exclude, "\n# Written by bin/decisions; not part of the register.\n/.htaccess\n/APPLICABLE.md\n/APPLICABLE.md.*.tmp\n", FILE_APPEND);
 }
 
 /**
@@ -209,7 +271,7 @@ function snapshot(string $clone, string $repo): string
         . "rejected options, is in the register, which is private. An entry that names paths applies to\n"
         . "those paths only, every other entry to the whole repository. Decisions that are not listed here\n"
         . "may apply all the same (the internal ones do), so this file is the minimum, not the whole.\n\n"
-        . "This is a local snapshot: git ignores it, and it is not committed or passed on. `bin/decisions`\n"
+        . "This is a local snapshot in .decisions/: git ignores it, and it is not committed or passed on. `bin/decisions`\n"
         . "reads the register itself and says when this file is out of date; `bin/decisions --write` renews\n"
         . "it.\n\n"
         . count($adrs) . " decision(s).\n";
@@ -249,16 +311,11 @@ if ($options['write'] || $options['check']) {
         echo SNAPSHOT . " is current.\n";
         exit(0);
     }
-    // The code repositories are public and the decisions are not: the snapshot is a local file.
-    // A tracked file counts as not ignored, so one that was committed once is refused as well.
-    if (run(['git', '-C', $root, 'check-ignore', '--quiet', SNAPSHOT])[0] !== 0) {
-        fail(2, SNAPSHOT . ' is not ignored by git. Add "/' . SNAPSHOT . '" to .gitignore first (and take the'
-            . ' file out of git if it is tracked): decisions are not published. Nothing was written.');
-    }
+    // The code repositories are public and the decisions are not: the snapshot stays inside
+    // .decisions/, which git ignores (checked above) and a web server is told not to serve.
     // Written beside the file and moved into place: a failed write leaves the old snapshot whole.
     $temporary = $file . '.' . getmypid() . '.tmp';
-    if ((!is_dir(dirname($file)) && !@mkdir(dirname($file), 0777, true))
-        || @file_put_contents($temporary, $snapshot) !== strlen($snapshot)
+    if (@file_put_contents($temporary, $snapshot) !== strlen($snapshot)
         || !@rename($temporary, $file)
     ) {
         @unlink($temporary);
@@ -278,7 +335,7 @@ foreach ($paths as $path) {
 echo relevant($clone, $repo, $arguments);
 
 [, $state] = run(['git', '-C', $clone, 'log', '-1', '--format=%h of %cs']);
-echo "\nRegister: " . preg_replace('~(https?://)[^/@\s]+@~', '$1', $source) . ', ' . (trim($state) ?: 'unknown state')
+echo "\nRegister: " . shown($source) . ', ' . (trim($state) ?: 'unknown state')
     . ($options['offline'] ? ' (offline copy, not updated)' : '') . ".\n"
     . 'Read an ADR in full under ' . CLONE_DIR . "/adr/ before you rely on its line here.\n";
 
