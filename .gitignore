@@ -33,3 +33,6 @@ TODO.md
 
 # bin/marketplace-zip.sh writes here
 /build
+
+# The decision register, cloned by bin/decisions. It is private: never commit it.
+/.decisions/
